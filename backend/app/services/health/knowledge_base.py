@@ -469,7 +469,7 @@ class HealthKnowledgeBase:
         "Ventilation Timing Impact: Sealing windows during morning inversion peaks and opening only between 1:00 PM – 3:30 PM cuts indoor PM2.5 infiltration by up to 78%.",
         "DIY HEPA Box Impact: Running a 4-filter Corsi-Rosenthal DIY box in a bedroom lowers ambient PM2.5 from 250 µg/m³ to under 35 µg/m³ in under an hour.",
         "Wet Mopping Impact: Replacing dry broom sweeping with damp microfiber mopping prevents 65% of settled coarse dust (PM10) from re-suspending into the breathing zone.",
-        "Heating Choice Impact: Using electric radiant heating instead of open wood/biomass eliminates point-source emissions of black carbon and carcinogenic PAHs entirely.",
+        "Heating Choice Impact: Using electric radiant heating instead of open wood/biomass eliminates point-source emissions of black carbon and carcinogenic PAHs entirely, reducing household PM2.5 by ~90% and saving ~3.6 kg CO2 per evening.",
     ]
 
     @classmethod

@@ -220,3 +220,4 @@ urban-air-quality-assistant/
     ├── package.json                # Frontend dependencies
     └── vite.config.ts              # Vite production bundler configuration
 ```
+

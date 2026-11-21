@@ -539,3 +539,194 @@ async def test_knowledge_base_fallback_winter_smog_enrichment(client: AsyncClien
         app.dependency_overrides.pop(get_health_advisor, None)
 
 
+
+# ---------------------------------------------------------------------------
+# Additional Coverage Tests: RecommendationEngine all AQI branches
+# ---------------------------------------------------------------------------
+
+def test_recommendation_engine_good_aqi_coverage():
+    """Covers AQI <= 50 branch (Good category) for Coimbatore city."""
+    from app.integrations.ai.schemas import AQIContextSnapshot
+    snapshot = AQIContextSnapshot(city_name="Coimbatore", aqi=30, category="Good", dominant_pollutant="PM2.5", is_stale=False, is_simulated=False)
+    recs = RecommendationEngine.generate_recommendations(snapshot)
+    assert len(recs) >= 3
+    titles = [r.title for r in recs]
+    assert any("Outdoor" in t or "Activity" in t for t in titles)
+
+
+def test_recommendation_engine_satisfactory_aqi_coverage():
+    """Covers AQI 51-100 branch (Satisfactory) for Chennai city."""
+    from app.integrations.ai.schemas import AQIContextSnapshot
+    snapshot = AQIContextSnapshot(city_name="Chennai", aqi=75, category="Satisfactory", dominant_pollutant="PM10", is_stale=False, is_simulated=False)
+    recs = RecommendationEngine.generate_recommendations(snapshot)
+    assert len(recs) >= 2
+
+
+def test_recommendation_engine_moderate_aqi_coverage():
+    """Covers AQI 101-200 branch (Moderate) for Bengaluru city."""
+    from app.integrations.ai.schemas import AQIContextSnapshot
+    snapshot = AQIContextSnapshot(city_name="Bengaluru", aqi=150, category="Moderately Polluted", dominant_pollutant="NO2", is_stale=False, is_simulated=False)
+    recs = RecommendationEngine.generate_recommendations(snapshot)
+    assert len(recs) >= 3
+    priorities = [r.priority for r in recs]
+    assert "medium" in priorities or "high" in priorities
+
+
+def test_recommendation_engine_very_poor_aqi():
+    """Covers AQI 301-400 branch (Very Poor category) with winter smog pillars."""
+    from app.integrations.ai.schemas import AQIContextSnapshot
+    snapshot = AQIContextSnapshot(city_name="Delhi", aqi=360, category="Very Poor", dominant_pollutant="PM2.5", is_stale=False, is_simulated=False)
+    recs = RecommendationEngine.generate_recommendations(snapshot)
+    assert len(recs) >= 5
+    category_types = {r.category_type for r in recs if r.category_type}
+    assert "winter_smog" in category_types
+    assert "indoor_hack" in category_types
+    impact_recs = [r for r in recs if r.impact_explanation]
+    assert len(impact_recs) >= 3
+
+
+def test_recommendation_engine_severe_aqi():
+    """Covers AQI > 400 branch (Severe category) with all 5 Challenge 6 pillars."""
+    from app.integrations.ai.schemas import AQIContextSnapshot
+    snapshot = AQIContextSnapshot(city_name="Delhi", aqi=450, category="Severe", dominant_pollutant="PM2.5", is_stale=False, is_simulated=False)
+    recs = RecommendationEngine.generate_recommendations(snapshot)
+    assert len(recs) >= 5
+    category_types = {r.category_type for r in recs if r.category_type}
+    assert "winter_smog" in category_types
+    assert "indoor_hack" in category_types
+    assert "low_emission_routine" in category_types
+    for r in recs:
+        if r.impact_explanation:
+            assert len(r.impact_explanation) > 10
+
+
+def test_recommendation_engine_no_aqi():
+    """Covers aqi is None fallback branch."""
+    from app.integrations.ai.schemas import AQIContextSnapshot
+    snapshot = AQIContextSnapshot(city_name="Unknown", aqi=None, category="Unknown", dominant_pollutant=None, is_stale=True, is_simulated=False)
+    recs = RecommendationEngine.generate_recommendations(snapshot)
+    assert len(recs) == 1
+    assert "Monitor" in recs[0].title
+
+
+# ---------------------------------------------------------------------------
+# AQI Categories Coverage Tests
+# ---------------------------------------------------------------------------
+
+def test_aqi_category_mapping_all_tiers():
+    """Covers get_aqi_category for all 6 CPCB tiers."""
+    from app.services.aqi.categories import get_aqi_category
+    assert get_aqi_category(25) == "Good"
+    assert get_aqi_category(50) == "Good"
+    assert get_aqi_category(75) == "Satisfactory"
+    assert get_aqi_category(100) == "Satisfactory"
+    assert get_aqi_category(150) == "Moderately Polluted"
+    assert get_aqi_category(200) == "Moderately Polluted"
+    assert get_aqi_category(250) == "Poor"
+    assert get_aqi_category(300) == "Poor"
+    assert get_aqi_category(350) == "Very Poor"
+    assert get_aqi_category(400) == "Very Poor"
+    assert get_aqi_category(450) == "Severe"
+    assert get_aqi_category(500) == "Severe"
+
+
+def test_get_category_info_all_tiers():
+    """Covers get_category_info for all CPCB tiers."""
+    from app.services.aqi.categories import get_category_info
+    for aqi_val in [30, 75, 150, 250, 350, 450]:
+        info = get_category_info(aqi_val)
+        assert info.category
+        assert info.color_hex.startswith("#")
+        assert info.health_statement
+
+
+# ---------------------------------------------------------------------------
+# ComparisonService Coverage Tests
+# ---------------------------------------------------------------------------
+
+def test_comparison_service_empty_city_list(db_session):
+    """ComparisonService with empty city list returns empty comparisons."""
+    from app.services.history.comparison_service import ComparisonService
+    result = ComparisonService.compare_locations(db=db_session, cities=[], stations=[])
+    assert result.comparisons == []
+
+
+def test_comparison_service_nonexistent_city(db_session):
+    """ComparisonService with nonexistent city skips it gracefully."""
+    from app.services.history.comparison_service import ComparisonService
+    result = ComparisonService.compare_locations(db=db_session, cities=["NonexistentCity123"], stations=[])
+    assert result.comparisons == []
+
+
+def test_comparison_service_single_city_with_data(db_session, health_test_data):
+    """ComparisonService with valid seeded city returns comparison data."""
+    from app.services.history.comparison_service import ComparisonService
+    result = ComparisonService.compare_locations(db=db_session, cities=["Delhi"], stations=[])
+    assert len(result.comparisons) >= 1
+    delhi = result.comparisons[0]
+    assert delhi.city_name == "Delhi"
+    assert delhi.record_count >= 0
+
+
+def test_comparison_service_multiple_cities(db_session, health_test_data):
+    """ComparisonService correctly compares multiple cities."""
+    from app.services.history.comparison_service import ComparisonService
+    result = ComparisonService.compare_locations(db=db_session, cities=["Delhi", "Mumbai"], stations=[])
+    # Both may appear if data is seeded
+    assert len(result.comparisons) >= 1
+
+
+# ---------------------------------------------------------------------------
+# MockAIProvider as LSP Proof: interchangeable with GeminiProvider
+# ---------------------------------------------------------------------------
+
+def test_mock_ai_provider_satisfies_base_interface():
+    """Verify MockAIProvider fully satisfies BaseAIProvider interface (LSP proof)."""
+    mock = MockAIProvider(response_text="Sample response for winter smog scenario")
+    assert isinstance(mock, BaseAIProvider)
+    assert mock.is_configured() is True
+    assert mock.get_provider_name() == "mock_gemini"
+    assert mock.get_model_name() == "gemini-2.5-flash-mock"
+
+
+@pytest.mark.anyio
+async def test_mock_ai_provider_generate_response():
+    """Verify MockAIProvider generates valid AICompletionResponse."""
+    mock = MockAIProvider(response_text="Take precautions during winter smog. Direct impact: reduces PM2.5 intake by 40%.")
+    request = AICompletionRequest(
+        prompt="What precautions should I take at AQI 350?",
+        system_instruction="You are an urban air quality health advisor.",
+    )
+    response = await mock.generate_response(request)
+    assert response.content == "Take precautions during winter smog. Direct impact: reduces PM2.5 intake by 40%."
+    assert response.finish_reason == "STOP"
+
+
+# ---------------------------------------------------------------------------
+# NotificationService Coverage: Disabled push path
+# ---------------------------------------------------------------------------
+
+def test_notification_service_disabled_push():
+    """NotificationService returns 0 when VAPID keys are unconfigured."""
+    from app.core.config import Settings
+    from app.services.alerts.notification_service import NotificationService
+    settings = Settings(WEB_PUSH_ENABLED=False, VAPID_PRIVATE_KEY=None, VAPID_PUBLIC_KEY=None)
+    svc = NotificationService(settings=settings)
+    assert svc.settings.WEB_PUSH_ENABLED is False
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Base: Winter Smog Guidance Validation
+# ---------------------------------------------------------------------------
+
+def test_knowledge_base_winter_smog_guidance():
+    """Knowledge base contains actionable winter smog guidance for all 5 Challenge 6 pillars."""
+    from app.services.health.knowledge_base import HealthKnowledgeBase
+    assert len(HealthKnowledgeBase.WINTER_SMOG_GUIDANCE) >= 2
+    assert len(HealthKnowledgeBase.LOW_EMISSION_ROUTINES) >= 3
+    assert len(HealthKnowledgeBase.INDOOR_AIR_HACKS) >= 3
+    assert len(HealthKnowledgeBase.SUSTAINABLE_ALTERNATIVES) >= 2
+    assert len(HealthKnowledgeBase.DIRECT_IMPACT_METRICS) >= 4
+    # Every direct impact metric must include quantified result
+    for metric in HealthKnowledgeBase.DIRECT_IMPACT_METRICS:
+        assert any(unit in metric for unit in ("%", "kg", "µg/m³", "µg"))

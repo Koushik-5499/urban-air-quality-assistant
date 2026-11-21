@@ -80,3 +80,4 @@ Color is **never** used as the sole conveyor of information:
   - NVDA on Windows / Chromium
   - VoiceOver on macOS / iOS
   - ChromeVox on Android / Linux
+

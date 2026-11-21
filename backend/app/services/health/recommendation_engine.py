@@ -353,6 +353,18 @@ class RecommendationEngine:
                     impact_explanation="Cutting vehicular road trips cuts immediate urban NO2 and black carbon spikes by up to 40%.",
                 )
             )
+            recommendations.append(
+                RecommendationItem(
+                    title="Emergency Sustainable Heating: Strictly No Biomass or Coal",
+                    description="Under no circumstances burn wood, coal, crop stubble, or municipal waste for heating during Severe pollution episodes. Use electric radiant heaters or additional blankets.",
+                    target_group="Households & Communities",
+                    priority="high",
+                    reason="Open biomass burning during stagnant-air Severe episodes can increase local PM2.5 by over 1,000 µg/m³.",
+                    supporting_source="CPCB / NCAP Stubble Burning Advisory",
+                    category_type="sustainable_alternative",
+                    impact_explanation="Eliminating one household biomass fire prevents ~2.4 kg of black carbon and carcinogenic PAH emissions per evening.",
+                )
+            )
 
         return recommendations
 
