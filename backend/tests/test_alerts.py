@@ -615,57 +615,40 @@ async def test_api_list_alerts_filters(client: AsyncClient, alert_seed_data):
 
 @pytest.mark.anyio
 async def test_api_unread_count(client: AsyncClient, alert_seed_data):
-    """Test GET /api/v1/alerts/unread-count."""
+    """Test GET /api/v1/alerts/unread-count returns 410 Gone in public-only mode."""
     resp = await client.get("/api/v1/alerts/unread-count")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "unread_count" in data
-    assert data["unread_count"] >= 1
+    assert resp.status_code == 410
+    assert "retired" in resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_api_mark_single_alert_read(client: AsyncClient, alert_seed_data):
-    """Test PATCH /api/v1/alerts/{alert_id}/read marks alert as read."""
+    """Test PATCH /api/v1/alerts/{alert_id}/read returns 410 Gone in public-only mode."""
     alert1 = alert_seed_data["alert1"]
     resp = await client.patch(f"/api/v1/alerts/{alert1.id}/read")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["id"] == alert1.id
-    assert data["is_read"] is True
-
-    # 404 for invalid ID
-    resp_404 = await client.patch("/api/v1/alerts/999999/read")
-    assert resp_404.status_code == 404
+    assert resp.status_code == 410
+    assert "retired" in resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_api_mark_all_read(client: AsyncClient, alert_seed_data):
-    """Test PATCH /api/v1/alerts/read-all marks all alerts read."""
+    """Test PATCH /api/v1/alerts/read-all returns 410 Gone in public-only mode."""
     resp = await client.patch("/api/v1/alerts/read-all")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["unread_count"] == 0
-
-    # Verify unread count is now 0
-    resp_count = await client.get("/api/v1/alerts/unread-count")
-    assert resp_count.json()["unread_count"] == 0
+    assert resp.status_code == 410
+    assert "retired" in resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_api_get_default_preferences(client: AsyncClient, alert_seed_data):
-    """Test GET /api/v1/alerts/preferences returns defaults when no preference exists."""
+    """Test GET /api/v1/alerts/preferences returns 410 Gone in public-only mode."""
     resp = await client.get("/api/v1/alerts/preferences", headers={"X-User-Id": "new_user_123"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["user_id"] == "new_user_123"
-    assert data["min_aqi_threshold"] == 100
-    assert "in_app" in data["channels"]
-    assert data["is_enabled"] is True
+    assert resp.status_code == 410
+    assert "retired" in resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_api_update_preferences(client: AsyncClient, alert_seed_data):
-    """Test PUT /api/v1/alerts/preferences creates and updates preferences."""
+    """Test PUT /api/v1/alerts/preferences returns 410 Gone in public-only mode."""
     payload = {
         "city": "Delhi",
         "min_aqi_threshold": 150,
@@ -682,39 +665,19 @@ async def test_api_update_preferences(client: AsyncClient, alert_seed_data):
         json=payload,
         headers={"X-User-Id": "resident_delhi"},
     )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["city_name"] == "Delhi"
-    assert data["min_aqi_threshold"] == 150
-    assert "email" in data["channels"]
-    assert data["email"] == "user@delhi.org"
-    assert data["quiet_hours_start"] == "23:00"
+    assert resp.status_code == 410
+    assert "retired" in resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_api_update_preferences_validation(client: AsyncClient, alert_seed_data):
-    """Test PUT /api/v1/alerts/preferences rejects invalid threshold, bad quiet hours, missing email."""
-    # Invalid threshold > 500
-    resp_threshold = await client.put(
+    """Test PUT /api/v1/alerts/preferences consistently returns 410 Gone for any payload."""
+    resp = await client.put(
         "/api/v1/alerts/preferences",
         json={"city": "Delhi", "min_aqi_threshold": 600, "channels": ["in_app"]},
     )
-    assert resp_threshold.status_code == 422
-
-    # Missing email when 'email' channel specified
-    resp_no_email = await client.put(
-        "/api/v1/alerts/preferences",
-        json={"city": "Delhi", "min_aqi_threshold": 120, "channels": ["email"]},
-    )
-    assert resp_no_email.status_code == 400
-    assert "Email address is required" in resp_no_email.json()["detail"]
-
-    # Invalid quiet hours pattern
-    resp_bad_qh = await client.put(
-        "/api/v1/alerts/preferences",
-        json={"city": "Delhi", "min_aqi_threshold": 100, "quiet_hours_start": "25:00", "channels": ["in_app"]},
-    )
-    assert resp_bad_qh.status_code == 422
+    assert resp.status_code == 410
+    assert "retired" in resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
@@ -778,7 +741,7 @@ async def test_api_test_notification_in_app(client: AsyncClient):
 
 @pytest.mark.anyio
 async def test_api_push_subscription(client: AsyncClient):
-    """Test POST /api/v1/alerts/push/subscribe registers a browser push subscription."""
+    """Test POST /api/v1/alerts/push/subscribe returns 410 Gone in public-only mode."""
     payload = {
         "endpoint": "https://fcm.googleapis.com/fcm/send/sample_push_token_999",
         "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QT9h0qvqKEA9+LLmHsPtw24Raq1",
@@ -789,6 +752,5 @@ async def test_api_push_subscription(client: AsyncClient):
         json=payload,
         headers={"X-User-Id": "mobile_user_1"},
     )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "success"
+    assert resp.status_code == 410
+    assert "retired" in resp.json()["detail"].lower()

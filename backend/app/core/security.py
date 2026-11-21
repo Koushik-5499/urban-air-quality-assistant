@@ -16,9 +16,6 @@ logger = get_logger("app.core.security")
 # Maximum permitted payload size: 1 MB (1,048,576 bytes)
 MAX_REQUEST_SIZE_BYTES = 1024 * 1024
 
-# Sanitization regex for user identifier header
-USER_ID_REGEX = re.compile(r"^[a-zA-Z0-9_\-\.]{1,64}$")
-
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Injects defense-in-depth HTTP security headers on all responses."""
@@ -180,19 +177,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         return response
-
-
-def validate_user_id(
-    x_user_id: str = Header(default="default_user", alias="X-User-Id"),
-) -> str:
-    """Validate and sanitize X-User-Id header to prevent injection or abuse."""
-    clean = x_user_id.strip()
-    if not clean or not USER_ID_REGEX.match(clean):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid X-User-Id header. Must be 1-64 alphanumeric characters, hyphens, underscores, or dots.",
-        )
-    return clean
 
 
 def verify_admin_access(

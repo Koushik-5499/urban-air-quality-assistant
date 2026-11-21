@@ -1,18 +1,15 @@
 import { api } from './client';
 import { API_ENDPOINTS } from './endpoints';
-import { API_SETTINGS } from './config';
 import type {
   AlertPaginatedResponse,
-  AlertUnreadCountResponse,
   AlertResponse,
-  AlertPreferenceResponse,
-  AlertPreferenceCreate,
   AlertStatusResponse,
 } from './types';
 
 export const alertsApi = {
   /**
    * Retrieves paginated air quality alerts with optional filtering.
+   * Public endpoint - no user account, user ID, or identity header required.
    */
   listAlerts: (
     params?: {
@@ -26,69 +23,50 @@ export const alertsApi = {
       page?: number;
       page_size?: number;
     },
-    userId: string = API_SETTINGS.defaultUserId,
     signal?: AbortSignal
   ): Promise<AlertPaginatedResponse> =>
     api.get<AlertPaginatedResponse>(API_ENDPOINTS.alerts.list, {
       params,
-      headers: { 'X-User-Id': userId },
       signal,
     }),
 
   /**
-   * Retrieves count of unread alerts for a user.
+   * Marks a single alert as read locally in the UI session.
+   * Note: Remote per-user mutation endpoints are retired in public mode.
    */
-  getUnreadCount: (
-    userId: string = API_SETTINGS.defaultUserId,
-    signal?: AbortSignal
-  ): Promise<AlertUnreadCountResponse> =>
-    api.get<AlertUnreadCountResponse>(API_ENDPOINTS.alerts.unreadCount, {
-      headers: { 'X-User-Id': userId },
-      signal,
-    }),
+  markAlertRead: async (alertId: number, _signal?: AbortSignal): Promise<AlertResponse> => {
+    return {
+      id: alertId,
+      city_id: 0,
+      city_name: null,
+      station_id: null,
+      station_name: null,
+      title: '',
+      description: '',
+      severity: 'Low',
+      alert_type: 'threshold_breach',
+      current_aqi: null,
+      previous_aqi: null,
+      threshold_value: null,
+      aqi_category: null,
+      dominant_pollutant: null,
+      source: 'public',
+      dedup_key: null,
+      delivery_status: 'delivered',
+      is_read: true,
+      is_simulated: false,
+      created_at: new Date().toISOString(),
+      expires_at: null,
+    };
+  },
 
   /**
-   * Marks a single alert as read.
+   * Marks all alerts as read locally in the UI session.
+   * Note: Remote per-user mutation endpoints are retired in public mode.
    */
-  markAlertRead: (alertId: number, signal?: AbortSignal): Promise<AlertResponse> =>
-    api.patch<AlertResponse>(API_ENDPOINTS.alerts.markRead(alertId), undefined, { signal }),
-
-  /**
-   * Marks all alerts as read for a user.
-   */
-  markAllRead: (
-    userId: string = API_SETTINGS.defaultUserId,
-    signal?: AbortSignal
-  ): Promise<{ updated_count: number }> =>
-    api.patch<{ updated_count: number }>(API_ENDPOINTS.alerts.markAllRead, undefined, {
-      headers: { 'X-User-Id': userId },
-      signal,
-    }),
-
-  /**
-   * Retrieves alert notification preferences for a user.
-   */
-  getPreferences: (
-    userId: string = API_SETTINGS.defaultUserId,
-    signal?: AbortSignal
-  ): Promise<AlertPreferenceResponse> =>
-    api.get<AlertPreferenceResponse>(API_ENDPOINTS.alerts.preferences, {
-      headers: { 'X-User-Id': userId },
-      signal,
-    }),
-
-  /**
-   * Updates or creates alert notification preferences for a user.
-   */
-  updatePreferences: (
-    preferences: AlertPreferenceCreate,
-    userId: string = API_SETTINGS.defaultUserId,
-    signal?: AbortSignal
-  ): Promise<AlertPreferenceResponse> =>
-    api.put<AlertPreferenceResponse>(API_ENDPOINTS.alerts.preferences, preferences, {
-      headers: { 'X-User-Id': userId },
-      signal,
-    }),
+  markAllRead: async (_signal?: AbortSignal): Promise<{ updated_count: number }> => {
+    return { updated_count: 0 };
+  },
 
   /**
    * Retrieves delivery engine status and enabled channels.

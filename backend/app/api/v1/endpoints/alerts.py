@@ -1,24 +1,19 @@
-"""API v1 endpoints for air quality alerts, notifications, preferences, and web push."""
+"""API v1 endpoints for air quality alerts, notifications, and public advisories."""
 
 from datetime import datetime
 from typing import Dict, Optional
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.core.security import validate_user_id, verify_admin_access
+from app.core.security import verify_admin_access
 from app.db.session import get_db
 from app.schemas.alert import (
     AlertPaginatedResponse,
-    AlertPreferenceCreate,
-    AlertPreferenceResponse,
     AlertProcessResponse,
-    AlertResponse,
     AlertStatusResponse,
     AlertTestNotificationRequest,
     AlertTestNotificationResponse,
-    AlertUnreadCountResponse,
-    PushSubscriptionCreate,
 )
 from app.services.alerts.alert_service import AlertService
 
@@ -36,7 +31,7 @@ def get_alert_service(
     "",
     response_model=AlertPaginatedResponse,
     summary="List air quality alerts",
-    description="Retrieve a paginated list of alerts with optional filtering by city, station, severity, read status, and date range.",
+    description="Retrieve a paginated list of public ambient alerts with optional filtering by city, station, severity, and date range.",
 )
 def get_alerts(
     city: Optional[str] = Query(None, description="Filter by city name"),
@@ -48,13 +43,11 @@ def get_alerts(
     is_simulated: Optional[bool] = Query(None, description="Filter by simulation status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size (max 100)"),
-    x_user_id: str = Depends(validate_user_id),
     db: Session = Depends(get_db),
 ) -> AlertPaginatedResponse:
-    """Return paginated list of alerts."""
+    """Return paginated list of public ambient alerts."""
     return AlertService.list_alerts(
         db=db,
-        user_id=x_user_id,
         city=city,
         station_id=station_id,
         severity=severity,
@@ -69,73 +62,74 @@ def get_alerts(
 
 @router.get(
     "/unread-count",
-    response_model=AlertUnreadCountResponse,
-    summary="Get unread alert count",
-    description="Retrieve the total count of unread air quality alerts.",
+    status_code=status.HTTP_410_GONE,
+    summary="[Retired] Get unread alert count",
+    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def get_unread_count(
-    x_user_id: str = Depends(validate_user_id),
-    db: Session = Depends(get_db),
-) -> AlertUnreadCountResponse:
-    """Return unread count."""
-    return AlertService.get_unread_count(db=db, user_id=x_user_id)
+def get_unread_count() -> Dict[str, str]:
+    """Retired personal endpoint returning HTTP 410 Gone."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="User-specific notification tracking has been retired. All ambient alerts are public.",
+    )
 
 
 @router.patch(
     "/{alert_id}/read",
-    response_model=AlertResponse,
-    summary="Mark single alert as read",
-    description="Mark a specific alert identified by ID as read.",
+    status_code=status.HTTP_410_GONE,
+    summary="[Retired] Mark single alert as read",
+    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
 def mark_alert_read(
-    alert_id: int = Path(..., ge=1, description="ID of the alert to mark as read"),
-    db: Session = Depends(get_db),
-) -> AlertResponse:
-    """Mark an alert as read."""
-    return AlertService.mark_alert_read(db=db, alert_id=alert_id)
+    alert_id: int = Path(..., ge=1, description="ID of the alert"),
+) -> Dict[str, str]:
+    """Retired personal endpoint returning HTTP 410 Gone."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="User-specific notification management has been retired. All ambient alerts are public.",
+    )
 
 
 @router.patch(
     "/read-all",
-    response_model=AlertUnreadCountResponse,
-    summary="Mark all alerts as read",
-    description="Mark all unread alerts in the system as read.",
+    status_code=status.HTTP_410_GONE,
+    summary="[Retired] Mark all alerts as read",
+    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def mark_all_alerts_read(
-    x_user_id: str = Depends(validate_user_id),
-    db: Session = Depends(get_db),
-) -> AlertUnreadCountResponse:
-    """Mark all alerts as read."""
-    return AlertService.mark_all_read(db=db, user_id=x_user_id)
+def mark_all_alerts_read() -> Dict[str, str]:
+    """Retired personal endpoint returning HTTP 410 Gone."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="User-specific notification tracking has been retired. All ambient alerts are public.",
+    )
 
 
 @router.get(
     "/preferences",
-    response_model=AlertPreferenceResponse,
-    summary="Get user alert preferences",
-    description="Retrieve notification and alert threshold preferences for the requesting user.",
+    status_code=status.HTTP_410_GONE,
+    summary="[Retired] Get user alert preferences",
+    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def get_user_preferences(
-    x_user_id: str = Depends(validate_user_id),
-    db: Session = Depends(get_db),
-) -> AlertPreferenceResponse:
-    """Fetch user alert preferences or default configuration."""
-    return AlertService.get_preferences(db=db, user_id=x_user_id)
+def get_user_preferences() -> Dict[str, str]:
+    """Retired personal endpoint returning HTTP 410 Gone."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Personal alert preferences have been retired. The platform operates exclusively as a public environmental monitoring service.",
+    )
 
 
 @router.put(
     "/preferences",
-    response_model=AlertPreferenceResponse,
-    summary="Set or update alert preferences",
-    description="Save or update notification channels, threshold, quiet hours, and target city/station preferences.",
+    status_code=status.HTTP_410_GONE,
+    summary="[Retired] Set or update alert preferences",
+    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def update_user_preferences(
-    preference_in: AlertPreferenceCreate,
-    x_user_id: str = Depends(validate_user_id),
-    db: Session = Depends(get_db),
-) -> AlertPreferenceResponse:
-    """Create or update user alert preferences."""
-    return AlertService.upsert_preferences(db=db, pref_in=preference_in, user_id=x_user_id)
+def update_user_preferences() -> Dict[str, str]:
+    """Retired personal endpoint returning HTTP 410 Gone."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Personal alert preferences have been retired. The platform operates exclusively as a public environmental monitoring service.",
+    )
 
 
 @router.post(
@@ -184,15 +178,13 @@ async def test_notification(
 
 @router.post(
     "/push/subscribe",
-    response_model=Dict[str, str],
-    summary="Register Web Push subscription",
-    description="Save or update a browser Web Push subscription (endpoint, p256dh, auth keys) for the requesting user.",
+    status_code=status.HTTP_410_GONE,
+    summary="[Retired] Register Web Push subscription",
+    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def subscribe_push(
-    subscription_in: PushSubscriptionCreate,
-    x_user_id: str = Depends(validate_user_id),
-    db: Session = Depends(get_db),
-) -> Dict[str, str]:
-    """Register browser push subscription."""
-    AlertService.register_push_subscription(db=db, sub_in=subscription_in, user_id=x_user_id)
-    return {"status": "success", "message": "Push subscription registered successfully."}
+def subscribe_push() -> Dict[str, str]:
+    """Retired personal endpoint returning HTTP 410 Gone."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Personal push subscriptions have been retired. The platform operates exclusively as a public environmental monitoring service.",
+    )

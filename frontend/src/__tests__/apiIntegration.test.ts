@@ -338,8 +338,8 @@ describe('Frontend-to-Backend API Integration Suite', () => {
   // 5. Alerts & Notification Preferences
   // -------------------------------------------------------------------------
   describe('Alerts & Notifications Domain Endpoints', () => {
-    it('retrieves paginated alerts with X-User-Id header via GET /api/v1/alerts', async () => {
-      let capturedHeader = '';
+    it('retrieves paginated alerts publicly without requiring user identity header via GET /api/v1/alerts', async () => {
+      let capturedHeader: string | undefined = undefined;
       const mockAlerts = {
         page: 1,
         page_size: 10,
@@ -375,7 +375,7 @@ describe('Frontend-to-Backend API Integration Suite', () => {
 
       vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async (_url, init) => {
         const headers = init?.headers as Record<string, string>;
-        capturedHeader = headers?.['X-User-Id'] || '';
+        capturedHeader = headers?.['X-User-Id'];
         return {
           ok: true,
           status: 200,
@@ -383,65 +383,40 @@ describe('Frontend-to-Backend API Integration Suite', () => {
         } as Response;
       });
 
-      const result = await alertsApi.listAlerts({ city: 'Delhi' }, 'test_user_42');
-      expect(capturedHeader).toBe('test_user_42');
+      const result = await alertsApi.listAlerts({ city: 'Delhi' });
+      expect(capturedHeader).toBeUndefined();
       expect(result.alerts[0].title).toBe('High PM2.5 Alert');
       expect(result.alerts[0].is_read).toBe(false);
     });
 
-    it('marks alert as read via PATCH /api/v1/alerts/{alert_id}/read', async () => {
-      let capturedMethod = '';
-      vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async (_url, init) => {
-        capturedMethod = init?.method || '';
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ id: 101, is_read: true }),
-        } as Response;
-      });
-
+    it('marks alert as read locally in public session', async () => {
       const result = await alertsApi.markAlertRead(101);
-      expect(capturedMethod).toBe('PATCH');
+      expect(result.id).toBe(101);
       expect(result.is_read).toBe(true);
     });
 
-    it('updates notification preferences via PUT /api/v1/alerts/preferences', async () => {
-      let capturedBody: unknown = null;
-      vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async (_url, init) => {
-        capturedBody = JSON.parse(String(init?.body || '{}'));
+    it('retrieves alert delivery engine status via GET /api/v1/alerts/status', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
         return {
           ok: true,
           status: 200,
           json: async () => ({
-            id: 1,
-            user_id: 'default_user',
-            city_id: 1,
-            city_name: 'Coimbatore',
-            station_id: null,
-            station_name: null,
-            min_aqi_threshold: 150,
-            min_severity: 'High',
-            is_enabled: true,
-            channels: ['in_app', 'email'],
-            email: 'user@example.com',
-            quiet_hours_start: '22:00',
-            quiet_hours_end: '07:00',
-            timezone: 'Asia/Kolkata',
-            created_at: '2026-11-20T10:00:00Z',
-            updated_at: '2026-11-20T10:00:00Z',
+            alerts_enabled: true,
+            last_processed_at: null,
+            last_processing_result: null,
+            enabled_channels: ['in_app'],
+            providers: {
+              in_app: true,
+              email: false,
+              web_push: false,
+            },
           }),
         } as Response;
       });
 
-      const result = await alertsApi.updatePreferences({
-        city: 'Coimbatore',
-        min_aqi_threshold: 150,
-        min_severity: 'High',
-        email: 'user@example.com',
-      });
-
-      expect((capturedBody as { min_aqi_threshold: number }).min_aqi_threshold).toBe(150);
-      expect(result.email).toBe('user@example.com');
+      const result = await alertsApi.getStatus();
+      expect(result.alerts_enabled).toBe(true);
+      expect(result.enabled_channels).toContain('in_app');
     });
   });
 

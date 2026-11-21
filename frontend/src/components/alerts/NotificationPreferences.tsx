@@ -71,6 +71,21 @@ export function NotificationPreferences({
         </label>
       </div>
 
+      {/* Public Platform Notice */}
+      <div className="p-3.5 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 flex items-start gap-3">
+        <div className="p-2 rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300 shrink-0">
+          <Sliders className="w-4 h-4" />
+        </div>
+        <div className="space-y-0.5">
+          <h4 className="text-xs font-bold text-teal-900 dark:text-teal-200">
+            Public Environmental Monitoring Network
+          </h4>
+          <p className="text-xs text-teal-800/90 dark:text-teal-300/90 leading-relaxed">
+            User accounts, personal logins, and server-side notification subscriptions have been retired. All ambient threshold alerts are broadcast publicly on the Alert Feed across monitored cities without requiring an account.
+          </p>
+        </div>
+      </div>
+
       {/* Threshold Options */}
       <div className="space-y-3">
         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -210,7 +225,7 @@ export function NotificationPreferences({
       <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
         <p className="text-[11px] text-slate-400 flex items-center gap-1">
           <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-          <span>Preferences are stored in your local browser profile. No remote push services connected.</span>
+          <span>Public mode: No user accounts, personal logins, or remote tracking required.</span>
         </p>
 
         <div className="flex items-center gap-2 self-end sm:self-auto">

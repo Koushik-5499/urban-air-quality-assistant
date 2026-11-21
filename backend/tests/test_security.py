@@ -38,23 +38,21 @@ async def test_request_size_limit_rejection(client: AsyncClient):
 
 @pytest.mark.anyio
 async def test_user_id_validation(client: AsyncClient):
-    """Verify X-User-Id header validation prevents path traversal and script injection."""
-    # Valid user ID
-    valid_res = await client.get("/api/v1/alerts", headers={"X-User-Id": "valid_user-123.test"})
-    assert valid_res.status_code == 200
+    """Verify alerts endpoint is public without identity headers, and personal endpoints return 410."""
+    # 1. Public alerts request without any X-User-Id header succeeds
+    res_no_user = await client.get("/api/v1/alerts")
+    assert res_no_user.status_code == 200
 
-    # Path traversal attack
-    bad_res1 = await client.get("/api/v1/alerts", headers={"X-User-Id": "../../etc/passwd"})
-    assert bad_res1.status_code == 400
-    assert "Invalid X-User-Id header" in bad_res1.json()["detail"]
+    # 2. Supplying arbitrary X-User-Id does not expose personal data or break public endpoint
+    res_with_user = await client.get("/api/v1/alerts", headers={"X-User-Id": "someone_else"})
+    assert res_with_user.status_code == 200
 
-    # XSS injection attempt
-    bad_res2 = await client.get("/api/v1/alerts", headers={"X-User-Id": "<script>alert(1)</script>"})
-    assert bad_res2.status_code == 400
+    # 3. Retired personal endpoints return HTTP 410 Gone
+    res_pref = await client.get("/api/v1/alerts/preferences", headers={"X-User-Id": "victim_user"})
+    assert res_pref.status_code == 410
 
-    # Oversized user ID (> 64 chars)
-    bad_res3 = await client.get("/api/v1/alerts", headers={"X-User-Id": "a" * 65})
-    assert bad_res3.status_code == 400
+    res_push = await client.post("/api/v1/alerts/push/subscribe", json={}, headers={"X-User-Id": "victim_user"})
+    assert res_push.status_code == 410
 
 
 @pytest.mark.anyio

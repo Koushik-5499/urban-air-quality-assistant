@@ -17,6 +17,5 @@ function resolveBaseUrl(): string {
 export const API_SETTINGS = {
   baseUrl: resolveBaseUrl(),
   defaultTimeoutMs: Number(import.meta.env.VITE_API_TIMEOUT_MS) || 10000,
-  defaultUserId: 'default_user',
 } as const;
 

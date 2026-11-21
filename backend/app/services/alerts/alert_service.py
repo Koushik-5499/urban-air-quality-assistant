@@ -61,7 +61,6 @@ class AlertService:
     def list_alerts(
         cls,
         db: Session,
-        user_id: str = "default_user",
         city: Optional[str] = None,
         station_id: Optional[int] = None,
         severity: Optional[str] = None,
@@ -71,6 +70,7 @@ class AlertService:
         is_simulated: Optional[bool] = None,
         page: int = 1,
         page_size: int = 20,
+        user_id: Optional[str] = None,
     ) -> AlertPaginatedResponse:
         """Query paginated alerts with flexible filtering."""
         page, page_size = HistoryValidator.validate_pagination(page, page_size)
@@ -474,31 +474,8 @@ class AlertService:
             db.refresh(alert)
             generated_alerts.append(alert)
 
-            # Dispatch external notifications if eligible
-            if should_deliver and user_pref and user_pref.is_enabled:
-                channels = [c.strip() for c in user_pref.channels.split(",") if c.strip()]
-                # Email dispatch
-                if "email" in channels and user_pref.email:
-                    subject, html, text = NotificationService.build_email_content(alert, city_name)
-                    asyncio.create_task(
-                        self.notification_service.dispatch_email(
-                            recipient_email=user_pref.email,
-                            subject=subject,
-                            html_content=html,
-                            text_content=text,
-                        )
-                    )
-                # Web Push dispatch
-                if "push" in channels:
-                    asyncio.create_task(
-                        self.notification_service.dispatch_web_push(
-                            db=db,
-                            user_id=user_pref.user_id,
-                            title=alert.title,
-                            body=alert.description,
-                            data_payload={"alert_id": alert.id, "city_id": city_id},
-                        )
-                    )
+            # In public-only architecture, personal email and push dispatches are disabled.
+            # Environmental alerts remain available in the public alert feed.
 
         return generated_alerts
 

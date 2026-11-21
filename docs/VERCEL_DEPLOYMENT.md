@@ -153,3 +153,4 @@ openssl rand -hex 32
      ["https://your-frontend.vercel.app"]
      ```
    - Trigger a redeployment of the backend so the updated CORS whitelist takes effect.
+

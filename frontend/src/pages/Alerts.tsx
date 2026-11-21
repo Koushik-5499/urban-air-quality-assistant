@@ -112,20 +112,6 @@ export function Alerts() {
         // Retain saved alerts on failure
       });
 
-    alertsApi
-      .getPreferences()
-      .then((pref) => {
-        if (!isMounted || !pref) return;
-        setPreferences((prev) => ({
-          ...prev,
-          notificationsEnabled: pref.is_enabled,
-          criticalAlerts: pref.min_severity === 'Critical',
-        }));
-      })
-      .catch(() => {
-        // Retain saved preferences
-      });
-
     return () => {
       isMounted = false;
     };
@@ -177,19 +163,6 @@ export function Alerts() {
   const handlePreferencesChange = (newPrefs: PrefsType) => {
     setPreferences(newPrefs);
     saveNotificationPreferences(newPrefs);
-
-    const channels: string[] = ['in_app'];
-    if (newPrefs.notificationsEnabled) {
-      channels.push('email');
-    }
-
-    alertsApi
-      .updatePreferences({
-        city: selectedCityData.location.city,
-        min_aqi_threshold: newPrefs.criticalAlerts ? 200 : newPrefs.unhealthyAlerts ? 150 : 100,
-        channels,
-      })
-      .catch(() => {});
   };
 
   // Filtered & sorted alerts
