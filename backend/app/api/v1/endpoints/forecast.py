@@ -1,8 +1,6 @@
 """API v1 endpoints for air quality forecasting, hourly projections, daily summaries, and model status."""
 
-import hmac
-
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -27,33 +25,6 @@ def get_forecast_service(
 ) -> ForecastService:
     """Dependency provider for ForecastService."""
     return ForecastService(settings=settings)
-
-
-def verify_forecast_admin_access(
-    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
-    settings: Settings = Depends(get_settings),
-) -> None:
-    """Verify administrator secret header for triggering on-demand model training and forecast generation.
-
-    In development mode, if FORECAST_ADMIN_SECRET is empty/unset, access is permitted.
-    If FORECAST_ADMIN_SECRET is set, the X-Admin-Secret header must match.
-    In non-development environments, an admin secret is always mandatory.
-    """
-    secret = settings.FORECAST_ADMIN_SECRET or settings.ALERT_ADMIN_SECRET
-    if secret:
-        if not x_admin_secret or not hmac.compare_digest(
-            x_admin_secret.encode(), secret.encode()
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid or missing X-Admin-Secret header.",
-            )
-    else:
-        if settings.APP_ENV != "development":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin secret must be configured in non-development environments.",
-            )
 
 
 @router.get(

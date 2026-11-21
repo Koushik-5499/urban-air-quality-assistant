@@ -208,12 +208,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 def verify_admin_access(
     x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+    authorization: str | None = Header(None, alias="Authorization"),
     settings: Settings = Depends(get_settings),
 ) -> None:
     """Verify administrator secret header for privileged operations.
 
+    Accepts credentials via X-Admin-Secret, X-API-Key, or Bearer token in Authorization header.
     In development mode, if administrative secret is unset, access is permitted.
-    If secret is configured, X-Admin-Secret header must match.
+    If secret is configured, provided credentials must match using constant-time hmac.compare_digest.
     In non-development environments, an admin secret is strictly mandatory.
     """
     secret = (
@@ -222,9 +225,22 @@ def verify_admin_access(
         or settings.FORECAST_ADMIN_SECRET
     )
 
+    # Extract token from any supported header, handling direct function calls where defaults are Header(...)
+    provided_secret: str | None = None
+    if isinstance(x_admin_secret, str) and x_admin_secret.strip():
+        provided_secret = x_admin_secret.strip()
+    elif isinstance(x_api_key, str) and x_api_key.strip():
+        provided_secret = x_api_key.strip()
+    elif isinstance(authorization, str) and authorization.strip():
+        parts = authorization.strip().split()
+        if len(parts) == 2 and parts[0].lower() in ("bearer", "apikey", "secret"):
+            provided_secret = parts[1]
+        elif len(parts) == 1:
+            provided_secret = parts[0]
+
     if secret:
-        if not x_admin_secret or not hmac.compare_digest(
-            x_admin_secret.encode(), secret.encode()
+        if not provided_secret or not hmac.compare_digest(
+            provided_secret.encode(), secret.encode()
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

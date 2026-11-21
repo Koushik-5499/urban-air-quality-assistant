@@ -197,6 +197,8 @@ export interface HealthAskMessage {
 export interface HealthAskRequest {
   city: string;
   question: string;
+  lifestyle?: string;
+  family_context?: string;
   conversation_history?: HealthAskMessage[];
 }
 
@@ -231,6 +233,8 @@ export interface HealthAskResponse {
   data_freshness: string;
   response_type: 'ai_generated' | 'knowledge_base_fallback';
   model?: string;
+  lifestyle_persona?: string;
+  direct_impact_metrics?: string[];
 }
 
 export interface HealthRecommendationsResponse {

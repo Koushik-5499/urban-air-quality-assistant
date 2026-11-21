@@ -185,9 +185,9 @@ npx tsc -b --noEmit
 # (exit 0, 0 type errors)
 
 npm run build
-# ✓ built in 6.83s
+# ✓ built in 5.36s
 ```
-**Total Verified Tests: 209 automated unit, integration, and E2E tests.**
+**Total Verified Tests: 230 automated unit, integration, and E2E tests (175 Backend + 55 Frontend).**
 
 ---
 
@@ -195,9 +195,9 @@ npm run build
 
 ### Security
 For complete penetration testing, threat models, and vulnerability audits, see [docs/SECURITY_AUDIT.md](./docs/SECURITY_AUDIT.md).
-- **Sensitive Operations Protection:** Constant-time `hmac.compare_digest` for all admin actions, token evaluations, and secret verifications to eliminate timing side-channel attacks (`backend/app/core/security.py`, `backend/app/api/v1/endpoints/forecast.py`).
+- **Sensitive Operations Protection:** Constant-time `hmac.compare_digest` for all admin actions, token evaluations, and secret verifications (`X-Admin-Secret`, `X-API-Key`, and `Authorization: Bearer <secret>`) to eliminate timing side-channel attacks (`backend/app/core/security.py`).
 - **Input Validation & Sanitization:** Strict Pydantic v2 schemas reject malformed payloads, injection vectors, and out-of-bound coordinates (`backend/app/schemas/`).
-- **Sliding-Window Rate Limiting:** Per-client IP rate limiting (60 req/min) with automated cleanup (`backend/app/core/security.py`).
+- **Sliding-Window Rate Limiting:** Per-client IP rate limiting (120 req/min general, 20 req/min AI) with automated memory pruning (`backend/app/core/security.py`).
 - **Zero-Trust Network Perimeter:** CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Permissions-Policy headers applied across CDN and reverse proxies (`frontend/vercel.json`).
 - **Secret Redaction:** Logging pipelines filter credentials and API keys (`backend/app/core/logging.py`).
 

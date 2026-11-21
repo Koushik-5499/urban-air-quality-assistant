@@ -120,13 +120,23 @@ class HealthAdvisorService:
 
         # 3. Generate deterministic rule-based recommendations
         recommendations = RecommendationEngine.generate_recommendations(snapshot)
+        impact_metrics = list(HealthKnowledgeBase.DIRECT_IMPACT_METRICS)
+        lifestyle_persona = request.lifestyle or "family_with_children"
 
         # 4. Attempt AI completion if enabled and configured
         ai_enabled = self.settings.AI_ENABLED and self.ai_provider.is_configured()
 
         if ai_enabled:
-            context_str = ContextBuilder.format_context_for_prompt(snapshot)
-            system_instruction = HealthSafetyValidator.build_system_instruction(context_str)
+            context_str = ContextBuilder.format_context_for_prompt(
+                snapshot=snapshot,
+                lifestyle=request.lifestyle,
+                family_context=request.family_context,
+            )
+            system_instruction = HealthSafetyValidator.build_system_instruction(
+                context_str=context_str,
+                lifestyle=request.lifestyle,
+                family_context=request.family_context,
+            )
 
             ai_request = AICompletionRequest(
                 prompt=clean_question,
@@ -149,6 +159,8 @@ class HealthAdvisorService:
                     data_freshness=freshness_label,
                     response_type="ai_generated",
                     model=self.ai_provider.get_model_name(),
+                    lifestyle_persona=lifestyle_persona,
+                    direct_impact_metrics=impact_metrics,
                 )
 
             except AIProviderError as exc:
@@ -171,6 +183,8 @@ class HealthAdvisorService:
             data_freshness=freshness_label,
             response_type="knowledge_base_fallback",
             model=None,
+            lifestyle_persona=lifestyle_persona,
+            direct_impact_metrics=impact_metrics,
         )
 
     def _generate_knowledge_base_fallback(

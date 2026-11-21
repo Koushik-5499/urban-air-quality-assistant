@@ -128,14 +128,15 @@ The audit applied the **STRIDE** methodology (Spoofing, Tampering, Repudiation, 
   - `POST /api/v1/air-quality/sync`
   - `POST /api/v1/aqi/process`
   - `POST /api/v1/forecast/generate`
-  - `POST /api/v1/alerts/trigger-check`
-- **Description:** Administrative endpoints previously had inconsistent secret-checking logic, with some relying on local variable checks and others omitting strict production rejection.
+  - `POST /api/v1/alerts/process`
+- **Description:** Administrative endpoints previously had inconsistent secret-checking logic, with potential timing-attack vulnerabilities during string comparison.
 - **Remediation:** 
   - Created centralized `verify_admin_access` FastAPI dependency (`backend/app/core/security.py`).
-  - Enforces `X-Admin-Secret` header validation against `settings.ADMIN_SECRET_KEY`.
-  - In production environments, requests without valid credentials immediately fail with HTTP 401 Unauthorized.
+  - Enforces constant-time `hmac.compare_digest` to eliminate all timing side-channel attack vectors.
+  - Multi-header support: accepts credentials via `X-Admin-Secret`, `X-API-Key`, or standard `Authorization: Bearer <token>`.
+  - In non-development environments, requests without valid credentials immediately fail with HTTP 403 Forbidden.
   - Wired uniformly across all data-synchronization, processing, forecasting, and alert trigger endpoints.
-- **Verification:** Verified via `tests/test_security.py::test_admin_secret_enforcement_in_production`.
+- **Verification:** Verified via `tests/test_security.py::test_admin_secret_enforcement_in_production` and `tests/test_ai_advisor.py::test_verify_admin_access_multi_header`.
 
 ---
 

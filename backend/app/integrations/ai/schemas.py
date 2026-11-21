@@ -72,6 +72,16 @@ class HealthAskRequest(BaseModel):
 
     city: str = Field(..., min_length=1, max_length=100, description="City name to establish air quality context")
     question: str = Field(..., min_length=2, max_length=500, description="User health question")
+    lifestyle: str | None = Field(
+        None,
+        max_length=100,
+        description="User lifestyle persona (e.g. 'family_with_children', 'daily_commuter', 'elderly_caregiver', 'outdoor_enthusiast', 'remote_worker', 'community_organizer')",
+    )
+    family_context: str | None = Field(
+        None,
+        max_length=200,
+        description="Household or community context (e.g. 'school_children_and_infants', 'multigenerational_seniors', 'asthma_vulnerable')",
+    )
     conversation_id: str | None = Field(None, max_length=100, description="Optional client conversation tracking ID")
     conversation_history: list[ChatMessage] | None = Field(
         default=None,
@@ -91,6 +101,8 @@ class HealthAskResponse(BaseModel):
     data_freshness: str = Field(..., description="Telemetry status description ('fresh', 'stale', 'no_data')")
     response_type: str = Field(..., description="'ai_generated' or 'knowledge_base_fallback'")
     model: str | None = Field(None, description="Configured model identifier used")
+    lifestyle_persona: str | None = Field(None, description="Lifestyle persona used to tailor health guidance")
+    direct_impact_metrics: list[str] = Field(default_factory=list, description="Quantified direct impacts of choices")
 
 
 class HealthRecommendationsResponse(BaseModel):

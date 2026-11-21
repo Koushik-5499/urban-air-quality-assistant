@@ -87,6 +87,7 @@ The system is architected for frictionless extension:
 Subclasses honor the complete behavioral contract of their abstractions:
 - `MockAIProvider` can be substituted for `GeminiProvider` across test suites and offline environments; both return standard `AICompletionResponse` objects without unexpected exceptions.
 - `MockAirQualityProvider` can be substituted for `CPCBClient`; both produce standardized `ObservationRecord` streams adhering to the National Air Quality Standard schema.
+- `WebPushNotificationChannel` and `InAppNotificationChannel` implement `BaseNotificationChannel` (`app/services/alerts/notification_service.py`) and can be substituted transparently across delivery pipelines.
 
 #### 4. Interface Segregation Principle (ISP)
 Interfaces and schemas are kept lean and decoupled:

@@ -18,10 +18,20 @@ import type { ChatMessage } from '../types/assistant';
 
 const STORAGE_KEY_CHAT = 'uaqa_assistant_messages';
 
+const LIFESTYLE_PERSONAS = [
+  { id: 'family_with_children', label: '👨‍👩‍👧 Family with Children', desc: 'School commute, pediatric lung health, indoor hacks' },
+  { id: 'daily_commuter', label: '🚴 Daily Commuter', desc: 'Off-peak transit shifts, N95 routing, traffic corridors' },
+  { id: 'elderly_caregiver', label: '🧓 Elderly & Vulnerable', desc: 'Cardiopulmonary care, indoor air sealing, medication safety' },
+  { id: 'outdoor_enthusiast', label: '🏃 Outdoor Athlete', desc: 'Diurnal workout windows (1-4 PM), PM2.5 tracking' },
+  { id: 'remote_worker', label: '🏡 Work from Home', desc: 'Diurnal ventilation, DIY Corsi-Rosenthal filtration' },
+  { id: 'community_leader', label: '🏘️ Community Action', desc: 'Neighborhood carpools, reporting waste burning, clean heating' },
+];
+
 export function Assistant() {
   useDocumentTitle('AI Health Assistant — Urban Air Quality Assistant');
 
   const { selectedCityData, selectedCityId } = useLocation();
+  const [selectedLifestyle, setSelectedLifestyle] = useState<string>('family_with_children');
   const [isTyping, setIsTyping] = useState(false);
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'health'>('chat');
@@ -120,9 +130,13 @@ export function Assistant() {
             content: m.text,
           }));
 
+        const currentPersona = LIFESTYLE_PERSONAS.find((p) => p.id === selectedLifestyle);
+
         const response = await healthApi.askAssistant({
           city: selectedCityData.location.city,
           question: trimmed,
+          lifestyle: selectedLifestyle,
+          family_context: currentPersona?.desc,
           conversation_history: conversationHistory,
         });
 
@@ -131,6 +145,11 @@ export function Assistant() {
           responseText +=
             '\n\n**Actionable Recommendations:**\n' +
             response.recommendations.map((r) => `• **${r.title}**: ${r.description}`).join('\n');
+        }
+        if (response.direct_impact_metrics && response.direct_impact_metrics.length > 0) {
+          responseText +=
+            '\n\n**Quantified Direct Impacts:**\n' +
+            response.direct_impact_metrics.slice(0, 3).map((m) => `• 📊 ${m}`).join('\n');
         }
         if (response.disclaimer) {
           responseText += `\n\n*${response.disclaimer}*`;
@@ -169,7 +188,7 @@ export function Assistant() {
         setIsTyping(false);
       }
     },
-    [isTyping, messages, selectedCityData]
+    [isTyping, messages, selectedCityData, selectedLifestyle]
   );
 
   // Clear conversation history
@@ -244,6 +263,38 @@ export function Assistant() {
             messageCount={messages.length}
             onClearChat={() => setIsClearModalOpen(true)}
           />
+
+          {/* Lifestyle & Household Context Selector (Challenge 6 Pillar) */}
+          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <span>🎯 Tailor Advisory to Your Lifestyle & Household:</span>
+              </span>
+              <span className="text-2xs text-teal-600 dark:text-teal-400 font-medium">
+                Active: {LIFESTYLE_PERSONAS.find((p) => p.id === selectedLifestyle)?.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {LIFESTYLE_PERSONAS.map((persona) => {
+                const isActive = selectedLifestyle === persona.id;
+                return (
+                  <button
+                    key={persona.id}
+                    type="button"
+                    onClick={() => setSelectedLifestyle(persona.id)}
+                    aria-pressed={isActive}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
+                      isActive
+                        ? 'bg-teal-600 text-white shadow-xs dark:bg-teal-500'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <span>{persona.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Chat Messages Container */}
           <div

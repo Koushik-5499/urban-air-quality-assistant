@@ -730,3 +730,164 @@ def test_knowledge_base_winter_smog_guidance():
     # Every direct impact metric must include quantified result
     for metric in HealthKnowledgeBase.DIRECT_IMPACT_METRICS:
         assert any(unit in metric for unit in ("%", "kg", "µg/m³", "µg"))
+
+
+# ---------------------------------------------------------------------------
+# Lifestyle & Household Context Tailoring (Challenge 6)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.anyio
+async def test_health_advisor_lifestyle_tailoring(db_session, health_test_data):
+    """HealthAdvisorService incorporates lifestyle persona and family context into recommendations."""
+    from app.core.config import Settings
+    from app.integrations.ai.schemas import HealthAskRequest
+    from app.services.health.health_advisor import HealthAdvisorService
+
+    settings = Settings(APP_ENV="test", AI_ENABLED=False)
+    advisor = HealthAdvisorService(settings=settings)
+
+    request = HealthAskRequest(
+        city="Delhi",
+        question="What precautions should my school-going kids take during morning smog?",
+        lifestyle="family_with_children",
+        family_context="infants_and_school_kids",
+    )
+    response = await advisor.ask(db=db_session, request=request)
+
+    assert response.lifestyle_persona == "family_with_children"
+    assert len(response.direct_impact_metrics) >= 4
+    assert any("%" in m or "kg" in m for m in response.direct_impact_metrics)
+
+
+# ---------------------------------------------------------------------------
+# Notification Channel Abstractions & Liskov Substitution (SOLID)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.anyio
+async def test_notification_channels_lsp(db_session):
+    """BaseNotificationChannel subclasses WebPush and InApp satisfy LSP."""
+    from app.core.config import Settings
+    from app.services.alerts.notification_service import (
+        BaseNotificationChannel,
+        InAppNotificationChannel,
+        NotificationService,
+        WebPushNotificationChannel,
+    )
+
+    settings = Settings(WEB_PUSH_ENABLED=False, VAPID_PRIVATE_KEY=None)
+    web_push_ch = WebPushNotificationChannel(settings=settings)
+    in_app_ch = InAppNotificationChannel()
+
+    assert isinstance(web_push_ch, BaseNotificationChannel)
+    assert isinstance(in_app_ch, BaseNotificationChannel)
+    assert web_push_ch.channel_name == "web_push"
+    assert in_app_ch.channel_name == "in_app"
+
+    # Both dispatch without throwing
+    res_push = await web_push_ch.dispatch(db=db_session, recipient="test-user", title="Test", body="Body")
+    assert res_push == 0  # disabled
+
+    res_inapp = await in_app_ch.dispatch(db=db_session, recipient="test-user", title="Test", body="Body")
+    assert res_inapp == 1
+
+    # NotificationService dispatch_all_channels
+    svc = NotificationService(settings=settings)
+    all_res = await svc.dispatch_all_channels(db=db_session, user_id="test-user", title="Test", body="Body")
+    assert "web_push" in all_res
+    assert "in_app" in all_res
+
+
+# ---------------------------------------------------------------------------
+# DataNormalizationService Full Coverage
+# ---------------------------------------------------------------------------
+
+def test_data_normalization_service_full_coverage():
+    """Verify DataNormalizationService canonical matching and core pollutant verification."""
+    from app.services.data_normalization_service import DataNormalizationService
+
+    # 1. Direct match with matching state
+    res1 = DataNormalizationService.match_canonical_city("chennai", "Tamil Nadu")
+    assert res1 == ("Chennai", "Tamil Nadu")
+
+    # 2. Direct match with mismatched state
+    res2 = DataNormalizationService.match_canonical_city("chennai", "Maharashtra")
+    assert res2 is None
+
+    # 3. Empty input
+    assert DataNormalizationService.match_canonical_city("") is None
+
+    # 4. Partial token match with matching state
+    res3 = DataNormalizationService.match_canonical_city("Delhi (Anand Vihar)", "Delhi")
+    assert res3 == ("Delhi", "Delhi")
+
+    # 5. Partial token match with mismatched state
+    res4 = DataNormalizationService.match_canonical_city("Delhi (Anand Vihar)", "Karnataka")
+    assert res4 is None
+
+    # 6. Completely unknown city
+    assert DataNormalizationService.match_canonical_city("Atlantis") is None
+
+    # 7. Core pollutant check
+    assert DataNormalizationService.is_core_pollutant("PM2.5") is True
+    assert DataNormalizationService.is_core_pollutant("pm10") is True
+    assert DataNormalizationService.is_core_pollutant("O3") is True
+    assert DataNormalizationService.is_core_pollutant("LEAD") is False
+
+
+# ---------------------------------------------------------------------------
+# ComparisonService Station-Level Coverage
+# ---------------------------------------------------------------------------
+
+def test_comparison_service_station_evaluation(db_session, health_test_data):
+    """ComparisonService correctly evaluates monitoring stations alongside cities."""
+    from app.models.monitoring_station import MonitoringStation
+    from app.services.history.comparison_service import ComparisonService
+
+    station = db_session.execute(
+        MonitoringStation.__table__.select().limit(1)
+    ).first()
+
+    if station:
+        st_id = station.id
+        result = ComparisonService.compare_locations(
+            db=db_session,
+            cities=["Delhi"],
+            stations=[st_id, 999999],  # valid station + nonexistent station
+        )
+        assert len(result.comparisons) >= 2
+        station_comp = next((c for c in result.comparisons if c.location_type == "station"), None)
+        assert station_comp is not None
+        assert station_comp.station_id == st_id
+        assert station_comp.city_name == "Delhi"
+
+
+# ---------------------------------------------------------------------------
+# Security: Multi-Header Admin Secret Verification
+# ---------------------------------------------------------------------------
+
+def test_verify_admin_access_multi_header():
+    """verify_admin_access accepts X-Admin-Secret, X-API-Key, and Bearer token."""
+    from fastapi import HTTPException
+
+    from app.core.config import Settings
+    from app.core.security import verify_admin_access
+
+    settings = Settings(
+        APP_ENV="production",
+        ALERT_ADMIN_SECRET="test_secret_123",
+    )
+
+    # 1. Valid X-Admin-Secret
+    verify_admin_access(x_admin_secret="test_secret_123", settings=settings)
+
+    # 2. Valid X-API-Key
+    verify_admin_access(x_api_key="test_secret_123", settings=settings)
+
+    # 3. Valid Authorization Bearer
+    verify_admin_access(authorization="Bearer test_secret_123", settings=settings)
+
+    # 4. Invalid secret raises 403
+    with pytest.raises(HTTPException) as exc_info:
+        verify_admin_access(x_admin_secret="wrong", settings=settings)
+    assert exc_info.value.status_code == 403
+

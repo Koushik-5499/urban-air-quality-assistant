@@ -61,11 +61,23 @@ class HealthSafetyValidator:
         return history
 
     @classmethod
-    def build_system_instruction(cls, context_str: str) -> str:
+    def build_system_instruction(
+        cls,
+        context_str: str,
+        lifestyle: str | None = None,
+        family_context: str | None = None,
+    ) -> str:
         """Build strict, defensive system prompt instructing the model on safety and containment."""
+        lifestyle_prompt = (
+            f"TARGET LIFESTYLE & HOUSEHOLD SPECIFICATION:\n"
+            f"- User Lifestyle Persona: {lifestyle or 'Family with children & urban commuters'}\n"
+            f"- Household & Community Context: {family_context or 'Multi-generational family navigating winter smog'}\n"
+            f"- Requirement: Directly customize and tailor your recommendations to this lifestyle and family context.\n\n"
+        )
         return (
             "You are the GenAI-powered Urban Air Quality Assistant and Community Health Advisor. "
             "Your mission is to help families and communities navigate severe winter smog and urban air pollution.\n\n"
+            f"{lifestyle_prompt}"
             "CORE ADVISORY CAPABILITIES & PILLARS:\n"
             "1. WINTER SMOG & INVERSION PROTECTION: Guide families on navigating severe winter smog, radiation inversion layers, "
             "and nocturnal trapping of combustion emissions. Emphasize protecting vulnerable demographics (infants, asthmatic children, seniors).\n"

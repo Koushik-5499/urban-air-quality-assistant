@@ -105,7 +105,12 @@ class ContextBuilder:
         )
 
     @classmethod
-    def format_context_for_prompt(cls, snapshot: AQIContextSnapshot) -> str:
+    def format_context_for_prompt(
+        cls,
+        snapshot: AQIContextSnapshot,
+        lifestyle: str | None = None,
+        family_context: str | None = None,
+    ) -> str:
         """Format verified context into an isolated, factual markdown block."""
         measured_str = (
             snapshot.measurement_timestamp.strftime("%Y-%m-%d %H:%M UTC")
@@ -114,6 +119,9 @@ class ContextBuilder:
         )
         stale_indicator = "STALE (measured over 5 hours ago - exercise caution)" if snapshot.is_stale else "Fresh observation"
         sim_indicator = "Simulated demonstration telemetry" if snapshot.is_simulated else "Official provider observation"
+
+        lifestyle_str = f"Target User Lifestyle Persona: {lifestyle}\n" if lifestyle else ""
+        family_str = f"Target Household & Community Context: {family_context}\n" if family_context else ""
 
         return (
             f"--- VERIFIED AIR QUALITY OBSERVATION DATA ---\n"
@@ -127,6 +135,8 @@ class ContextBuilder:
             f"Measurement Nature: {sim_indicator}\n"
             f"Recent Trend: {snapshot.trend_direction or 'insufficient_data'}\n"
             f"Source Authority: {snapshot.data_source}\n"
+            f"{lifestyle_str}"
+            f"{family_str}"
             f"--- END VERIFIED DATA ---"
         )
 
