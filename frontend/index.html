@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Urban Air Quality Assistant — Real-time urban environmental monitoring, air quality analysis, and intelligent assistant." />
+    <meta name="theme-color" content="#F8FAFC" id="theme-meta" />
+    
+    <!-- Typography: Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <title>Urban Air Quality Assistant</title>
+
+    <!-- Synchronous Theme Initialization: Default Light Theme -->
+    <script>
+      (function() {
+        try {
+          var storedTheme = localStorage.getItem('uaqa_theme');
+          // Light theme is the default per design system specifications
+          if (storedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+            var meta = document.getElementById('theme-meta');
+            if (meta) meta.setAttribute('content', '#0B0F19');
+          } else {
+            document.documentElement.classList.remove('dark');
+            var metaLight = document.getElementById('theme-meta');
+            if (metaLight) metaLight.setAttribute('content', '#F8FAFC');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-surface-main text-content-primary min-h-screen antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
