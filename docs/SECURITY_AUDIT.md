@@ -12,7 +12,7 @@
 A comprehensive security audit, hardening pass, and reliability assessment was conducted across the Urban Air Quality Assistant platform. The application comprises:
 1. **Frontend:** React 18 + TypeScript + Vite SPA (`frontend/`)
 2. **Backend:** FastAPI + SQLAlchemy 2.0 + SQLite/PostgreSQL-ready + Pydantic 2 (`backend/`)
-3. **External Integrations:** Central Pollution Control Board / OpenAQ providers, Google Gemini AI (GenAI SDK), and Resend Email API.
+3. **External Integrations:** Central Pollution Control Board / OpenAQ providers, Google Gemini AI (GenAI SDK), and Web Push (VAPID).
 
 The audit verified zero critical vulnerabilities in application code, eliminated common API vulnerabilities (denial of service via large payloads, unthrottled endpoint abuse, missing security headers, log credential leakage, and header injection), hardened administrative interfaces, and achieved 100% test pass rates across both frontend (51 tests) and backend (153 tests).
 
@@ -109,12 +109,11 @@ The audit applied the **STRIDE** methodology (Spoofing, Tampering, Repudiation, 
 - **Severity:** High
 - **Status:** Fixed
 - **Affected Components:** `backend/app/core/logging.py`, application logs
-- **Description:** If external API keys (Gemini, Resend), Bearer tokens, or database credentials appeared in exceptions or query logs, they could be written to plaintext log files or stdout.
+- **Description:** If external API keys (Gemini API key), Bearer tokens, or database credentials appeared in exceptions or query logs, they could be written to plaintext log files or stdout.
 - **Remediation:** 
   - Built `SecretRedactionFilter` attached directly to root logger handlers.
   - Regex patterns mask:
     - Gemini API Keys (`AIzaSy...`) -> `AIzaSy***REDACTED***`
-    - Resend API Keys (`re_...`) -> `re_***REDACTED***`
     - Bearer Tokens (`Bearer ...`) -> `Bearer ***REDACTED***`
     - Database Passwords (`password=...`) -> `password=***REDACTED***`
   - Safely handles both string records and structured logging arguments.
@@ -173,7 +172,7 @@ The audit applied the **STRIDE** methodology (Spoofing, Tampering, Repudiation, 
 - **Remediation:** 
   - Full codebase audit confirmed that no backend secrets or private API keys exist in `frontend/`.
   - Frontend only utilizes `VITE_API_BASE_URL` to route requests through the backend proxy.
-  - All external provider communication (Gemini GenAI SDK, Resend Email API, CPCB ingestion) occurs exclusively server-side.
+  - All external provider communication (Gemini GenAI SDK, CPCB ingestion) occurs exclusively server-side.
 - **Verification:** Checked Vite bundled assets and git history. Zero secrets identified.
 
 ---

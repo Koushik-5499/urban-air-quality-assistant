@@ -1,6 +1,6 @@
 """Rule-based engine producing structured, proportional health recommendations."""
 
-from typing import List, Optional
+
 from app.integrations.ai.schemas import AQIContextSnapshot, RecommendationItem
 
 
@@ -11,11 +11,10 @@ class RecommendationEngine:
     def generate_recommendations(
         cls,
         snapshot: AQIContextSnapshot,
-    ) -> List[RecommendationItem]:
+    ) -> list[RecommendationItem]:
         """Produce structured recommendations proportional to current environmental conditions."""
         aqi = snapshot.aqi
         dominant = snapshot.dominant_pollutant or "particulates"
-        category = snapshot.category or "Moderate"
 
         if aqi is None:
             return [
@@ -29,7 +28,7 @@ class RecommendationEngine:
                 )
             ]
 
-        recommendations: List[RecommendationItem] = []
+        recommendations: list[RecommendationItem] = []
 
         # 1. Good (0-50)
         if aqi <= 50:

@@ -248,8 +248,10 @@ export function Assistant() {
           {/* Chat Messages Container */}
           <div
             tabIndex={0}
-            role="region"
+            role="log"
+            aria-live="polite"
             aria-label="Conversation with Air Quality Assistant"
+            aria-relevant="additions"
             className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs min-h-[460px] max-h-[580px] overflow-y-auto space-y-4 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20"
           >
             {messages.map((message) => (

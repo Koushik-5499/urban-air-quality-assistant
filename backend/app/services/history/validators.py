@@ -1,7 +1,7 @@
 """Validation utilities for historical queries, intervals, dates, and entities."""
 
-from datetime import datetime, timezone
-from typing import List, Optional, Set, Tuple
+from datetime import UTC, datetime
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.city import City
 from app.models.monitoring_station import MonitoringStation
 
-VALID_POLLUTANTS: Set[str] = {
+VALID_POLLUTANTS: set[str] = {
     "PM2.5",
     "PM10",
     "NO2",
@@ -20,7 +20,7 @@ VALID_POLLUTANTS: Set[str] = {
     "PB",
 }
 
-VALID_INTERVALS: Set[str] = {
+VALID_INTERVALS: set[str] = {
     "hourly",
     "daily",
     "weekly",
@@ -35,21 +35,21 @@ class HistoryValidator:
     """Validates inputs, date boundaries, pollutant codes, and resolves location entities."""
 
     @staticmethod
-    def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    def ensure_utc(dt: datetime | None) -> datetime | None:
         """Normalize datetime to UTC timezone."""
         if dt is None:
             return None
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            return dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
 
     @classmethod
     def validate_date_range(
         cls,
-        start_date: Optional[datetime],
-        end_date: Optional[datetime],
+        start_date: datetime | None,
+        end_date: datetime | None,
         is_aggregated: bool = False,
-    ) -> Tuple[Optional[datetime], Optional[datetime]]:
+    ) -> tuple[datetime | None, datetime | None]:
         """Validate start and end dates, ensuring valid chronological ordering and range limits."""
         start_utc = cls.ensure_utc(start_date)
         end_utc = cls.ensure_utc(end_date)
@@ -72,7 +72,7 @@ class HistoryValidator:
         return start_utc, end_utc
 
     @classmethod
-    def validate_interval(cls, interval: Optional[str]) -> Optional[str]:
+    def validate_interval(cls, interval: str | None) -> str | None:
         """Validate aggregation interval string."""
         if not interval:
             return None
@@ -85,7 +85,7 @@ class HistoryValidator:
         return interval_norm
 
     @classmethod
-    def validate_pollutant_code(cls, code: Optional[str]) -> Optional[str]:
+    def validate_pollutant_code(cls, code: str | None) -> str | None:
         """Validate and normalize pollutant code."""
         if not code:
             return None
@@ -104,7 +104,7 @@ class HistoryValidator:
         return canon
 
     @staticmethod
-    def validate_pagination(page: int, page_size: int) -> Tuple[int, int]:
+    def validate_pagination(page: int, page_size: int) -> tuple[int, int]:
         """Validate pagination parameters."""
         if page < 1:
             raise HTTPException(
@@ -119,7 +119,7 @@ class HistoryValidator:
         return page, page_size
 
     @staticmethod
-    def resolve_city(db: Session, city_name: Optional[str]) -> Optional[City]:
+    def resolve_city(db: Session, city_name: str | None) -> City | None:
         """Find City entity by case-insensitive name, raising 404 if name provided but not found."""
         if not city_name:
             return None
@@ -133,7 +133,7 @@ class HistoryValidator:
         return city
 
     @staticmethod
-    def resolve_station(db: Session, station_id: Optional[int]) -> Optional[MonitoringStation]:
+    def resolve_station(db: Session, station_id: int | None) -> MonitoringStation | None:
         """Find MonitoringStation entity, raising 404 if station_id provided but not found."""
         if station_id is None:
             return None
@@ -148,11 +148,11 @@ class HistoryValidator:
     @classmethod
     def validate_comparison_targets(
         cls,
-        cities: Optional[List[str]],
-        stations: Optional[List[int]],
-    ) -> Tuple[List[str], List[int]]:
+        cities: list[str] | None,
+        stations: list[int] | None,
+    ) -> tuple[list[str], list[int]]:
         """Validate that comparison request contains between 2 and 10 distinct targets."""
-        parsed_cities: List[str] = []
+        parsed_cities: list[str] = []
         if cities:
             for item in cities:
                 if "," in item:
@@ -160,7 +160,7 @@ class HistoryValidator:
                 elif item.strip():
                     parsed_cities.append(item.strip())
 
-        parsed_stations: List[int] = []
+        parsed_stations: list[int] = []
         if stations:
             for s in stations:
                 if isinstance(s, str) and "," in s:

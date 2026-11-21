@@ -1,7 +1,7 @@
 """AQI processing service executing database queries, batch processing, and history retrieval."""
 
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
+
 from fastapi import HTTPException, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
@@ -34,11 +34,11 @@ class AQIProcessingService:
     def calculate_for_city_or_station(
         cls,
         db: Session,
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
+        city_name: str | None = None,
+        station_id: int | None = None,
     ) -> AQICalculationResponse:
         """Calculate CPCB NAQI on the fly from current database pollutant readings."""
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
 
         # Resolve City
         city_entity = None
@@ -125,8 +125,8 @@ class AQIProcessingService:
             )
 
         # Calculate sub-indices
-        sub_indices_dict: Dict[str, int] = {}
-        sub_index_results: Dict[str, PollutantSubIndexResult] = {}
+        sub_indices_dict: dict[str, int] = {}
+        sub_index_results: dict[str, PollutantSubIndexResult] = {}
         is_simulated = any(r.source.upper() == "SIMULATED" for r in readings)
         latest_measured_at = max(r.measured_at for r in readings)
         source = readings[0].source
@@ -178,8 +178,8 @@ class AQIProcessingService:
     def get_pollutant_subindices(
         cls,
         db: Session,
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
+        city_name: str | None = None,
+        station_id: int | None = None,
     ) -> SubIndicesOnlyResponse:
         """Return individual pollutant sub-indices and dominant pollutant."""
         calc = cls.calculate_for_city_or_station(db, city_name=city_name, station_id=station_id)
@@ -197,10 +197,10 @@ class AQIProcessingService:
     def process_and_persist_aqi(
         cls,
         db: Session,
-        city_id: Optional[int] = None,
+        city_id: int | None = None,
     ) -> AQIProcessResponse:
         """Batch-process stored pollutant readings into deduplicated AQIReading records."""
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         cities_query = select(City)
         if city_id:
             cities_query = cities_query.where(City.id == city_id)
@@ -275,9 +275,9 @@ class AQIProcessingService:
     def get_latest_aqi_reading(
         cls,
         db: Session,
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
-    ) -> Optional[AQIHistoryItem]:
+        city_name: str | None = None,
+        station_id: int | None = None,
+    ) -> AQIHistoryItem | None:
         """Fetch the latest stored AQIReading record from the database."""
         stmt = (
             select(AQIReading, City.name.label("city_name"), MonitoringStation.station_name.label("station_name"))
@@ -319,10 +319,10 @@ class AQIProcessingService:
     def get_history(
         cls,
         db: Session,
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        city_name: str | None = None,
+        station_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> AQIHistoryResponse:

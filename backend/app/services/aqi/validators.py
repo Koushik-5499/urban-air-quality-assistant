@@ -1,10 +1,10 @@
 """Input validation and CPCB NAQI data sufficiency evaluation."""
 
-from typing import Dict, List, Optional, Set, Tuple
+
 from app.services.aqi.breakpoints import POLLUTANT_INFO
 
 # CPCB minimum requirement: at least one particulate matter pollutant must be monitored
-PARTICULATE_POLLUTANTS: Set[str] = {"PM2.5", "PM10"}
+PARTICULATE_POLLUTANTS: set[str] = {"PM2.5", "PM10"}
 MINIMUM_POLLUTANTS_FOR_OVERALL_AQI = 3
 
 
@@ -12,7 +12,7 @@ class AQIValidator:
     """Validates concentrations, units, and data sufficiency according to CPCB guidelines."""
 
     @staticmethod
-    def validate_concentration(pollutant_code: str, concentration: float, unit: str) -> Tuple[bool, Optional[str]]:
+    def validate_concentration(pollutant_code: str, concentration: float, unit: str) -> tuple[bool, str | None]:
         """Validate whether a concentration value and unit are suitable for NAQI calculation."""
         if concentration is None or concentration < 0.0:
             return False, f"Concentration must be a non-negative number; got {concentration}."
@@ -34,7 +34,7 @@ class AQIValidator:
         return True, None
 
     @staticmethod
-    def evaluate_data_sufficiency(available_pollutants: List[str]) -> Tuple[bool, str, List[str]]:
+    def evaluate_data_sufficiency(available_pollutants: list[str]) -> tuple[bool, str, list[str]]:
         """Evaluate if available pollutants meet CPCB minimum requirements for an Overall NAQI.
 
         Official CPCB Rule:
@@ -45,7 +45,7 @@ class AQIValidator:
         has_particulate = bool(available_set.intersection(PARTICULATE_POLLUTANTS))
         count = len(available_set)
 
-        missing_requirements: List[str] = []
+        missing_requirements: list[str] = []
         if count < MINIMUM_POLLUTANTS_FOR_OVERALL_AQI:
             missing_requirements.append(
                 f"At least 3 criteria pollutants required (got {count}: {', '.join(sorted(available_set)) or 'none'})"

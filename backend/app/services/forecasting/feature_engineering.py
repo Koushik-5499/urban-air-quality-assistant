@@ -1,8 +1,8 @@
 """Feature engineering for time-series forecasting: lags, rolling windows, and cyclical diurnal patterns."""
 
-from datetime import datetime
 import math
-from typing import Dict, List, Optional
+from datetime import datetime
+
 from app.integrations.weather.schemas import WeatherObservation
 
 
@@ -10,7 +10,7 @@ class FeatureEngineeringService:
     """Extracts autoregressive lag, rolling window statistics, and diurnal cyclical features."""
 
     @staticmethod
-    def extract_time_features(dt: datetime) -> Dict[str, float]:
+    def extract_time_features(dt: datetime) -> dict[str, float]:
         """Compute sinusoidal cyclical encodings for hour of day and day of week."""
         hour = dt.hour + (dt.minute / 60.0)
         day_of_week = dt.weekday()
@@ -23,7 +23,7 @@ class FeatureEngineeringService:
         }
 
     @staticmethod
-    def calculate_rolling_mean(series: List[float], window_size: int) -> Optional[float]:
+    def calculate_rolling_mean(series: list[float], window_size: int) -> float | None:
         """Calculate mean of the last `window_size` elements."""
         if len(series) < window_size or window_size <= 0:
             return None
@@ -33,12 +33,12 @@ class FeatureEngineeringService:
     @classmethod
     def build_feature_vector(
         cls,
-        history_values: List[float],
+        history_values: list[float],
         target_timestamp: datetime,
-        weather: Optional[WeatherObservation] = None,
-    ) -> Dict[str, float]:
+        weather: WeatherObservation | None = None,
+    ) -> dict[str, float]:
         """Construct full feature dictionary for a single prediction step."""
-        features: Dict[str, float] = {}
+        features: dict[str, float] = {}
 
         # 1. Cyclical time encodings
         time_feats = cls.extract_time_features(target_timestamp)

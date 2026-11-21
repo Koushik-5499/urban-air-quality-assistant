@@ -1,7 +1,7 @@
 """AQI condition detection and threshold evaluation engine."""
 
-from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from datetime import UTC, datetime
+
 from pydantic import BaseModel
 
 from app.models.aqi_reading import AQIReading
@@ -26,10 +26,10 @@ class AlertCondition(BaseModel):
     title: str
     description: str
     current_aqi: int
-    previous_aqi: Optional[int]
-    threshold_value: Optional[int]
+    previous_aqi: int | None
+    threshold_value: int | None
     aqi_category: str
-    dominant_pollutant: Optional[str]
+    dominant_pollutant: str | None
     measurement_timestamp: datetime
     source: str
     is_simulated: bool
@@ -39,7 +39,7 @@ class ThresholdEngine:
     """Evaluates chronological AQI readings to detect meaningful threshold and category transitions."""
 
     @staticmethod
-    def get_severity_for_category(category: Optional[str]) -> str:
+    def get_severity_for_category(category: str | None) -> str:
         """Map CPCB NAQI category to alert severity."""
         if not category:
             return "Moderate"
@@ -65,14 +65,14 @@ class ThresholdEngine:
         city_id: int,
         city_name: str,
         last_recorded_at: datetime,
-        station_id: Optional[int] = None,
-        station_name: Optional[str] = None,
+        station_id: int | None = None,
+        station_name: str | None = None,
         max_age_hours: int = 24,
-    ) -> Optional[AlertCondition]:
+    ) -> AlertCondition | None:
         """Detect when station/city monitoring data is older than threshold."""
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         if last_recorded_at.tzinfo is None:
-            last_recorded_at = last_recorded_at.replace(tzinfo=timezone.utc)
+            last_recorded_at = last_recorded_at.replace(tzinfo=UTC)
 
         age_seconds = (now_utc - last_recorded_at).total_seconds()
         if age_seconds > max_age_hours * 3600:
@@ -101,15 +101,15 @@ class ThresholdEngine:
     def evaluate_readings(
         cls,
         current_reading: AQIReading,
-        previous_reading: Optional[AQIReading],
+        previous_reading: AQIReading | None,
         city_name: str,
-        station_name: Optional[str] = None,
+        station_name: str | None = None,
         min_threshold: int = 100,
         deterioration_threshold: int = 30,
         improvement_threshold: int = 40,
-    ) -> List[AlertCondition]:
+    ) -> list[AlertCondition]:
         """Detect alert events between current and previous AQI observations."""
-        conditions: List[AlertCondition] = []
+        conditions: list[AlertCondition] = []
         location_label = f"{city_name} ({station_name})" if station_name else city_name
 
         curr_aqi = current_reading.aqi_value
@@ -117,7 +117,7 @@ class ThresholdEngine:
         curr_dom = current_reading.dominant_pollutant or "particulates"
         curr_time = current_reading.measured_at
         if curr_time.tzinfo is None:
-            curr_time = curr_time.replace(tzinfo=timezone.utc)
+            curr_time = curr_time.replace(tzinfo=UTC)
 
         curr_severity = cls.get_severity_for_category(curr_cat)
         source = current_reading.source
@@ -151,7 +151,7 @@ class ThresholdEngine:
         prev_aqi = previous_reading.aqi_value
         prev_cat = previous_reading.aqi_category
         prev_dom = previous_reading.dominant_pollutant
-        prev_severity = cls.get_severity_for_category(prev_cat)
+        cls.get_severity_for_category(prev_cat)  # side-effect: validates category enum
 
         aqi_delta = curr_aqi - prev_aqi
 

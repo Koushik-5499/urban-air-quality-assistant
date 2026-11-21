@@ -1,7 +1,7 @@
 """Mock AQI data provider for testing and offline development."""
 
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
+
 from app.integrations.base import BaseAQIProvider, NormalizedObservation, ProviderMetadata
 
 # Simulated observations matching the 10 supported Indian cities
@@ -49,14 +49,14 @@ class MockAQIProvider(BaseAQIProvider):
 
     async def fetch_observations(
         self,
-        city: Optional[str] = None,
-        state: Optional[str] = None,
+        city: str | None = None,
+        state: str | None = None,
         limit: int = 100,
-    ) -> List[NormalizedObservation]:
+    ) -> list[NormalizedObservation]:
         """Generate typed simulated observations for supported cities."""
         # Floor to current hour to mirror official CPCB hourly cadence
-        now_utc = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
-        results: List[NormalizedObservation] = []
+        now_utc = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+        results: list[NormalizedObservation] = []
 
         target_stations = MOCK_CITY_STATIONS
         if city:

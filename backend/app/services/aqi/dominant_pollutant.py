@@ -1,10 +1,9 @@
 """Dominant pollutant identification and deterministic tie-breaking rules."""
 
-from typing import Dict, List, Optional
 
 # CPCB tie-breaking priority ordered by public health severity:
 # Fine particulates (PM2.5) first, followed by PM10, toxic combustion gases, oxidants, and heavy metals.
-DOMINANT_TIE_BREAKER_PRIORITY: List[str] = [
+DOMINANT_TIE_BREAKER_PRIORITY: list[str] = [
     "PM2.5",
     "PM10",
     "NO2",
@@ -20,7 +19,7 @@ class DominantPollutantResolver:
     """Determines dominant pollutant from sub-indices using health-priority tie-breaking."""
 
     @classmethod
-    def resolve_dominant_pollutant(cls, sub_indices: Dict[str, int]) -> Optional[str]:
+    def resolve_dominant_pollutant(cls, sub_indices: dict[str, int]) -> str | None:
         """Find the pollutant responsible for driving the highest sub-index.
 
         If multiple pollutants share the exact same maximum sub-index, the tie is broken

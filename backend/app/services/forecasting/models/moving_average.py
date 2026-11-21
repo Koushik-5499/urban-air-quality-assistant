@@ -1,7 +1,7 @@
 """Simple and exponentially weighted moving average forecasting baseline."""
 
 from datetime import datetime
-from typing import List
+
 from app.services.forecasting.models.base import BaseForecastModel
 
 
@@ -21,7 +21,7 @@ class MovingAverageModel(BaseForecastModel):
     def version(self) -> str:
         return "1.0.0"
 
-    def fit(self, series: List[float], timestamps: List[datetime]) -> None:
+    def fit(self, series: list[float], timestamps: list[datetime]) -> None:
         """Compute the arithmetic mean of the most recent window."""
         if not series:
             raise ValueError("Cannot fit MovingAverageModel with empty observation series.")
@@ -29,7 +29,7 @@ class MovingAverageModel(BaseForecastModel):
         self._mean_value = sum(window) / float(len(window))
         self._fitted = True
 
-    def predict(self, steps: int) -> List[float]:
+    def predict(self, steps: int) -> list[float]:
         """Project the moving average into the future."""
         if not self._fitted:
             raise RuntimeError("MovingAverageModel must be fitted before predict() is called.")

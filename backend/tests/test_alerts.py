@@ -1,31 +1,28 @@
 """Comprehensive test suite for Phase 7: Alerts & Notifications."""
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
+
 import pytest
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.models.alert import Alert
-from app.models.alert_preference import AlertPreference
 from app.models.aqi_reading import AQIReading
 from app.models.city import City
 from app.models.monitoring_station import MonitoringStation
 from app.models.push_subscription import PushSubscription
-from app.schemas.alert import AlertPreferenceCreate, AlertTestNotificationRequest, PushSubscriptionCreate
-from app.services.alerts.alert_generator import AlertGenerator
-from app.services.alerts.alert_service import AlertService
 from app.services.alerts.deduplication import AlertDeduplicator
 from app.services.alerts.delivery_tracker import DeliveryTracker
 from app.services.alerts.notification_service import NotificationService
-from app.services.alerts.threshold_engine import AlertCondition, ThresholdEngine
+from app.services.alerts.threshold_engine import ThresholdEngine
 
 
 @pytest.fixture
 def alert_seed_data(db_session: Session):
     """Seed test database with cities, stations, AQI readings, and alerts."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
 
     # 1. Cities
     delhi = City(
@@ -170,7 +167,7 @@ def test_severity_mapping():
 
 def test_category_change_detection():
     """Verify detection when AQI crosses into a worse NAQI category."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     prev = AQIReading(
         aqi_value=180,
         aqi_category="Moderate",
@@ -200,7 +197,7 @@ def test_category_change_detection():
 
 def test_threshold_crossing_detection():
     """Verify detection when AQI crosses threshold boundaries."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     prev = AQIReading(
         aqi_value=90,
         aqi_category="Satisfactory",
@@ -229,7 +226,7 @@ def test_threshold_crossing_detection():
 
 def test_deterioration_spike_detection():
     """Verify detection when AQI worsens rapidly by >= 30 points within same category."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     prev = AQIReading(
         aqi_value=140,
         aqi_category="Moderate",
@@ -260,7 +257,7 @@ def test_deterioration_spike_detection():
 
 def test_improvement_detection():
     """Verify detection when AQI improves significantly by >= 40 points."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     prev = AQIReading(
         aqi_value=210,
         aqi_category="Poor",
@@ -291,7 +288,7 @@ def test_improvement_detection():
 
 def test_dominant_pollutant_change():
     """Verify detection when the primary pollutant driver shifts."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     prev = AQIReading(
         aqi_value=160,
         aqi_category="Moderate",
@@ -320,7 +317,7 @@ def test_dominant_pollutant_change():
 
 def test_stale_data_detection():
     """Verify generation of STALE_DATA alert when latest observation is > 24 hours old."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     stale_timestamp = now_utc - timedelta(hours=26)
     alert = ThresholdEngine.check_stale_data(
         city_id=1,
@@ -335,7 +332,7 @@ def test_stale_data_detection():
 
 def test_simulated_data_prefixing():
     """Verify simulation labeling: [SIMULATED DATA] prefix when is_simulated=True."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     prev = AQIReading(
         aqi_value=180,
         aqi_category="Moderate",
@@ -370,7 +367,7 @@ def test_simulated_data_prefixing():
 
 def test_deduplication_key_generation():
     """Verify deterministic deduplication key generation format."""
-    now_utc = datetime(2026, 11, 20, 14, 30, tzinfo=timezone.utc)
+    now_utc = datetime(2026, 11, 20, 14, 30, tzinfo=UTC)
     key = AlertDeduplicator.generate_key(
         city_id=1,
         station_id=2,
@@ -383,7 +380,7 @@ def test_deduplication_key_generation():
 
 def test_deduplication_suppresses_duplicate_in_window(db_session: Session, alert_seed_data):
     """Verify that an identical alert within the deduplication window is suppressed."""
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     # alert1 in alert_seed_data has dedup_key="test_delhi_cat_change_1"
     is_dup = AlertDeduplicator.is_duplicate(
         db=db_session,
@@ -410,7 +407,7 @@ def test_deduplication_suppresses_duplicate_in_window(db_session: Session, alert
 
 def test_delivery_normal_hours():
     """Verify non-quiet daytime hours allow immediate notification dispatch."""
-    test_time = datetime(2026, 11, 20, 14, 0, tzinfo=timezone.utc)
+    test_time = datetime(2026, 11, 20, 14, 0, tzinfo=UTC)
     is_quiet = DeliveryTracker.is_quiet_hours(
         quiet_start="22:00",
         quiet_end="07:00",
@@ -422,7 +419,7 @@ def test_delivery_normal_hours():
 
 def test_delivery_quiet_hours_midnight_spanning():
     """Verify quiet hours spanning midnight (22:00 to 07:00) suppress non-critical notifications."""
-    night_time = datetime(2026, 11, 20, 23, 30, tzinfo=timezone.utc)
+    night_time = datetime(2026, 11, 20, 23, 30, tzinfo=UTC)
     is_quiet = DeliveryTracker.is_quiet_hours(
         quiet_start="22:00",
         quiet_end="07:00",
@@ -431,7 +428,7 @@ def test_delivery_quiet_hours_midnight_spanning():
     )
     assert is_quiet is True
 
-    early_morning = datetime(2026, 11, 20, 4, 30, tzinfo=timezone.utc)
+    early_morning = datetime(2026, 11, 20, 4, 30, tzinfo=UTC)
     is_quiet_early = DeliveryTracker.is_quiet_hours(
         quiet_start="22:00",
         quiet_end="07:00",
@@ -443,7 +440,7 @@ def test_delivery_quiet_hours_midnight_spanning():
 
 def test_critical_alert_overrides_quiet_hours():
     """Verify Critical severity alerts override quiet hours."""
-    night_time = datetime(2026, 11, 20, 23, 30, tzinfo=timezone.utc)
+    night_time = datetime(2026, 11, 20, 23, 30, tzinfo=UTC)
     can_deliver = DeliveryTracker.can_deliver_now(
         severity="Critical",
         quiet_start="22:00",
@@ -466,50 +463,6 @@ def test_critical_alert_overrides_quiet_hours():
 # ===========================================================================
 # 4. Notification Service Unit Tests
 # ===========================================================================
-
-
-@pytest.mark.anyio
-async def test_email_dispatch_disabled():
-    """Verify email dispatch returns False without error when email notifications are disabled."""
-    settings = Settings(EMAIL_NOTIFICATIONS_ENABLED=False)
-    service = NotificationService(settings=settings)
-    result = await service.dispatch_email(
-        recipient_email="user@example.com",
-        subject="Test Alert",
-        html_content="<p>Test</p>",
-        text_content="Test",
-    )
-    assert result is False
-
-
-@pytest.mark.anyio
-async def test_email_dispatch_mocked_success():
-    """Verify successful email delivery formatting via Resend API mock."""
-    settings = Settings(
-        EMAIL_NOTIFICATIONS_ENABLED=True,
-        RESEND_API_KEY="re_test_key_12345",
-        ALERT_EMAIL_FROM="Air Quality Assistant <alerts@test.com>",
-    )
-    service = NotificationService(settings=settings)
-
-    mock_resp = Response(
-        status_code=200,
-        json={"id": "email_msg_12345"},
-        request=MagicMock(),
-    )
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value = mock_resp
-        success = await service.dispatch_email(
-            recipient_email="resident@example.com",
-            subject="Air Quality Alert",
-            html_content="<p>Alert Body</p>",
-            text_content="Alert Body",
-        )
-        assert success is True
-        assert mock_post.called
-        call_kwargs = mock_post.call_args[1]
-        assert call_kwargs["headers"]["Authorization"] == "Bearer re_test_key_12345"
-        assert call_kwargs["json"]["to"] == ["resident@example.com"]
 
 
 @pytest.mark.anyio
@@ -654,8 +607,7 @@ async def test_api_update_preferences(client: AsyncClient, alert_seed_data):
         "min_aqi_threshold": 150,
         "min_severity": "Moderate",
         "is_enabled": True,
-        "channels": ["in_app", "email"],
-        "email": "user@delhi.org",
+        "channels": ["in_app"],
         "quiet_hours_start": "23:00",
         "quiet_hours_end": "06:00",
         "timezone": "Asia/Kolkata",

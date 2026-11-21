@@ -1,7 +1,7 @@
 """Pydantic schemas for individual pollutant readings."""
 
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -9,7 +9,7 @@ class PollutantReadingBase(BaseModel):
     """Base pollutant reading schema."""
 
     city_id: int = Field(..., description="Foreign key to city")
-    station_id: Optional[int] = Field(None, description="Optional foreign key to monitoring station")
+    station_id: int | None = Field(None, description="Optional foreign key to monitoring station")
     pollutant_code: str = Field(..., max_length=20, description="Code: PM2.5, PM10, CO, NO2, SO2, O3")
     concentration: float = Field(..., ge=0.0, description="Non-negative concentration value")
     unit: str = Field(default="µg/m³", max_length=20, description="Unit of measurement")

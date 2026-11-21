@@ -1,9 +1,10 @@
 """Security hardening utilities, middleware, rate limiting, and access control."""
 
-import re
+import hmac
 import time
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+
 from fastapi import Depends, Header, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -104,18 +105,19 @@ class InMemoryRateLimiter:
 
     def __init__(self):
         # Maps (ip, route_key) -> list of timestamp floats
-        self._requests: Dict[Tuple[str, str], List[float]] = defaultdict(list)
+        self._requests: dict[tuple[str, str], list[float]] = defaultdict(list)
         # Default limits: (requests, window_seconds)
         self.default_limit = (120, 60)  # 120 req / minute
-        self.route_limits: Dict[str, Tuple[int, int]] = {
+        self.route_limits: dict[str, tuple[int, int]] = {
             "/api/v1/health/ask": (20, 60),  # 20 AI queries / minute
             "/api/v1/air-quality/sync": (10, 60),  # 10 sync calls / minute
             "/api/v1/alerts/process": (10, 60),
             "/api/v1/forecast/generate": (10, 60),
             "/api/v1/aqi/process": (10, 60),
         }
+        self._call_count: int = 0
 
-    def check_rate_limit(self, client_ip: str, path: str, is_test_env: bool = False) -> Tuple[bool, int, int]:
+    def check_rate_limit(self, client_ip: str, path: str, is_test_env: bool = False) -> tuple[bool, int, int]:
         """Check if request is permitted. Returns (allowed, remaining, retry_after)."""
         if is_test_env:
             return True, 999, 0
@@ -123,6 +125,11 @@ class InMemoryRateLimiter:
         now = time.time()
         max_requests, window_seconds = self.route_limits.get(path, self.default_limit)
         key = (client_ip, path)
+
+        # Periodically prune expired entries (every 100 calls)
+        self._call_count += 1
+        if self._call_count % 100 == 0:
+            _prune_expired_rate_limit_entries(self._requests, window_seconds)
 
         # Filter out expired timestamps
         timestamps = [ts for ts in self._requests[key] if now - ts < window_seconds]
@@ -146,15 +153,35 @@ class InMemoryRateLimiter:
 rate_limiter = InMemoryRateLimiter()
 
 
+def get_client_ip(request: Request, settings: Settings) -> str:
+    """Extract client IP, respecting X-Forwarded-For only when TRUSTED_PROXY is enabled."""
+    if getattr(settings, 'TRUSTED_PROXY', False):
+        forwarded_for = request.headers.get("X-Forwarded-For", "")
+        if forwarded_for:
+            # Take the leftmost (original client) IP
+            client_ip = forwarded_for.split(",")[0].strip()
+            if client_ip:
+                return client_ip
+    return request.client.host if request.client else "unknown"
+
+
+def _prune_expired_rate_limit_entries(store: dict, window_seconds: int) -> None:
+    """Remove expired rate limit entries to prevent unbounded memory growth."""
+    now = time.time()
+    expired_keys = [k for k, v in store.items() if not v or now - v[0] > window_seconds * 2]
+    for k in expired_keys:
+        del store[k]
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Enforces per-client IP rate limits to mitigate brute-force and resource exhaustion."""
 
-    def __init__(self, app, settings: Optional[Settings] = None):
+    def __init__(self, app, settings: Settings | None = None):
         super().__init__(app)
         self.settings = settings or get_settings()
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        client_ip = request.client.host if request.client else "127.0.0.1"
+        client_ip = get_client_ip(request, self.settings)
         is_test = self.settings.APP_ENV == "test"
 
         allowed, remaining, retry_after = rate_limiter.check_rate_limit(
@@ -180,11 +207,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 
 def verify_admin_access(
-    x_admin_secret: Optional[str] = Header(None, alias="X-Admin-Secret"),
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
     settings: Settings = Depends(get_settings),
 ) -> None:
     """Verify administrator secret header for privileged operations.
-    
+
     In development mode, if administrative secret is unset, access is permitted.
     If secret is configured, X-Admin-Secret header must match.
     In non-development environments, an admin secret is strictly mandatory.
@@ -196,7 +223,9 @@ def verify_admin_access(
     )
 
     if secret:
-        if not x_admin_secret or x_admin_secret != secret:
+        if not x_admin_secret or not hmac.compare_digest(
+            x_admin_secret.encode(), secret.encode()
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Invalid or missing X-Admin-Secret header.",

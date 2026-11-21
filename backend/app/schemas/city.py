@@ -1,7 +1,7 @@
 """Pydantic schemas for City entity."""
 
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -24,11 +24,11 @@ class CityCreate(CityBase):
 class CityUpdate(BaseModel):
     """Schema for updating an existing city."""
 
-    name: Optional[str] = Field(None, max_length=100)
-    state: Optional[str] = Field(None, max_length=100)
-    country: Optional[str] = Field(None, max_length=100)
-    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
-    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
+    name: str | None = Field(None, max_length=100)
+    state: str | None = Field(None, max_length=100)
+    country: str | None = Field(None, max_length=100)
+    latitude: float | None = Field(None, ge=-90.0, le=90.0)
+    longitude: float | None = Field(None, ge=-180.0, le=180.0)
 
 
 class CityResponse(CityBase):

@@ -1,8 +1,9 @@
 """Comprehensive tests for Phase 6: AI Health Advisor service, providers, guardrails, and endpoints."""
 
 import asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.orm import Session
@@ -12,10 +13,8 @@ from app.db.seed import seed_cities
 from app.integrations.ai.base import BaseAIProvider
 from app.integrations.ai.exceptions import (
     AIAuthError,
-    AIProviderError,
     AIRateLimitError,
     AITimeoutError,
-    AIUnavailableError,
 )
 from app.integrations.ai.gemini_provider import GeminiProvider
 from app.integrations.ai.schemas import (
@@ -28,10 +27,9 @@ from app.models.city import City
 from app.models.monitoring_station import MonitoringStation
 from app.services.health.context_builder import ContextBuilder
 from app.services.health.health_advisor import HealthAdvisorService
-from app.services.health.knowledge_base import MEDICAL_DISCLAIMER, HealthKnowledgeBase
+from app.services.health.knowledge_base import HealthKnowledgeBase
 from app.services.health.recommendation_engine import RecommendationEngine
 from app.services.health.safety_validator import HealthSafetyValidator
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -44,7 +42,7 @@ def health_test_data(db_session: Session):
     delhi = db_session.query(City).filter(City.name == "Delhi").first()
     mumbai = db_session.query(City).filter(City.name == "Mumbai").first()
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
 
     # Fresh reading for Delhi: AQI 240 (Poor), dominant PM2.5, observed
     st_delhi = MonitoringStation(
@@ -97,7 +95,7 @@ def health_test_data(db_session: Session):
 class MockAIProvider(BaseAIProvider):
     """Deterministic mock provider for unit testing."""
 
-    def __init__(self, response_text: str = "Mock AI health response.", should_fail: Optional[Exception] = None):
+    def __init__(self, response_text: str = "Mock AI health response.", should_fail: Exception | None = None):
         self.response_text = response_text
         self.should_fail = should_fail
         self.calls = 0

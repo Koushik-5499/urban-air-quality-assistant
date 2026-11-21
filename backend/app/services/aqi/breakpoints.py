@@ -1,6 +1,6 @@
 """Official Central Pollution Control Board (CPCB) NAQI breakpoint tables and metadata."""
 
-from typing import Dict, List, NamedTuple
+from typing import NamedTuple
 
 
 class BreakpointRange(NamedTuple):
@@ -23,7 +23,7 @@ class PollutantMetadata(NamedTuple):
     description: str
 
 
-POLLUTANT_INFO: Dict[str, PollutantMetadata] = {
+POLLUTANT_INFO: dict[str, PollutantMetadata] = {
     "PM2.5": PollutantMetadata(
         code="PM2.5",
         name="Particulate Matter < 2.5 µm",
@@ -84,7 +84,7 @@ POLLUTANT_INFO: Dict[str, PollutantMetadata] = {
 
 # CPCB NAQI Breakpoint intervals: (C_low, C_high, I_low, I_high, Category)
 # Source: Central Pollution Control Board (CPCB), Ministry of Environment, Forest and Climate Change, Govt. of India
-CPCB_BREAKPOINTS: Dict[str, List[BreakpointRange]] = {
+CPCB_BREAKPOINTS: dict[str, list[BreakpointRange]] = {
     "PM2.5": [
         BreakpointRange(0.0, 30.0, 0, 50, "Good"),
         BreakpointRange(30.0, 60.0, 51, 100, "Satisfactory"),

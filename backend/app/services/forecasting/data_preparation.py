@@ -1,9 +1,9 @@
 """Historical air quality data preparation and chronological time-series splitting."""
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import logging
-from typing import List, Optional, Tuple
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,30 +16,30 @@ logger = logging.getLogger(__name__)
 class PreparedDataset:
     """Structured time-series dataset prepared for forecast model training and evaluation."""
 
-    timestamps: List[datetime] = field(default_factory=list)
-    aqi_values: List[float] = field(default_factory=list)
-    dominant_pollutants: List[str] = field(default_factory=list)
+    timestamps: list[datetime] = field(default_factory=list)
+    aqi_values: list[float] = field(default_factory=list)
+    dominant_pollutants: list[str] = field(default_factory=list)
     sample_count: int = 0
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
     is_simulated: bool = False
     data_quality: str = "verified_cpcb"
     coverage_hours: float = 0.0
     missing_intervals_count: int = 0
     is_sufficient: bool = False
-    insufficiency_reason: Optional[str] = None
+    insufficiency_reason: str | None = None
 
 
 @dataclass
 class DatasetSplits:
     """Chronologically partitioned training, validation, and test sets without data leakage."""
 
-    train_timestamps: List[datetime]
-    train_values: List[float]
-    val_timestamps: List[datetime]
-    val_values: List[float]
-    test_timestamps: List[datetime]
-    test_values: List[float]
+    train_timestamps: list[datetime]
+    train_values: list[float]
+    val_timestamps: list[datetime]
+    val_values: list[float]
+    test_timestamps: list[datetime]
+    test_values: list[float]
 
 
 class DataPreparationService:
@@ -50,7 +50,7 @@ class DataPreparationService:
         cls,
         db: Session,
         city_id: int,
-        station_id: Optional[int] = None,
+        station_id: int | None = None,
         min_required_samples: int = 24,
     ) -> PreparedDataset:
         """Query chronological AQI observations and clean data for modeling."""
@@ -72,7 +72,7 @@ class DataPreparationService:
         for r in all_readings:
             ts = r.measured_at
             if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
+                ts = ts.replace(tzinfo=UTC)
             deduped[ts] = r
 
         sorted_timestamps = sorted(deduped.keys())
@@ -104,18 +104,18 @@ class DataPreparationService:
                 ),
             )
 
-        timestamps: List[datetime] = []
-        aqi_values: List[float] = []
-        dominant_pollutants: List[str] = []
+        timestamps: list[datetime] = []
+        aqi_values: list[float] = []
+        dominant_pollutants: list[str] = []
 
         # 3. Detect missing time intervals (> 3 hours gap between consecutive readings)
         missing_intervals = 0
-        prev_time: Optional[datetime] = None
+        prev_time: datetime | None = None
 
         for r in working_readings:
             t = r.measured_at
             if t.tzinfo is None:
-                t = t.replace(tzinfo=timezone.utc)
+                t = t.replace(tzinfo=UTC)
 
             if prev_time is not None:
                 gap_hours = (t - prev_time).total_seconds() / 3600.0
@@ -166,7 +166,7 @@ class DataPreparationService:
         val_ratio: float = 0.15,
     ) -> DatasetSplits:
         """Partition time-series chronologically into train, validation, and test subsets.
-        
+
         Strict chronological ordering is maintained to avoid data leakage.
         """
         n = dataset.sample_count

@@ -1,6 +1,7 @@
 """Comprehensive test suite for Phase 5: Historical Data Service."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.orm import Session
@@ -62,7 +63,7 @@ def history_seed_data(db_session: Session):
     db_session.flush()
 
     # Base reference date: 2026-11-01 10:00:00 UTC (a Sunday)
-    base_time = datetime(2026, 11, 1, 10, 0, 0, tzinfo=timezone.utc)
+    base_time = datetime(2026, 11, 1, 10, 0, 0, tzinfo=UTC)
 
     # Populate 10 consecutive daily AQI readings for Delhi
     # Values: 150, 160, 155, 145, 140 (earlier period), then 110, 105, 100, 95, 90 (later period: improving!)

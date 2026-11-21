@@ -1,6 +1,6 @@
 """CPCB NAQI Category ranges, color codes, and advisory statements."""
 
-from typing import Dict, NamedTuple
+from typing import NamedTuple
 
 
 class CategoryInfo(NamedTuple):
@@ -12,7 +12,7 @@ class CategoryInfo(NamedTuple):
     health_statement: str
 
 
-CATEGORIES: Dict[str, CategoryInfo] = {
+CATEGORIES: dict[str, CategoryInfo] = {
     "Good": CategoryInfo(
         category="Good",
         aqi_range="0–50",

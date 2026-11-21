@@ -1,9 +1,9 @@
 """Location comparison service for multi-city and multi-station historical analysis."""
 
+import statistics
 from collections import Counter
 from datetime import datetime
-import statistics
-from typing import Dict, List, Optional
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,14 +20,14 @@ class ComparisonService:
     def compare_locations(
         cls,
         db: Session,
-        cities: List[str],
-        stations: List[int],
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        cities: list[str],
+        stations: list[int],
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         include_simulated: bool = True,
     ) -> HistoryCompareResponse:
         """Compare AQI metrics for 2 to 10 cities or stations over identical date ranges."""
-        comparisons: List[LocationComparisonItem] = []
+        comparisons: list[LocationComparisonItem] = []
 
         # 1. Evaluate Cities
         for city_name in cities:

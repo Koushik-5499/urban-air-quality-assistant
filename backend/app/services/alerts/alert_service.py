@@ -1,10 +1,10 @@
 """Core Alert and Notification service orchestrating rules, deduplication, persistence, and dispatch."""
 
 import asyncio
-from datetime import datetime, timezone
 import logging
 import math
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
+
 from fastapi import HTTPException, status
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.orm import Session, joinedload
@@ -42,13 +42,13 @@ class AlertService:
     """Manages environmental condition detection, alert generation, user preferences, and notification channels."""
 
     _process_lock = asyncio.Lock()
-    _last_processed_at: Optional[datetime] = None
-    _last_processing_result: Optional[str] = None
+    _last_processed_at: datetime | None = None
+    _last_processing_result: str | None = None
 
     def __init__(
         self,
-        notification_service: Optional[NotificationService] = None,
-        settings: Optional[Settings] = None,
+        notification_service: NotificationService | None = None,
+        settings: Settings | None = None,
     ):
         self.settings = settings or get_settings()
         self.notification_service = notification_service or NotificationService(settings=self.settings)
@@ -61,16 +61,16 @@ class AlertService:
     def list_alerts(
         cls,
         db: Session,
-        city: Optional[str] = None,
-        station_id: Optional[int] = None,
-        severity: Optional[str] = None,
-        is_read: Optional[bool] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        is_simulated: Optional[bool] = None,
+        city: str | None = None,
+        station_id: int | None = None,
+        severity: str | None = None,
+        is_read: bool | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        is_simulated: bool | None = None,
         page: int = 1,
         page_size: int = 20,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> AlertPaginatedResponse:
         """Query paginated alerts with flexible filtering."""
         page, page_size = HistoryValidator.validate_pagination(page, page_size)
@@ -243,7 +243,6 @@ class AlertService:
                 min_severity="Moderate",
                 is_enabled=True,
                 channels="in_app",
-                email=None,
                 quiet_hours_start="22:00",
                 quiet_hours_end="07:00",
                 timezone="Asia/Kolkata",
@@ -262,7 +261,6 @@ class AlertService:
                 min_severity=pref.min_severity,
                 is_enabled=pref.is_enabled,
                 channels=["in_app"],
-                email=pref.email,
                 quiet_hours_start=pref.quiet_hours_start,
                 quiet_hours_end=pref.quiet_hours_end,
                 timezone=pref.timezone,
@@ -283,7 +281,6 @@ class AlertService:
             min_severity=pref.min_severity,
             is_enabled=pref.is_enabled,
             channels=channel_list,
-            email=pref.email,
             quiet_hours_start=pref.quiet_hours_start,
             quiet_hours_end=pref.quiet_hours_end,
             timezone=pref.timezone,
@@ -319,19 +316,13 @@ class AlertService:
                     )
 
         # Validate channels
-        valid_channels = {"in_app", "email", "push"}
+        valid_channels = {"in_app", "push"}
         for ch in pref_in.channels:
             if ch not in valid_channels:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid channel '{ch}'. Supported: {sorted(list(valid_channels))}.",
                 )
-
-        if "email" in pref_in.channels and not pref_in.email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email address is required when 'email' notification channel is enabled.",
-            )
 
         channels_str = ",".join(pref_in.channels)
 
@@ -344,7 +335,6 @@ class AlertService:
             existing.min_severity = pref_in.min_severity
             existing.is_enabled = pref_in.is_enabled
             existing.channels = channels_str
-            existing.email = pref_in.email
             existing.quiet_hours_start = pref_in.quiet_hours_start
             existing.quiet_hours_end = pref_in.quiet_hours_end
             existing.timezone = pref_in.timezone
@@ -358,7 +348,6 @@ class AlertService:
                 min_severity=pref_in.min_severity,
                 is_enabled=pref_in.is_enabled,
                 channels=channels_str,
-                email=pref_in.email,
                 quiet_hours_start=pref_in.quiet_hours_start,
                 quiet_hours_end=pref_in.quiet_hours_end,
                 timezone=pref_in.timezone,
@@ -379,7 +368,6 @@ class AlertService:
             min_severity=pref.min_severity,
             is_enabled=pref.is_enabled,
             channels=pref_in.channels,
-            email=pref.email,
             quiet_hours_start=pref.quiet_hours_start,
             quiet_hours_end=pref.quiet_hours_end,
             timezone=pref.timezone,
@@ -395,9 +383,9 @@ class AlertService:
         self,
         db: Session,
         city_id: int,
-        station_id: Optional[int] = None,
-        user_pref: Optional[AlertPreference] = None,
-    ) -> List[Alert]:
+        station_id: int | None = None,
+        user_pref: AlertPreference | None = None,
+    ) -> list[Alert]:
         """Evaluate chronological readings for a location and generate deduplicated alerts."""
         # Query last 2 readings
         query = (
@@ -432,7 +420,7 @@ class AlertService:
             improvement_threshold=self.settings.ALERT_IMPROVEMENT_THRESHOLD,
         )
 
-        generated_alerts: List[Alert] = []
+        generated_alerts: list[Alert] = []
 
         for cond in conditions:
             # Deduplication check
@@ -489,17 +477,17 @@ class AlertService:
                 notifications_dispatched=0,
                 deduplicated_count=0,
                 errors=["A processing cycle is already actively executing."],
-                processed_at=datetime.now(timezone.utc),
+                processed_at=datetime.now(UTC),
             )
 
         async with self._process_lock:
-            now_utc = datetime.now(timezone.utc)
+            now_utc = datetime.now(UTC)
             cities = list(db.execute(select(City)).scalars().all())
 
             locations_evaluated = 0
             alerts_generated = 0
             notifications_dispatched = 0
-            errors: List[str] = []
+            errors: list[str] = []
 
             for city in cities:
                 locations_evaluated += 1
@@ -537,12 +525,9 @@ class AlertService:
 
     def get_status(self) -> AlertStatusResponse:
         """Report engine status, enabled channels, and provider configuration."""
-        email_ready = bool(self.settings.EMAIL_NOTIFICATIONS_ENABLED and self.settings.RESEND_API_KEY)
         push_ready = bool(self.settings.WEB_PUSH_ENABLED and self.settings.VAPID_PRIVATE_KEY)
 
         enabled_channels = ["in_app"]
-        if self.settings.EMAIL_NOTIFICATIONS_ENABLED:
-            enabled_channels.append("email")
         if self.settings.WEB_PUSH_ENABLED:
             enabled_channels.append("push")
 
@@ -553,7 +538,6 @@ class AlertService:
             enabled_channels=enabled_channels,
             providers={
                 "in_app": True,
-                "email": email_ready,
                 "web_push": push_ready,
             },
         )
@@ -564,28 +548,9 @@ class AlertService:
         request: AlertTestNotificationRequest,
     ) -> AlertTestNotificationResponse:
         """Send a test notification via specified channel in development mode."""
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
 
-        if request.channel == "email":
-            if not request.destination:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Destination email address is required for test email dispatch.",
-                )
-
-            subject = f"[Test Alert] Air Quality Notification Test for {request.city}"
-            html = f"<p>This is a test notification from the Urban Air Quality Assistant for {request.city} (AQI: {request.aqi}).</p>"
-            text = f"This is a test notification from the Urban Air Quality Assistant for {request.city} (AQI: {request.aqi})."
-
-            success = await self.notification_service.dispatch_email(
-                recipient_email=request.destination,
-                subject=subject,
-                html_content=html,
-                text_content=text,
-            )
-            msg = "Test email dispatched successfully." if success else "Test email delivery disabled or failed."
-
-        elif request.channel == "push":
+        if request.channel == "push":
             success_count = await self.notification_service.dispatch_web_push(
                 db=db,
                 user_id=request.destination or "default_user",

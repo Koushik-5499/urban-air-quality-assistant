@@ -1,15 +1,17 @@
 """Database health verification and connection diagnostics."""
 
-from typing import Dict, Any, Optional
+from typing import Any
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.db.session import SessionLocal
+
 from app.core.logging import get_logger
+from app.db.session import SessionLocal
 
 logger = get_logger("app.db.init_db")
 
 
-def check_database_health(db: Optional[Session] = None) -> Dict[str, Any]:
+def check_database_health(db: Session | None = None) -> dict[str, Any]:
     """Verify database connectivity and basic query execution safely."""
     owns_session = False
     if db is None:

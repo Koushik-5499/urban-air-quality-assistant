@@ -1,14 +1,12 @@
 """Builds verified environmental and AQI context snapshots for health guidance."""
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.integrations.ai.schemas import AQIContextSnapshot
 from app.models.aqi_reading import AQIReading
-from app.models.city import City
-from app.models.monitoring_station import MonitoringStation
 from app.services.history.history_service import HistoryService
 from app.services.history.validators import HistoryValidator
 
@@ -23,10 +21,10 @@ class ContextBuilder:
         cls,
         db: Session,
         city_name: str,
-        station_id: Optional[int] = None,
+        station_id: int | None = None,
     ) -> AQIContextSnapshot:
         """Construct verified AQI context snapshot from the database."""
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         city_entity = HistoryValidator.resolve_city(db, city_name)
         station_entity = HistoryValidator.resolve_station(db, station_id) if station_id else None
 
@@ -86,7 +84,7 @@ class ContextBuilder:
 
         measured_time = latest_aqi.measured_at
         if measured_time.tzinfo is None:
-            measured_time = measured_time.replace(tzinfo=timezone.utc)
+            measured_time = measured_time.replace(tzinfo=UTC)
 
         data_age = int((now_utc - measured_time).total_seconds())
         is_stale = data_age > STALE_THRESHOLD_SECONDS

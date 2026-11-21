@@ -1,9 +1,10 @@
 """Readings and alerts repository for environmental observations."""
 
 from datetime import datetime
-from typing import List, Optional
+
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
+
 from app.models.alert import Alert
 from app.models.aqi_reading import AQIReading
 from app.models.pollutant_reading import PollutantReading
@@ -40,11 +41,11 @@ class ReadingRepository:
     def list_pollutant_readings(
         self,
         city_id: int,
-        pollutant_code: Optional[str] = None,
+        pollutant_code: str | None = None,
         limit: int = 100,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-    ) -> List[PollutantReading]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+    ) -> list[PollutantReading]:
         """Query pollutant readings filtered by city, pollutant type, and time interval."""
         statement = select(PollutantReading).where(PollutantReading.city_id == city_id)
         if pollutant_code:
@@ -56,7 +57,7 @@ class ReadingRepository:
         statement = statement.order_by(desc(PollutantReading.measured_at)).limit(limit)
         return list(self.db.execute(statement).scalars().all())
 
-    def get_latest_pollutant_reading(self, city_id: int, pollutant_code: str) -> Optional[PollutantReading]:
+    def get_latest_pollutant_reading(self, city_id: int, pollutant_code: str) -> PollutantReading | None:
         """Fetch the most recent reading for a given city and pollutant."""
         statement = (
             select(PollutantReading)
@@ -85,7 +86,7 @@ class ReadingRepository:
         self.db.refresh(reading)
         return reading
 
-    def get_latest_aqi_reading(self, city_id: int) -> Optional[AQIReading]:
+    def get_latest_aqi_reading(self, city_id: int) -> AQIReading | None:
         """Fetch the latest AQI reading for a specific city."""
         statement = (
             select(AQIReading)
@@ -95,7 +96,7 @@ class ReadingRepository:
         )
         return self.db.execute(statement).scalar_one_or_none()
 
-    def list_aqi_readings(self, city_id: int, limit: int = 50) -> List[AQIReading]:
+    def list_aqi_readings(self, city_id: int, limit: int = 50) -> list[AQIReading]:
         """Retrieve recent chronological AQI readings for a city."""
         statement = (
             select(AQIReading)
@@ -126,10 +127,10 @@ class ReadingRepository:
 
     def list_alerts(
         self,
-        city_id: Optional[int] = None,
+        city_id: int | None = None,
         unread_only: bool = False,
         limit: int = 50,
-    ) -> List[Alert]:
+    ) -> list[Alert]:
         """Retrieve alerts optionally filtered by city and read status."""
         statement = select(Alert)
         if city_id:
@@ -139,7 +140,7 @@ class ReadingRepository:
         statement = statement.order_by(desc(Alert.created_at)).limit(limit)
         return list(self.db.execute(statement).scalars().all())
 
-    def mark_alert_read(self, alert_id: int, is_read: bool = True) -> Optional[Alert]:
+    def mark_alert_read(self, alert_id: int, is_read: bool = True) -> Alert | None:
         """Update read status of an alert."""
         alert = self.db.get(Alert, alert_id)
         if alert:

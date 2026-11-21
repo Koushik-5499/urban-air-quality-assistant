@@ -1,20 +1,18 @@
 """Automated tests for external provider integration, mapping, caching, and API endpoints."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest
 from sqlalchemy.orm import Session
 
-from app.core.config import Settings
 from app.db.seed import seed_cities
 from app.integrations.cpcb.client import CPCBClient
 from app.integrations.cpcb.exceptions import (
     CPCBAuthError,
-    CPCBParseError,
     CPCBProviderError,
     CPCBRateLimitError,
-    CPCBTimeoutError,
 )
 from app.integrations.cpcb.mapper import CPCBRecordMapper
 from app.integrations.mock.provider import MockAQIProvider
@@ -23,7 +21,6 @@ from app.models.monitoring_station import MonitoringStation
 from app.models.pollutant_reading import PollutantReading
 from app.services.aqi_data_service import AQIDataService
 from app.services.data_normalization_service import DataNormalizationService
-
 
 # Sample raw CPCB record matching data.gov.in format
 SAMPLE_CPCB_RAW = {
@@ -69,7 +66,7 @@ def test_cpcb_mapper_valid_record():
     # IST 18:00 should convert to UTC 12:30
     assert obs.measured_at.hour == 12
     assert obs.measured_at.minute == 30
-    assert obs.measured_at.tzinfo == timezone.utc
+    assert obs.measured_at.tzinfo == UTC
 
 
 def test_cpcb_mapper_pollutant_and_unit_standardization():
@@ -222,7 +219,7 @@ async def test_stale_data_detection(db_session: Session):
     coimbatore = db_session.query(City).filter(City.name == "Coimbatore").first()
 
     # Insert a reading measured 5 hours ago
-    old_time = datetime.now(timezone.utc) - timedelta(hours=5)
+    old_time = datetime.now(UTC) - timedelta(hours=5)
     old_reading = PollutantReading(
         city_id=coimbatore.id,
         pollutant_code="PM2.5",

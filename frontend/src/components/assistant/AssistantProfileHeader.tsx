@@ -30,7 +30,21 @@ export function AssistantProfileHeader({
   };
 
   return (
-    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="flex flex-col gap-2">
+      {/* Medical Disclaimer */}
+      <div
+        role="note"
+        aria-label="Medical disclaimer"
+        className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2"
+      >
+        <span className="shrink-0 font-bold" aria-hidden="true">⚠️</span>
+        <span>
+          <strong>Medical Disclaimer:</strong> AI health guidance is for environmental awareness
+          only and is not a substitute for professional medical advice. Consult a qualified
+          healthcare provider for medical decisions.
+        </span>
+      </div>
+      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       {/* Left: Assistant Identity */}
       <div className="flex items-center gap-3">
         <div className="relative">
@@ -80,6 +94,7 @@ export function AssistantProfileHeader({
           </button>
         )}
       </div>
+    </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 """Validation helpers for air quality forecasting horizons, parameters, and datasets."""
 
-from typing import List, Optional, Set, Tuple
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,7 +9,7 @@ from app.models.city import City
 from app.models.monitoring_station import MonitoringStation
 
 # Standard supported forecasting horizons in hours
-SUPPORTED_HORIZONS: List[int] = [1, 6, 12, 24, 48, 72]
+SUPPORTED_HORIZONS: list[int] = [1, 6, 12, 24, 48, 72]
 
 # Map label string to horizon integer hours
 HORIZON_LABEL_MAP = {
@@ -26,7 +26,7 @@ class ForecastValidator:
     """Validates forecasting horizons, entities, and data volume constraints."""
 
     @staticmethod
-    def parse_horizon(horizon_str: Optional[str]) -> Optional[int]:
+    def parse_horizon(horizon_str: str | None) -> int | None:
         """Convert a horizon string like '24h' or '24' into integer hours."""
         if not horizon_str or horizon_str.lower() in ("all", "default"):
             return None
@@ -48,12 +48,12 @@ class ForecastValidator:
         )
 
     @staticmethod
-    def validate_horizons_list(horizons: Optional[List[str]]) -> List[int]:
+    def validate_horizons_list(horizons: list[str] | None) -> list[int]:
         """Validate a list of horizon strings and return unique integer hours."""
         if not horizons:
             return list(SUPPORTED_HORIZONS)
 
-        parsed: Set[int] = set()
+        parsed: set[int] = set()
         for h in horizons:
             parsed.add(ForecastValidator.parse_horizon(h) or 24)
         return sorted(list(parsed))
@@ -62,8 +62,8 @@ class ForecastValidator:
     def resolve_city_and_station(
         db: Session,
         city_name: str,
-        station_id: Optional[int] = None,
-    ) -> Tuple[City, Optional[MonitoringStation]]:
+        station_id: int | None = None,
+    ) -> tuple[City, MonitoringStation | None]:
         """Validate and resolve City and optional MonitoringStation entities."""
         city_stmt = select(City).where(City.name.ilike(city_name.strip()))
         city = db.execute(city_stmt).scalar_one_or_none()

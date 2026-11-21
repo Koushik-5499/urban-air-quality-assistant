@@ -1,15 +1,17 @@
 """SQLAlchemy model for Air Quality Index (AQI) composite readings."""
 
-from datetime import datetime, timezone
-from typing import List, Optional, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Optional
+
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base_class import Base
 
 if TYPE_CHECKING:
+    from app.models.alert import Alert
     from app.models.city import City
     from app.models.monitoring_station import MonitoringStation
-    from app.models.alert import Alert
 
 
 class AQIReading(Base):
@@ -24,7 +26,7 @@ class AQIReading(Base):
         nullable=False,
         index=True,
     )
-    station_id: Mapped[Optional[int]] = mapped_column(
+    station_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("monitoring_stations.id", ondelete="SET NULL"),
         nullable=True,
@@ -32,14 +34,14 @@ class AQIReading(Base):
     )
     aqi_value: Mapped[int] = mapped_column(Integer, nullable=False)
     aqi_category: Mapped[str] = mapped_column(String(50), nullable=False)
-    dominant_pollutant: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    dominant_pollutant: Mapped[str | None] = mapped_column(String(20), nullable=True)
     measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     source: Mapped[str] = mapped_column(String(100), default="CPCB", nullable=False)
     is_simulated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     data_quality: Mapped[str] = mapped_column(String(50), default="valid", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
 
@@ -55,5 +57,5 @@ class AQIReading(Base):
         "MonitoringStation",
         back_populates="aqi_readings",
     )
-    alerts: Mapped[List["Alert"]] = relationship("Alert", back_populates="aqi_reading")
+    alerts: Mapped[list["Alert"]] = relationship("Alert", back_populates="aqi_reading")
 

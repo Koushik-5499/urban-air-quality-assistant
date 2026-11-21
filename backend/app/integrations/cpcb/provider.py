@@ -1,6 +1,6 @@
 """CPCB Provider implementation satisfying BaseAQIProvider."""
 
-from typing import List, Optional
+
 from app.core.config import get_settings
 from app.integrations.base import BaseAQIProvider, NormalizedObservation, ProviderMetadata
 from app.integrations.cpcb.client import CPCBClient
@@ -10,7 +10,7 @@ from app.integrations.cpcb.mapper import CPCBRecordMapper
 class CPCBProvider(BaseAQIProvider):
     """Integrates with the official CPCB Real-time Air Quality Index API via data.gov.in."""
 
-    def __init__(self, client: Optional[CPCBClient] = None):
+    def __init__(self, client: CPCBClient | None = None):
         settings = get_settings()
         self.settings = settings
         self.client = client or CPCBClient(
@@ -36,10 +36,10 @@ class CPCBProvider(BaseAQIProvider):
 
     async def fetch_observations(
         self,
-        city: Optional[str] = None,
-        state: Optional[str] = None,
+        city: str | None = None,
+        state: str | None = None,
         limit: int = 100,
-    ) -> List[NormalizedObservation]:
+    ) -> list[NormalizedObservation]:
         """Fetch raw records from CPCB API and map to NormalizedObservation objects."""
         raw_data = await self.client.get_raw_records(city=city, state=state, limit=limit)
         return self.mapper.map_records(raw_data)

@@ -1,10 +1,9 @@
 """Air Quality endpoints for real-time observations, city availability, and sync."""
 
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.config import Settings, get_settings
 from app.core.security import verify_admin_access
 from app.db.session import get_db
 from app.repositories.reading_repository import ReadingRepository
@@ -22,17 +21,17 @@ router = APIRouter()
 
 @router.get(
     "",
-    response_model=List[PollutantReadingResponse],
+    response_model=list[PollutantReadingResponse],
     summary="List Pollutant Observations",
     description="Retrieve historical and latest ambient pollutant measurements filtered by city, state, or pollutant code.",
 )
 async def list_air_quality_readings(
-    city: Optional[str] = Query(None, description="City name filter"),
-    pollutant: Optional[str] = Query(None, description="Pollutant code filter (PM2.5, PM10, etc.)"),
+    city: str | None = Query(None, description="City name filter"),
+    pollutant: str | None = Query(None, description="Pollutant code filter (PM2.5, PM10, etc.)"),
     limit: int = Query(50, ge=1, le=200, description="Maximum records to return"),
     db: Session = Depends(get_db),
     aqi_service: AQIDataService = Depends(get_aqi_data_service),
-) -> List[PollutantReadingResponse]:
+) -> list[PollutantReadingResponse]:
     """Retrieve pollutant observations from the database repository."""
     repo = ReadingRepository(db)
 
@@ -48,8 +47,9 @@ async def list_air_quality_readings(
         return repo.list_pollutant_readings(city_id=city_id, pollutant_code=pollutant, limit=limit)
 
     # If no specific city, return recent readings across all cities
-    from app.models.pollutant_reading import PollutantReading
     from sqlalchemy import desc, select
+
+    from app.models.pollutant_reading import PollutantReading
 
     stmt = select(PollutantReading)
     if pollutant:
@@ -61,14 +61,14 @@ async def list_air_quality_readings(
 
 @router.get(
     "/cities",
-    response_model=List[CityAvailabilitySummary],
+    response_model=list[CityAvailabilitySummary],
     summary="List Cities Data Availability",
     description="Retrieve data availability, active station counts, and freshness status for all 10 supported Indian cities.",
 )
 async def list_cities_availability(
     db: Session = Depends(get_db),
     aqi_service: AQIDataService = Depends(get_aqi_data_service),
-) -> List[CityAvailabilitySummary]:
+) -> list[CityAvailabilitySummary]:
     """Return overview of all supported cities and their live telemetry coverage."""
     return aqi_service.get_cities_summary(db)
 
@@ -114,7 +114,7 @@ async def get_source_status(
     description="Trigger an on-demand synchronization against the configured provider with deduplication and persistence.",
 )
 async def trigger_sync(
-    city: Optional[str] = Query(None, description="Optional city filter for targeted synchronization"),
+    city: str | None = Query(None, description="Optional city filter for targeted synchronization"),
     _admin: None = Depends(verify_admin_access),
     db: Session = Depends(get_db),
     aqi_service: AQIDataService = Depends(get_aqi_data_service),

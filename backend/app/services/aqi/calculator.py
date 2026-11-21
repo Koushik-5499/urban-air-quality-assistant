@@ -1,7 +1,7 @@
 """Pure computational logic for CPCB Indian National Air Quality Index (NAQI)."""
 
-from typing import Dict, List, Optional, Tuple
-from app.services.aqi.breakpoints import CPCB_BREAKPOINTS, POLLUTANT_INFO
+
+from app.services.aqi.breakpoints import CPCB_BREAKPOINTS
 from app.services.aqi.categories import get_aqi_category
 from app.services.aqi.dominant_pollutant import DominantPollutantResolver
 from app.services.aqi.validators import AQIValidator
@@ -16,7 +16,7 @@ class AQICalculator:
         pollutant_code: str,
         concentration: float,
         unit: str = "µg/m³",
-    ) -> Optional[int]:
+    ) -> int | None:
         """Compute the CPCB sub-index for a single pollutant concentration using linear interpolation.
 
         Formula:
@@ -57,8 +57,8 @@ class AQICalculator:
     @classmethod
     def calculate_overall_aqi(
         cls,
-        sub_indices: Dict[str, int],
-    ) -> Tuple[Optional[int], Optional[str], Optional[str], bool, str, List[str]]:
+        sub_indices: dict[str, int],
+    ) -> tuple[int | None, str | None, str | None, bool, str, list[str]]:
         """Calculate composite CPCB Overall NAQI from individual pollutant sub-indices.
 
         Returns:

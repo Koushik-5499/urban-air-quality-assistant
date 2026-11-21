@@ -1,16 +1,14 @@
 """High-level Historical Data Service orchestrating queries, pagination, and service delegation."""
 
-from collections import Counter
-from datetime import datetime
 import math
 import statistics
-from typing import List, Optional
+from collections import Counter
+from datetime import datetime
+
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.aqi_reading import AQIReading
-from app.models.city import City
-from app.models.monitoring_station import MonitoringStation
 from app.models.pollutant_reading import PollutantReading
 from app.schemas.history import (
     AQIHistoryRecord,
@@ -36,11 +34,11 @@ class HistoryService:
     def get_aqi_history(
         cls,
         db: Session,
-        city: Optional[str] = None,
-        station_id: Optional[int] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        interval: Optional[str] = None,
+        city: str | None = None,
+        station_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        interval: str | None = None,
         page: int = 1,
         page_size: int = 20,
         include_simulated: bool = True,
@@ -159,12 +157,12 @@ class HistoryService:
     def get_pollutant_history(
         cls,
         db: Session,
-        city: Optional[str] = None,
-        station_id: Optional[int] = None,
-        pollutant: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        interval: Optional[str] = None,
+        city: str | None = None,
+        station_id: int | None = None,
+        pollutant: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        interval: str | None = None,
         page: int = 1,
         page_size: int = 20,
         include_simulated: bool = True,
@@ -252,7 +250,7 @@ class HistoryService:
 
         raw_readings = list(db.execute(data_stmt).scalars().all())
 
-        records: List[PollutantHistoryRecord] = []
+        records: list[PollutantHistoryRecord] = []
         for r in raw_readings:
             sub_idx = AQICalculator.calculate_sub_index(r.pollutant_code, r.concentration, r.unit)
             sub_cat = get_aqi_category(sub_idx) if sub_idx is not None else None
@@ -298,10 +296,10 @@ class HistoryService:
     def get_summary(
         cls,
         db: Session,
-        city: Optional[str] = None,
-        station_id: Optional[int] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        city: str | None = None,
+        station_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         include_simulated: bool = True,
     ) -> AQISummaryResponse:
         """Calculate statistical summaries (min, max, mean, median, distributions) for valid AQI readings."""
@@ -380,13 +378,13 @@ class HistoryService:
     def get_trends(
         cls,
         db: Session,
-        city: Optional[str] = None,
-        station_id: Optional[int] = None,
-        pollutant: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        city: str | None = None,
+        station_id: int | None = None,
+        pollutant: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         interval: str = "daily",
-        threshold: Optional[float] = None,
+        threshold: float | None = None,
         min_records_per_period: int = 3,
         include_simulated: bool = True,
     ) -> HistoryTrendResponse:
@@ -464,10 +462,10 @@ class HistoryService:
     def compare_locations(
         cls,
         db: Session,
-        cities: Optional[List[str]] = None,
-        stations: Optional[List[int]] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        cities: list[str] | None = None,
+        stations: list[int] | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         include_simulated: bool = True,
     ) -> HistoryCompareResponse:
         """Compare AQI metrics for 2 to 10 cities or stations over identical date ranges."""

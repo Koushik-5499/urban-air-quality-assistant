@@ -2,6 +2,7 @@
 
 import pytest
 from httpx import AsyncClient
+
 from app.core.config import Settings, get_settings
 from app.core.logging import redact_secrets
 from app.core.security import InMemoryRateLimiter
@@ -110,7 +111,7 @@ def test_secret_redaction_utility():
     raw_message = (
         "Connecting with key AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6 and "
         "new key format AQ.TestSyntheticKey1234567890DummyKey and "
-        "Resend key re_1234567890abcdef12345678, password: my_db_secret_pass "
+        "API key re_1234567890abcdef12345678, password: my_db_secret_pass "
         "at postgresql://user:super_pass123@db.example.com/mydb"
     )
     redacted = redact_secrets(raw_message)
@@ -119,7 +120,7 @@ def test_secret_redaction_utility():
     assert "AQ.TestSynthetic" not in redacted
     assert "[REDACTED_GEMINI_KEY]" in redacted
     assert "re_12345678" not in redacted
-    assert "[REDACTED_RESEND_KEY]" in redacted
+    assert "[REDACTED_API_KEY]" in redacted
     assert "super_pass123" not in redacted
     assert "user:***@db.example.com" in redacted
 

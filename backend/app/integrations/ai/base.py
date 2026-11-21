@@ -1,7 +1,6 @@
 """Abstract base class for AI health providers."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from app.integrations.ai.schemas import AICompletionRequest, AICompletionResponse
 

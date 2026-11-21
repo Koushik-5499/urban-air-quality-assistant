@@ -1,7 +1,7 @@
 """Historical Air Quality and Pollutant data endpoints."""
 
 from datetime import datetime
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
@@ -26,11 +26,11 @@ router = APIRouter()
     description="Retrieve paginated historical AQI records with optional daily/weekly/monthly temporal aggregation.",
 )
 def get_aqi_history(
-    city: Optional[str] = Query(None, description="City name (e.g. 'Delhi', 'Bengaluru')"),
-    station_id: Optional[int] = Query(None, description="Monitoring station ID"),
-    start_date: Optional[datetime] = Query(None, description="Start date in ISO-8601 UTC"),
-    end_date: Optional[datetime] = Query(None, description="End date in ISO-8601 UTC"),
-    interval: Optional[str] = Query(
+    city: str | None = Query(None, description="City name (e.g. 'Delhi', 'Bengaluru')"),
+    station_id: int | None = Query(None, description="Monitoring station ID"),
+    start_date: datetime | None = Query(None, description="Start date in ISO-8601 UTC"),
+    end_date: datetime | None = Query(None, description="End date in ISO-8601 UTC"),
+    interval: str | None = Query(
         None,
         description="Temporal aggregation interval: 'hourly', 'daily', 'weekly', 'monthly'. Omit for raw observations.",
     ),
@@ -61,15 +61,15 @@ def get_aqi_history(
     description="Retrieve paginated historical pollutant measurements with sub-indices and optional aggregation.",
 )
 def get_pollutant_history(
-    city: Optional[str] = Query(None, description="City name (e.g. 'Delhi')"),
-    station_id: Optional[int] = Query(None, description="Monitoring station ID"),
-    pollutant: Optional[str] = Query(
+    city: str | None = Query(None, description="City name (e.g. 'Delhi')"),
+    station_id: int | None = Query(None, description="Monitoring station ID"),
+    pollutant: str | None = Query(
         None,
         description="Criteria pollutant code ('PM2.5', 'PM10', 'NO2', 'SO2', 'CO', 'O3', 'NH3', 'Pb')",
     ),
-    start_date: Optional[datetime] = Query(None, description="Start date in ISO-8601 UTC"),
-    end_date: Optional[datetime] = Query(None, description="End date in ISO-8601 UTC"),
-    interval: Optional[str] = Query(
+    start_date: datetime | None = Query(None, description="Start date in ISO-8601 UTC"),
+    end_date: datetime | None = Query(None, description="End date in ISO-8601 UTC"),
+    interval: str | None = Query(
         None,
         description="Aggregation interval: 'hourly', 'daily', 'weekly', 'monthly'. Omit for raw measurements.",
     ),
@@ -101,10 +101,10 @@ def get_pollutant_history(
     description="Retrieve statistical summaries (min, max, mean, median, category and dominant pollutant distributions).",
 )
 def get_historical_summary(
-    city: Optional[str] = Query(None, description="City name"),
-    station_id: Optional[int] = Query(None, description="Monitoring station ID"),
-    start_date: Optional[datetime] = Query(None, description="Start date in ISO-8601 UTC"),
-    end_date: Optional[datetime] = Query(None, description="End date in ISO-8601 UTC"),
+    city: str | None = Query(None, description="City name"),
+    station_id: int | None = Query(None, description="Monitoring station ID"),
+    start_date: datetime | None = Query(None, description="Start date in ISO-8601 UTC"),
+    end_date: datetime | None = Query(None, description="End date in ISO-8601 UTC"),
     include_simulated: bool = Query(True, description="Whether to include simulated readings"),
     db: Session = Depends(get_db),
 ) -> AQISummaryResponse:
@@ -127,16 +127,16 @@ def get_historical_summary(
     description="Evaluate direction and magnitude of air quality trends comparing earlier and later periods.",
 )
 def get_historical_trends(
-    city: Optional[str] = Query(None, description="City name"),
-    station_id: Optional[int] = Query(None, description="Monitoring station ID"),
-    pollutant: Optional[str] = Query(
+    city: str | None = Query(None, description="City name"),
+    station_id: int | None = Query(None, description="Monitoring station ID"),
+    pollutant: str | None = Query(
         None,
         description="Optional pollutant code to evaluate concentration trend instead of composite AQI",
     ),
-    start_date: Optional[datetime] = Query(None, description="Start date in ISO-8601 UTC"),
-    end_date: Optional[datetime] = Query(None, description="End date in ISO-8601 UTC"),
+    start_date: datetime | None = Query(None, description="Start date in ISO-8601 UTC"),
+    end_date: datetime | None = Query(None, description="End date in ISO-8601 UTC"),
     interval: str = Query("daily", description="Trend interval granularity ('daily', 'weekly', 'monthly')"),
-    threshold: Optional[float] = Query(
+    threshold: float | None = Query(
         None,
         description="Stability threshold value (default 5.0 for AQI, 2.0 for pollutants)",
     ),
@@ -171,16 +171,16 @@ def get_historical_trends(
     description="Compare historical AQI metrics across 2 to 10 cities or stations over identical date ranges.",
 )
 def compare_historical_data(
-    cities: Optional[List[str]] = Query(
+    cities: list[str] | None = Query(
         None,
         description="List of city names to compare (supports repeated parameters or comma-separated names)",
     ),
-    stations: Optional[List[int]] = Query(
+    stations: list[int] | None = Query(
         None,
         description="List of station IDs to compare",
     ),
-    start_date: Optional[datetime] = Query(None, description="Start date in ISO-8601 UTC"),
-    end_date: Optional[datetime] = Query(None, description="End date in ISO-8601 UTC"),
+    start_date: datetime | None = Query(None, description="Start date in ISO-8601 UTC"),
+    end_date: datetime | None = Query(None, description="End date in ISO-8601 UTC"),
     include_simulated: bool = Query(True, description="Whether to include simulated readings"),
     db: Session = Depends(get_db),
 ) -> HistoryCompareResponse:

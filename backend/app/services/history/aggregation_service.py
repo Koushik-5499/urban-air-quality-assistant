@@ -1,9 +1,8 @@
 """Temporal aggregation service for historical AQI and pollutant records."""
 
-from collections import Counter
-from datetime import datetime, timedelta, timezone
 import statistics
-from typing import Dict, List, Optional, Tuple
+from collections import Counter
+from datetime import UTC, datetime, timedelta
 
 from app.models.aqi_reading import AQIReading
 from app.models.pollutant_reading import PollutantReading
@@ -16,7 +15,7 @@ class AggregationService:
     """Provides safe, timezone-consistent chronological bucketing and aggregation."""
 
     @staticmethod
-    def get_bucket_window(dt: datetime, interval: str) -> Tuple[datetime, datetime]:
+    def get_bucket_window(dt: datetime, interval: str) -> tuple[datetime, datetime]:
         """Compute the [start, end) UTC window for a given timestamp and interval.
 
         - Hourly: Floor to UTC hour.
@@ -25,9 +24,9 @@ class AggregationService:
         - Monthly: Floor to calendar month (1st of month 00:00:00 UTC).
         """
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         else:
-            dt = dt.astimezone(timezone.utc)
+            dt = dt.astimezone(UTC)
 
         if interval == "hourly":
             start = dt.replace(minute=0, second=0, microsecond=0)
@@ -56,12 +55,12 @@ class AggregationService:
     @classmethod
     def aggregate_aqi_readings(
         cls,
-        readings: List[AQIReading],
+        readings: list[AQIReading],
         interval: str,
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
-        station_name: Optional[str] = None,
-    ) -> List[AQIHistoryRecord]:
+        city_name: str | None = None,
+        station_id: int | None = None,
+        station_name: str | None = None,
+    ) -> list[AQIHistoryRecord]:
         """Group and aggregate AQI readings into chronological buckets without fabricating missing data."""
         if not readings:
             return []
@@ -70,14 +69,14 @@ class AggregationService:
         sorted_readings = sorted(readings, key=lambda r: r.measured_at)
 
         # Bucket by window start
-        buckets: Dict[datetime, List[AQIReading]] = {}
+        buckets: dict[datetime, list[AQIReading]] = {}
         for r in sorted_readings:
             start_window, _ = cls.get_bucket_window(r.measured_at, interval)
             if start_window not in buckets:
                 buckets[start_window] = []
             buckets[start_window].append(r)
 
-        aggregated_records: List[AQIHistoryRecord] = []
+        aggregated_records: list[AQIHistoryRecord] = []
 
         for window_start in sorted(buckets.keys()):
             bucket_items = buckets[window_start]
@@ -96,7 +95,7 @@ class AggregationService:
             count = len(values)
 
             # Category distribution
-            cat_counts: Dict[str, int] = Counter(r.aqi_category for r in valid_items)
+            cat_counts: dict[str, int] = Counter(r.aqi_category for r in valid_items)
             dominant_category = cat_counts.most_common(1)[0][0] if cat_counts else None
 
             # Dominant pollutant distribution
@@ -133,12 +132,12 @@ class AggregationService:
     @classmethod
     def aggregate_pollutant_readings(
         cls,
-        readings: List[PollutantReading],
+        readings: list[PollutantReading],
         interval: str,
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
-        station_name: Optional[str] = None,
-    ) -> List[PollutantHistoryRecord]:
+        city_name: str | None = None,
+        station_id: int | None = None,
+        station_name: str | None = None,
+    ) -> list[PollutantHistoryRecord]:
         """Group and aggregate pollutant readings into chronological buckets, computing sub-indices."""
         if not readings:
             return []
@@ -148,14 +147,14 @@ class AggregationService:
         unit = sorted_readings[0].unit
 
         # Bucket by window start
-        buckets: Dict[datetime, List[PollutantReading]] = {}
+        buckets: dict[datetime, list[PollutantReading]] = {}
         for r in sorted_readings:
             start_window, _ = cls.get_bucket_window(r.measured_at, interval)
             if start_window not in buckets:
                 buckets[start_window] = []
             buckets[start_window].append(r)
 
-        aggregated_records: List[PollutantHistoryRecord] = []
+        aggregated_records: list[PollutantHistoryRecord] = []
 
         for window_start in sorted(buckets.keys()):
             bucket_items = buckets[window_start]

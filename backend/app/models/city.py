@@ -1,16 +1,18 @@
 """SQLAlchemy model for Indian Cities."""
 
-from datetime import datetime, timezone
-from typing import List, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
 from sqlalchemy import DateTime, Float, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base_class import Base
 
 if TYPE_CHECKING:
+    from app.models.alert import Alert
+    from app.models.aqi_reading import AQIReading
     from app.models.monitoring_station import MonitoringStation
     from app.models.pollutant_reading import PollutantReading
-    from app.models.aqi_reading import AQIReading
-    from app.models.alert import Alert
 
 
 class City(Base):
@@ -26,13 +28,13 @@ class City(Base):
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
 
@@ -42,20 +44,20 @@ class City(Base):
     )
 
     # Relationships
-    stations: Mapped[List["MonitoringStation"]] = relationship(
+    stations: Mapped[list["MonitoringStation"]] = relationship(
         "MonitoringStation",
         back_populates="city",
         cascade="all, delete-orphan",
     )
-    pollutant_readings: Mapped[List["PollutantReading"]] = relationship(
+    pollutant_readings: Mapped[list["PollutantReading"]] = relationship(
         "PollutantReading",
         back_populates="city",
     )
-    aqi_readings: Mapped[List["AQIReading"]] = relationship(
+    aqi_readings: Mapped[list["AQIReading"]] = relationship(
         "AQIReading",
         back_populates="city",
     )
-    alerts: Mapped[List["Alert"]] = relationship(
+    alerts: Mapped[list["Alert"]] = relationship(
         "Alert",
         back_populates="city",
     )

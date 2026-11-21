@@ -146,7 +146,7 @@ The test suite in `frontend/src/__tests__/e2eUserJourneys.test.ts` implements a 
 | **Step 5** | **Historical Analytics & Trends** | Queries 7-day historical trends; verifies time-series point count and data integrity for chart rendering. |
 | **Step 6** | **24-Hour Forecast Trajectory** | Inspects upcoming 24-hour predictive curve, ensuring timestamps are strictly in the future. |
 | **Step 7** | **AI Health Consultation** | Sends conversational query ("Can I go jogging this evening?"); verifies AI generates contextualized advice with medical disclaimers. |
-| **Step 8** | **Alert Configuration** | Configures user notification threshold (e.g., AQI > 200, email notifications enabled); verifies preference persistence. |
+| **Step 8** | **Alert Configuration** | Configures user notification threshold (e.g., AQI > 200, ); verifies preference persistence. |
 | **Step 9** | **Notification Feed & Read Mutations** | Queries user's alert inbox, identifies unread alerts, executes "mark as read", and verifies read status updates. |
 | **Step 10** | **Multi-City Comparison** | Compares Delhi vs. Mumbai vs. Bengaluru side-by-side; verifies metrics align without state cross-contamination. |
 | **Step 11** | **Network Resilience & Fallback** | Simulates backend 500 error or network disconnection; verifies frontend gracefully transitions to fallback mode without crashing. |

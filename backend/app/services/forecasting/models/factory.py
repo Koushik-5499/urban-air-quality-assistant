@@ -1,6 +1,6 @@
 """Factory for instantiating forecasting models."""
 
-from typing import Optional
+
 from app.services.forecasting.models.base import BaseForecastModel
 from app.services.forecasting.models.exponential_smoothing import ExponentialSmoothingModel
 from app.services.forecasting.models.moving_average import MovingAverageModel
@@ -11,7 +11,7 @@ class ModelFactory:
     """Instantiates configured or requested forecasting models."""
 
     @staticmethod
-    def get_model(model_name: Optional[str] = "exponential_smoothing") -> BaseForecastModel:
+    def get_model(model_name: str | None = "exponential_smoothing") -> BaseForecastModel:
         """Return forecasting model instance matching identifier."""
         name = (model_name or "exponential_smoothing").lower().strip()
 

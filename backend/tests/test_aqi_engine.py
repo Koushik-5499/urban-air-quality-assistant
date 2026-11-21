@@ -1,23 +1,16 @@
 """Comprehensive automated tests for CPCB NAQI calculation engine, sub-indices, and API endpoints."""
 
-from datetime import datetime, timezone
 import pytest
 from sqlalchemy.orm import Session
 
 from app.db.seed import seed_cities
 from app.integrations.mock.provider import MockAQIProvider
 from app.models.aqi_reading import AQIReading
-from app.models.city import City
-from app.models.monitoring_station import MonitoringStation
-from app.models.pollutant_reading import PollutantReading
-from app.services.aqi.breakpoints import CPCB_BREAKPOINTS, POLLUTANT_INFO
 from app.services.aqi.calculator import AQICalculator
-from app.services.aqi.categories import get_aqi_category
 from app.services.aqi.dominant_pollutant import DominantPollutantResolver
 from app.services.aqi.processor import AQIProcessingService
 from app.services.aqi.validators import AQIValidator
 from app.services.aqi_data_service import AQIDataService
-
 
 # ---------------------------------------------------------
 # Unit Tests: Breakpoints & Sub-Index Calculations

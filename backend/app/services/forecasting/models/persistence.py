@@ -1,7 +1,7 @@
 """Persistence baseline model (Last-Value Forecaster: y_hat_{t+h} = y_t)."""
 
 from datetime import datetime
-from typing import List
+
 from app.services.forecasting.models.base import BaseForecastModel
 
 
@@ -20,14 +20,14 @@ class PersistenceModel(BaseForecastModel):
     def version(self) -> str:
         return "1.0.0"
 
-    def fit(self, series: List[float], timestamps: List[datetime]) -> None:
+    def fit(self, series: list[float], timestamps: list[datetime]) -> None:
         """Store the most recent observation as the persistent forecast baseline."""
         if not series:
             raise ValueError("Cannot fit PersistenceModel with empty observation series.")
         self._last_value = float(series[-1])
         self._fitted = True
 
-    def predict(self, steps: int) -> List[float]:
+    def predict(self, steps: int) -> list[float]:
         """Generate static forecast equal to the last observed value for all steps."""
         if not self._fitted:
             raise RuntimeError("PersistenceModel must be fitted before predict() is called.")

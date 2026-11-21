@@ -1,8 +1,8 @@
 """Urban Air Quality Assistant - FastAPI Main Application Entry Point."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -32,8 +32,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Configured CORS origins: %s", settings.CORS_ORIGINS)
     try:
         from app.db.base import Base
-        from app.db.session import engine, SessionLocal
         from app.db.seed import seed_cities
+        from app.db.session import SessionLocal, engine
         Base.metadata.create_all(bind=engine)
         with SessionLocal() as session:
             seed_cities(session)
@@ -160,7 +160,7 @@ def create_application() -> FastAPI:
             status=overall_status,
             version=settings.APP_VERSION,
             service=settings.APP_NAME,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             environment=settings.APP_ENV,
             database=db_health["status"],
         )

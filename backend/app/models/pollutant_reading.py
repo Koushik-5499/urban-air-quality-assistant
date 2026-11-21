@@ -1,9 +1,11 @@
 """SQLAlchemy model for individual pollutant concentration readings."""
 
-from datetime import datetime, timezone
-from typing import Optional, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Optional
+
 from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base_class import Base
 
 if TYPE_CHECKING:
@@ -17,7 +19,7 @@ class PollutantReading(Base):
     __tablename__ = "pollutant_readings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    station_id: Mapped[Optional[int]] = mapped_column(
+    station_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("monitoring_stations.id", ondelete="SET NULL"),
         nullable=True,
@@ -38,7 +40,7 @@ class PollutantReading(Base):
     data_quality: Mapped[str] = mapped_column(String(50), default="valid", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
 

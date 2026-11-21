@@ -4,33 +4,33 @@ import type { HealthRecommendationCard, SuggestedQuestion } from '../types/assis
 export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
   {
     id: 'sq-1',
-    question: "What does today's AQI mean?",
-    category: 'AQI Context',
+    question: 'Is the air quality safe for my asthmatic child to play outdoors today?',
+    category: 'Sensitive Groups',
   },
   {
     id: 'sq-2',
-    question: 'Is it safe to go outside?',
+    question: 'Is it safe to exercise outdoors given the current AQI?',
     category: 'Outdoor Guidance',
   },
   {
     id: 'sq-3',
-    question: 'What are the effects of PM2.5?',
-    category: 'Pollutant Science',
+    question: 'What are the current PM2.5 levels and health risks for elderly residents?',
+    category: 'Sensitive Groups',
   },
   {
     id: 'sq-4',
-    question: 'How can I protect myself from air pollution?',
-    category: 'Protection',
+    question: 'Should outdoor workers take precautions given today\'s air quality forecast?',
+    category: 'Outdoor Workers',
   },
   {
     id: 'sq-5',
-    question: 'Is outdoor exercise safe today?',
-    category: 'Physical Activity',
+    question: 'What indoor precautions should I take during Very Unhealthy air quality?',
+    category: 'Protection',
   },
   {
     id: 'sq-6',
-    question: 'What precautions should children take?',
-    category: 'Sensitive Groups',
+    question: 'How does today\'s AQI compare to safe WHO guidelines?',
+    category: 'AQI Context',
   },
 ];
 

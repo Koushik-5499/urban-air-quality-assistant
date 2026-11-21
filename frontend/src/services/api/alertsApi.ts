@@ -34,7 +34,7 @@ export const alertsApi = {
    * Marks a single alert as read locally in the UI session.
    * Note: Remote per-user mutation endpoints are retired in public mode.
    */
-  markAlertRead: async (alertId: number, _signal?: AbortSignal): Promise<AlertResponse> => {
+  markAlertRead: async (alertId: number): Promise<AlertResponse> => {
     return {
       id: alertId,
       city_id: 0,
@@ -64,7 +64,7 @@ export const alertsApi = {
    * Marks all alerts as read locally in the UI session.
    * Note: Remote per-user mutation endpoints are retired in public mode.
    */
-  markAllRead: async (_signal?: AbortSignal): Promise<{ updated_count: number }> => {
+  markAllRead: async (): Promise<{ updated_count: number }> => {
     return { updated_count: 0 };
   },
 

@@ -1,8 +1,8 @@
 """Holt-Winters and Double Exponential Smoothing with damped trend and diurnal seasonality."""
 
-from datetime import datetime
 import math
-from typing import Dict, List, Optional
+from datetime import datetime
+
 from app.services.forecasting.models.base import BaseForecastModel
 
 
@@ -25,7 +25,7 @@ class ExponentialSmoothingModel(BaseForecastModel):
 
         self._level: float = 0.0
         self._trend: float = 0.0
-        self._seasonals: List[float] = [0.0] * seasonal_period
+        self._seasonals: list[float] = [0.0] * seasonal_period
         self._last_hour: int = 0
         self._has_seasonality: bool = False
         self._fitted: bool = False
@@ -38,7 +38,7 @@ class ExponentialSmoothingModel(BaseForecastModel):
     def version(self) -> str:
         return "1.2.0"
 
-    def fit(self, series: List[float], timestamps: List[datetime]) -> None:
+    def fit(self, series: list[float], timestamps: list[datetime]) -> None:
         """Fit level, trend, and diurnal seasonal components to the time-series."""
         n = len(series)
         if n < 2:
@@ -92,14 +92,14 @@ class ExponentialSmoothingModel(BaseForecastModel):
         self._seasonals = seasonals
         self._fitted = True
 
-    def predict(self, steps: int) -> List[float]:
+    def predict(self, steps: int) -> list[float]:
         """Project future values across `steps` hours with damped trend and diurnal cycle."""
         if not self._fitted:
             raise RuntimeError("Model must be fitted before predict() is called.")
         if steps <= 0:
             return []
 
-        predictions: List[float] = []
+        predictions: list[float] = []
         cumulative_phi = 0.0
         m = self.seasonal_period
 

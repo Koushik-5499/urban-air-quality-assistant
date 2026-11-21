@@ -1,18 +1,18 @@
 """Comprehensive test suite for Phase 8: Air Quality Forecasting Service."""
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
+
 import httpx
 import pytest
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.integrations.weather.client import WeatherClient
-from app.integrations.weather.schemas import WeatherObservation
 from app.models.aqi_reading import AQIReading
 from app.models.city import City
-from app.models.forecast import AQIForecast, ForecastEvaluation, ForecastRun
+from app.models.forecast import AQIForecast, ForecastRun
 from app.models.monitoring_station import MonitoringStation
 from app.services.forecasting.confidence import UncertaintyEstimator
 from app.services.forecasting.data_preparation import DataPreparationService, PreparedDataset
@@ -20,19 +20,17 @@ from app.services.forecasting.evaluation import ForecastEvaluator
 from app.services.forecasting.feature_engineering import FeatureEngineeringService
 from app.services.forecasting.forecast_service import ForecastService
 from app.services.forecasting.models import (
-    BaseForecastModel,
     ExponentialSmoothingModel,
     ModelFactory,
     MovingAverageModel,
     PersistenceModel,
 )
-from app.services.forecasting.validators import ForecastValidator
 
 
 @pytest.fixture
 def forecast_seed_data(db_session: Session):
     """Seed test database with cities, stations, and rich chronological AQI readings."""
-    now_utc = datetime(2026, 11, 20, 12, 0, 0, tzinfo=timezone.utc)
+    now_utc = datetime(2026, 11, 20, 12, 0, 0, tzinfo=UTC)
 
     # 1. Cities
     delhi = City(
@@ -156,7 +154,7 @@ def test_data_preparation_insufficient_data(db_session: Session, forecast_seed_d
 
 def test_chronological_splitting_no_leakage():
     """Verify chronological split guarantees zero data leakage and preserved order."""
-    now = datetime(2026, 11, 20, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 11, 20, 0, 0, tzinfo=UTC)
     ts = [now + timedelta(hours=i) for i in range(50)]
     vals = [100.0 + i for i in range(50)]
     dataset = PreparedDataset(
@@ -178,7 +176,7 @@ def test_chronological_splitting_no_leakage():
 
 def test_feature_engineering_cyclical_and_lags():
     """Verify extraction of sine/cosine diurnal features and autoregressive lags."""
-    test_time = datetime(2026, 11, 20, 6, 0, tzinfo=timezone.utc)
+    test_time = datetime(2026, 11, 20, 6, 0, tzinfo=UTC)
     time_feats = FeatureEngineeringService.extract_time_features(test_time)
     assert "hour_sin" in time_feats
     assert "hour_cos" in time_feats
@@ -198,7 +196,7 @@ def test_feature_engineering_cyclical_and_lags():
 def test_persistence_model():
     """Verify persistence baseline projects latest observed value across all steps."""
     model = PersistenceModel()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     model.fit([185.0, 190.0, 195.0], [now - timedelta(hours=2), now - timedelta(hours=1), now])
     preds = model.predict(steps=5)
     assert len(preds) == 5
@@ -208,7 +206,7 @@ def test_persistence_model():
 def test_moving_average_model():
     """Verify moving average baseline projects rolling window mean."""
     model = MovingAverageModel(window_size=3)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     model.fit([100.0, 110.0, 120.0, 130.0], [now] * 4)
     preds = model.predict(steps=3)
     # Average of last 3: (110 + 120 + 130) / 3 = 120.0
@@ -219,7 +217,7 @@ def test_moving_average_model():
 def test_exponential_smoothing_model_fit_and_predict():
     """Verify Exponential Smoothing model projects damped trend and stays in [0, 500]."""
     model = ExponentialSmoothingModel()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ts = [now + timedelta(hours=i) for i in range(48)]
     # Trending series: 150 -> 200
     vals = [150.0 + (i * 1.0) for i in range(48)]

@@ -1,7 +1,7 @@
 """Health Advisor Service coordinating AI generation, context grounding, and fallback guidance."""
 
 import logging
-from typing import List, Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -12,7 +12,6 @@ from app.integrations.ai.gemini_provider import GeminiProvider
 from app.integrations.ai.schemas import (
     AICompletionRequest,
     AQIContextSnapshot,
-    ChatMessage,
     HealthAskRequest,
     HealthAskResponse,
     HealthGuidelinesResponse,
@@ -38,8 +37,8 @@ class HealthAdvisorService:
 
     def __init__(
         self,
-        ai_provider: Optional[BaseAIProvider] = None,
-        settings: Optional[Settings] = None,
+        ai_provider: BaseAIProvider | None = None,
+        settings: Settings | None = None,
     ):
         self.settings = settings or get_settings()
         self.ai_provider = ai_provider or GeminiProvider(settings=self.settings)
@@ -82,7 +81,7 @@ class HealthAdvisorService:
         self,
         db: Session,
         city: str,
-        station_id: Optional[int] = None,
+        station_id: int | None = None,
     ) -> HealthRecommendationsResponse:
         """Generate structured, verified health recommendations for a specific city or station."""
         snapshot = ContextBuilder.build_snapshot(db, city_name=city, station_id=station_id)

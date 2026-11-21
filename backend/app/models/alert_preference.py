@@ -1,9 +1,11 @@
 """SQLAlchemy model for user alert preferences."""
 
-from datetime import datetime, timezone
-from typing import Optional, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Optional
+
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base_class import Base
 
 if TYPE_CHECKING:
@@ -24,7 +26,7 @@ class AlertPreference(Base):
         nullable=False,
         index=True,
     )
-    station_id: Mapped[Optional[int]] = mapped_column(
+    station_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("monitoring_stations.id", ondelete="SET NULL"),
         nullable=True,
@@ -34,19 +36,18 @@ class AlertPreference(Base):
     min_severity: Mapped[str] = mapped_column(String(50), default="Moderate", nullable=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     channels: Mapped[str] = mapped_column(String(200), default="in_app", nullable=False)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    quiet_hours_start: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # e.g. "22:00"
-    quiet_hours_end: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)    # e.g. "07:00"
+    quiet_hours_start: Mapped[str | None] = mapped_column(String(10), nullable=True)  # e.g. "22:00"
+    quiet_hours_end: Mapped[str | None] = mapped_column(String(10), nullable=True)    # e.g. "07:00"
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Kolkata", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
 

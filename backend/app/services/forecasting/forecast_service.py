@@ -1,25 +1,21 @@
 """Master orchestrator for model training, forecast generation, evaluation, and retrieval."""
 
 import asyncio
-from datetime import datetime, timedelta, timezone
 import logging
-import math
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime, timedelta
+
 from fastapi import HTTPException, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import Settings, get_settings
 from app.integrations.weather.client import WeatherClient
-from app.models.aqi_reading import AQIReading
 from app.models.city import City
 from app.models.forecast import AQIForecast, ForecastEvaluation, ForecastRun
-from app.models.monitoring_station import MonitoringStation
 from app.schemas.forecast import (
     AQIForecastItem,
     DailyForecastResponse,
     DailyForecastSummary,
-    ForecastGenerateRequest,
     ForecastGenerateResponse,
     ForecastHistoryResponse,
     ForecastListResponse,
@@ -29,10 +25,10 @@ from app.schemas.forecast import (
     ModelStatusResponse,
 )
 from app.services.forecasting.confidence import UncertaintyEstimator
-from app.services.forecasting.data_preparation import DataPreparationService, PreparedDataset
+from app.services.forecasting.data_preparation import DataPreparationService
 from app.services.forecasting.evaluation import ForecastEvaluator
 from app.services.forecasting.models.factory import ModelFactory
-from app.services.forecasting.validators import ForecastValidator, SUPPORTED_HORIZONS
+from app.services.forecasting.validators import SUPPORTED_HORIZONS, ForecastValidator
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +40,8 @@ class ForecastService:
 
     def __init__(
         self,
-        weather_client: Optional[WeatherClient] = None,
-        settings: Optional[Settings] = None,
+        weather_client: WeatherClient | None = None,
+        settings: Settings | None = None,
     ):
         self.settings = settings or get_settings()
         self.weather_client = weather_client or WeatherClient(settings=self.settings)
@@ -70,13 +66,13 @@ class ForecastService:
         self,
         db: Session,
         city_name: str,
-        station_id: Optional[int] = None,
-        requested_horizons: Optional[List[str]] = None,
+        station_id: int | None = None,
+        requested_horizons: list[str] | None = None,
         force_retrain: bool = False,
     ) -> ForecastGenerateResponse:
         """Execute a controlled model training and forecast generation task with concurrency protection."""
         async with self._generation_lock:
-            now_utc = datetime.now(timezone.utc)
+            now_utc = datetime.now(UTC)
             city, station = ForecastValidator.resolve_city_and_station(db, city_name, station_id)
             target_horizons = ForecastValidator.validate_horizons_list(requested_horizons)
 
@@ -221,7 +217,7 @@ class ForecastService:
             latest_time = dataset.timestamps[-1]
             latest_dom = dataset.dominant_pollutants[-1] if dataset.dominant_pollutants else "PM2.5"
 
-            forecast_records: List[AQIForecast] = []
+            forecast_records: list[AQIForecast] = []
             for step_h in range(1, max_horizon + 1):
                 pred_aqi = int(round(raw_predictions[step_h - 1]))
                 target_timestamp = latest_time + timedelta(hours=step_h)
@@ -277,8 +273,8 @@ class ForecastService:
         self,
         db: Session,
         city_name: str,
-        station_id: Optional[int] = None,
-        horizon: Optional[str] = None,
+        station_id: int | None = None,
+        horizon: str | None = None,
         include_uncertainty: bool = True,
     ) -> ForecastListResponse:
         """Retrieve latest generated forecasts for a city, optionally filtered by horizon."""
@@ -370,7 +366,7 @@ class ForecastService:
         self,
         db: Session,
         city_name: str,
-        station_id: Optional[int] = None,
+        station_id: int | None = None,
         hours: int = 24,
     ) -> HourlyForecastResponse:
         """Return step-by-step hourly forecasts up to `hours` (1 to 72)."""
@@ -456,7 +452,7 @@ class ForecastService:
         self,
         db: Session,
         city_name: str,
-        station_id: Optional[int] = None,
+        station_id: int | None = None,
         days: int = 3,
     ) -> DailyForecastResponse:
         """Return daily forecast summaries aggregating hourly predictions."""
@@ -471,12 +467,12 @@ class ForecastService:
         )
 
         # Group hourly forecasts by UTC calendar date
-        grouped: Dict[str, List[AQIForecastItem]] = {}
+        grouped: dict[str, list[AQIForecastItem]] = {}
         for item in hourly_resp.forecasts:
             date_key = item.forecast_timestamp.strftime("%Y-%m-%d")
             grouped.setdefault(date_key, []).append(item)
 
-        summaries: List[DailyForecastSummary] = []
+        summaries: list[DailyForecastSummary] = []
         for d_key in sorted(grouped.keys())[:days]:
             day_items = grouped[d_key]
             aqis = [it.predicted_aqi for it in day_items]
@@ -515,7 +511,7 @@ class ForecastService:
         self,
         db: Session,
         city_name: str,
-        station_id: Optional[int] = None,
+        station_id: int | None = None,
         limit: int = 10,
     ) -> ForecastHistoryResponse:
         """Query previous forecast execution runs and their performance evaluations."""
@@ -568,7 +564,7 @@ class ForecastService:
     def get_model_status(
         self,
         db: Session,
-        city_name: Optional[str] = None,
+        city_name: str | None = None,
     ) -> ModelStatusResponse:
         """Report operational status, versioning, evaluation metrics, and readiness of the forecasting service."""
         city_entity = None
@@ -583,7 +579,7 @@ class ForecastService:
         latest_run_stmt = select(ForecastRun).where(*filters).order_by(desc(ForecastRun.generated_at)).limit(1)
         latest_run = db.execute(latest_run_stmt).scalar_one_or_none()
 
-        eval_metrics: List[ModelEvaluationMetric] = []
+        eval_metrics: list[ModelEvaluationMetric] = []
         if latest_run:
             evals_stmt = (
                 select(ForecastEvaluation)

@@ -1,10 +1,10 @@
 """Defensive prompt engineering, safety validation, and input sanitization."""
 
 import re
-from typing import List, Optional
+
 from fastapi import HTTPException, status
 
-from app.integrations.ai.schemas import AQIContextSnapshot, ChatMessage
+from app.integrations.ai.schemas import ChatMessage
 from app.services.health.knowledge_base import MEDICAL_DISCLAIMER
 
 MAX_QUESTION_LENGTH = 500
@@ -22,7 +22,7 @@ class HealthSafetyValidator:
     """Enforces safety guardrails, prompt containment, and response validation."""
 
     @staticmethod
-    def validate_question(question: Optional[str]) -> str:
+    def validate_question(question: str | None) -> str:
         """Validate and sanitize user query."""
         if not question or not question.strip():
             raise HTTPException(
@@ -43,7 +43,7 @@ class HealthSafetyValidator:
         return clean_q
 
     @staticmethod
-    def validate_history(history: Optional[List[ChatMessage]]) -> List[ChatMessage]:
+    def validate_history(history: list[ChatMessage] | None) -> list[ChatMessage]:
         """Validate bounded conversation history."""
         if not history:
             return []

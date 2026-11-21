@@ -1,8 +1,7 @@
 """Trend calculation service for chronological air quality analysis."""
 
-from datetime import datetime, timedelta, timezone
 import statistics
-from typing import List, Optional, Tuple
+from datetime import UTC, datetime
 
 from app.models.aqi_reading import AQIReading
 from app.models.pollutant_reading import PollutantReading
@@ -16,21 +15,21 @@ class TrendService:
     def _as_utc(dt: datetime) -> datetime:
         """Ensure datetime has UTC timezone."""
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            return dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
 
     @classmethod
     def calculate_aqi_trend(
         cls,
-        readings: List[AQIReading],
+        readings: list[AQIReading],
         threshold: float = 5.0,
         min_records_per_period: int = 3,
         interval: str = "daily",
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
-        station_name: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        city_name: str | None = None,
+        station_id: int | None = None,
+        station_name: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> HistoryTrendResponse:
         """Calculate trend for AQI readings by comparing earlier and later temporal halves."""
         valid_readings = [r for r in readings if r.aqi_value is not None and r.data_quality != "invalid"]
@@ -76,9 +75,9 @@ class TrendService:
         t_end = end_date or sorted_readings[-1].measured_at
 
         if t_start.tzinfo is None:
-            t_start = t_start.replace(tzinfo=timezone.utc)
+            t_start = t_start.replace(tzinfo=UTC)
         if t_end.tzinfo is None:
-            t_end = t_end.replace(tzinfo=timezone.utc)
+            t_end = t_end.replace(tzinfo=UTC)
 
         midpoint = t_start + (t_end - t_start) / 2
 
@@ -118,7 +117,7 @@ class TrendService:
         later_avg = round(statistics.mean([r.aqi_value for r in later_readings]), 1)
         abs_change = round(later_avg - earlier_avg, 1)
 
-        pct_change: Optional[float] = None
+        pct_change: float | None = None
         if earlier_avg > 0:
             pct_change = round(((later_avg - earlier_avg) / earlier_avg) * 100.0, 1)
 
@@ -161,15 +160,15 @@ class TrendService:
     @classmethod
     def calculate_pollutant_trend(
         cls,
-        readings: List[PollutantReading],
+        readings: list[PollutantReading],
         threshold: float = 2.0,
         min_records_per_period: int = 3,
         interval: str = "daily",
-        city_name: Optional[str] = None,
-        station_id: Optional[int] = None,
-        station_name: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        city_name: str | None = None,
+        station_id: int | None = None,
+        station_name: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> HistoryTrendResponse:
         """Calculate trend for a specific pollutant concentration."""
         valid_readings = [r for r in readings if r.concentration is not None and r.concentration >= 0]
@@ -217,9 +216,9 @@ class TrendService:
         t_end = end_date or sorted_readings[-1].measured_at
 
         if t_start.tzinfo is None:
-            t_start = t_start.replace(tzinfo=timezone.utc)
+            t_start = t_start.replace(tzinfo=UTC)
         if t_end.tzinfo is None:
-            t_end = t_end.replace(tzinfo=timezone.utc)
+            t_end = t_end.replace(tzinfo=UTC)
 
         midpoint = t_start + (t_end - t_start) / 2
 
@@ -259,7 +258,7 @@ class TrendService:
         later_avg = round(statistics.mean([r.concentration for r in later_readings]), 2)
         abs_change = round(later_avg - earlier_avg, 2)
 
-        pct_change: Optional[float] = None
+        pct_change: float | None = None
         if earlier_avg > 0:
             pct_change = round(((later_avg - earlier_avg) / earlier_avg) * 100.0, 1)
 

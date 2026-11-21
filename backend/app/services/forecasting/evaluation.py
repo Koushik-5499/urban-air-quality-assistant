@@ -1,9 +1,8 @@
 """Time-series model evaluation engine calculating MAE, RMSE, MAPE, and horizon errors."""
 
-from dataclasses import dataclass, field
-from datetime import datetime
 import math
-from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+
 from app.services.forecasting.data_preparation import DatasetSplits
 from app.services.forecasting.models.base import BaseForecastModel
 from app.services.forecasting.models.persistence import PersistenceModel
@@ -17,7 +16,7 @@ class HorizonEvaluation:
     sample_count: int
     mae: float
     rmse: float
-    mape: Optional[float] = None
+    mape: float | None = None
 
 
 @dataclass
@@ -29,8 +28,8 @@ class EvaluationReport:
     sample_count: int
     overall_mae: float
     overall_rmse: float
-    overall_mape: Optional[float]
-    horizon_metrics: List[HorizonEvaluation] = field(default_factory=list)
+    overall_mape: float | None
+    horizon_metrics: list[HorizonEvaluation] = field(default_factory=list)
     baseline_mae: float = 0.0
     baseline_rmse: float = 0.0
     improvement_vs_baseline_pct: float = 0.0
@@ -42,14 +41,14 @@ class ForecastEvaluator:
     """Evaluates time-series models on hold-out validation and test sets without data leakage."""
 
     @staticmethod
-    def calculate_mae(actuals: List[float], predictions: List[float]) -> float:
+    def calculate_mae(actuals: list[float], predictions: list[float]) -> float:
         """Mean Absolute Error."""
         if not actuals or len(actuals) != len(predictions):
             return 0.0
         return round(sum(abs(a - p) for a, p in zip(actuals, predictions)) / float(len(actuals)), 2)
 
     @staticmethod
-    def calculate_rmse(actuals: List[float], predictions: List[float]) -> float:
+    def calculate_rmse(actuals: list[float], predictions: list[float]) -> float:
         """Root Mean Squared Error."""
         if not actuals or len(actuals) != len(predictions):
             return 0.0
@@ -57,7 +56,7 @@ class ForecastEvaluator:
         return round(math.sqrt(mse), 2)
 
     @staticmethod
-    def calculate_mape(actuals: List[float], predictions: List[float]) -> Optional[float]:
+    def calculate_mape(actuals: list[float], predictions: list[float]) -> float | None:
         """Mean Absolute Percentage Error safely handling zero or near-zero observations."""
         if not actuals or len(actuals) != len(predictions):
             return None
@@ -71,7 +70,7 @@ class ForecastEvaluator:
         cls,
         model: BaseForecastModel,
         splits: DatasetSplits,
-        horizons: Optional[List[int]] = None,
+        horizons: list[int] | None = None,
     ) -> EvaluationReport:
         """Fit model on training split and evaluate out-of-sample performance on test split."""
         eval_horizons = horizons or [1, 6, 12, 24]
@@ -113,7 +112,7 @@ class ForecastEvaluator:
             improvement = 0.0
 
         # 3. Calculate per-horizon error metrics
-        horizon_evals: List[HorizonEvaluation] = []
+        horizon_evals: list[HorizonEvaluation] = []
         for h in eval_horizons:
             if h <= test_n:
                 h_actuals = test_y[:h]

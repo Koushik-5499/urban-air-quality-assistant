@@ -1,6 +1,7 @@
 """Master router aggregating all v1 endpoint sub-routers."""
 
 from fastapi import APIRouter
+
 from app.api.v1.endpoints import air_quality, alerts, aqi, forecast, health, history, stations
 
 api_router = APIRouter()

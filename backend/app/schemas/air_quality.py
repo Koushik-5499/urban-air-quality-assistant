@@ -1,7 +1,7 @@
 """Pydantic schemas for Air Quality API endpoints and synchronization."""
 
 from datetime import datetime
-from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -28,12 +28,12 @@ class CityAirQualityResponse(BaseModel):
     source: str = Field(default="CPCB", description="Data provider")
     is_simulated: bool = Field(default=False, description="Flag indicating simulated vs observed data")
     is_stale: bool = Field(default=False, description="True if latest reading exceeds freshness threshold")
-    data_age_seconds: Optional[int] = Field(None, description="Age of latest measurement in seconds")
-    measured_at: Optional[datetime] = Field(None, description="Timestamp of latest observation")
+    data_age_seconds: int | None = Field(None, description="Age of latest measurement in seconds")
+    measured_at: datetime | None = Field(None, description="Timestamp of latest observation")
     fetched_at: datetime = Field(..., description="Timestamp of API retrieval")
-    pollutants: List[PollutantDetail] = Field(default_factory=list, description="Array of pollutant readings")
+    pollutants: list[PollutantDetail] = Field(default_factory=list, description="Array of pollutant readings")
     active_stations_count: int = Field(default=0, description="Number of active reporting stations in this city")
-    message: Optional[str] = Field(None, description="Explanatory notes on coverage or availability")
+    message: str | None = Field(None, description="Explanatory notes on coverage or availability")
 
 
 class CityAvailabilitySummary(BaseModel):
@@ -44,7 +44,7 @@ class CityAvailabilitySummary(BaseModel):
     state: str
     country: str = "India"
     data_available: bool
-    last_measured_at: Optional[datetime] = None
+    last_measured_at: datetime | None = None
     is_stale: bool = False
     station_count: int = 0
     source: str = "CPCB"
@@ -58,15 +58,15 @@ class SourceStatusResponse(BaseModel):
     publisher: str
     license: str
     base_url: str
-    resource_id: Optional[str] = None
+    resource_id: str | None = None
     is_configured: bool
-    last_successful_fetch: Optional[datetime] = None
-    last_successful_sync: Optional[datetime] = None
+    last_successful_fetch: datetime | None = None
+    last_successful_sync: datetime | None = None
     data_freshness_status: str = Field(
         ...,
         description="Freshness assessment: 'fresh', 'stale', 'no_data', or 'unconfigured'",
     )
-    last_error_category: Optional[str] = None
+    last_error_category: str | None = None
 
 
 class SyncResponse(BaseModel):

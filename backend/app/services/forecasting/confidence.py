@@ -1,18 +1,17 @@
 """Uncertainty estimation and prediction interval calculation based on empirical validation residuals."""
 
-from dataclasses import dataclass
 import math
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
 
 
 @dataclass
 class UncertaintyEstimate:
     """Interval bounds and uncertainty classification for a predicted point."""
 
-    lower_bound: Optional[int]
-    upper_bound: Optional[int]
+    lower_bound: int | None
+    upper_bound: int | None
     uncertainty_status: str  # "estimated", "high_uncertainty", "unavailable"
-    standard_error: Optional[float]
+    standard_error: float | None
     confidence_level: float = 0.90
     methodology: str = "empirical_residual_variance_with_horizon_expansion"
 
@@ -22,9 +21,9 @@ class UncertaintyEstimator:
 
     @staticmethod
     def calculate_residual_standard_deviation(
-        actuals: List[float],
-        predictions: List[float],
-    ) -> Optional[float]:
+        actuals: list[float],
+        predictions: list[float],
+    ) -> float | None:
         """Compute sample standard deviation of residuals (errors)."""
         if not actuals or len(actuals) != len(predictions) or len(actuals) < 3:
             return None
@@ -39,12 +38,12 @@ class UncertaintyEstimator:
         cls,
         predicted_aqi: float,
         horizon_hours: int,
-        residual_std: Optional[float],
+        residual_std: float | None,
         sample_count: int = 0,
         z_multiplier: float = 1.645,  # 90% confidence interval
     ) -> UncertaintyEstimate:
         """Calculate calibrated lower and upper prediction bounds.
-        
+
         The prediction interval expands with the square root of horizon step:
         SE(h) = residual_std * sqrt(1 + (h / 24))
         """

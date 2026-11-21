@@ -1,7 +1,7 @@
 """API v1 Health endpoints covering service health and the AI Health Advisor."""
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
@@ -45,7 +45,7 @@ async def get_v1_health(
         status=overall_status,
         version=settings.APP_VERSION,
         service=settings.APP_NAME,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         environment=settings.APP_ENV,
         database=db_health["status"],
     )
@@ -76,7 +76,7 @@ async def ask_health_assistant(
 )
 def get_health_recommendations(
     city: str = Query(..., description="City name to fetch current recommendations for"),
-    station_id: Optional[int] = Query(None, description="Optional monitoring station ID"),
+    station_id: int | None = Query(None, description="Optional monitoring station ID"),
     db: Session = Depends(get_db),
     advisor: HealthAdvisorService = Depends(get_health_advisor),
 ) -> HealthRecommendationsResponse:

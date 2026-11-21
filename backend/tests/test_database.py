@@ -1,6 +1,7 @@
 """Automated tests for database models, relationships, constraints, repositories, and seeding."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -109,7 +110,7 @@ def test_pollutant_reading_creation_and_constraints(db_session: Session):
     db_session.flush()
 
     # Valid non-negative concentration
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     reading = PollutantReading(
         city_id=city.id,
         pollutant_code="PM2.5",
@@ -149,7 +150,7 @@ def test_aqi_reading_creation_and_simulation(db_session: Session):
     db_session.add(city)
     db_session.flush()
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
 
     # Simulated reading
     sim_reading = AQIReading(
@@ -191,7 +192,7 @@ def test_alert_creation_and_relationships(db_session: Session):
     db_session.add(city)
     db_session.flush()
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     aqi_record = AQIReading(
         city_id=city.id,
         aqi_value=310,
@@ -280,7 +281,7 @@ def test_repositories(db_session: Session):
     assert stations[0].station_name == "Marine Drive Node"
 
     # ReadingRepository pollutant reading
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     reading_repo.create_pollutant_reading(
         PollutantReadingCreate(
             city_id=created_city.id,

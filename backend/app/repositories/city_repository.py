@@ -1,8 +1,9 @@
 """City repository for database CRUD operations."""
 
-from typing import List, Optional
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from app.models.city import City
 from app.schemas.city import CityCreate, CityUpdate
 
@@ -13,16 +14,16 @@ class CityRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_id(self, city_id: int) -> Optional[City]:
+    def get_by_id(self, city_id: int) -> City | None:
         """Retrieve a city by its primary key ID."""
         return self.db.get(City, city_id)
 
-    def get_by_name_and_state(self, name: str, state: str) -> Optional[City]:
+    def get_by_name_and_state(self, name: str, state: str) -> City | None:
         """Retrieve a city by its unique combination of name and state."""
         statement = select(City).where(City.name == name, City.state == state)
         return self.db.execute(statement).scalar_one_or_none()
 
-    def list_cities(self, skip: int = 0, limit: int = 100) -> List[City]:
+    def list_cities(self, skip: int = 0, limit: int = 100) -> list[City]:
         """Retrieve all registered cities ordered by name."""
         statement = select(City).order_by(City.name).offset(skip).limit(limit)
         return list(self.db.execute(statement).scalars().all())

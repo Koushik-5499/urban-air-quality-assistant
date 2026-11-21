@@ -1,7 +1,7 @@
 """API v1 endpoints for air quality alerts, notifications, and public advisories."""
 
 from datetime import datetime
-from typing import Dict, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
@@ -34,13 +34,13 @@ def get_alert_service(
     description="Retrieve a paginated list of public ambient alerts with optional filtering by city, station, severity, and date range.",
 )
 def get_alerts(
-    city: Optional[str] = Query(None, description="Filter by city name"),
-    station_id: Optional[int] = Query(None, description="Filter by monitoring station ID"),
-    severity: Optional[str] = Query(None, description="Filter by severity: Low, Moderate, High, Critical"),
-    is_read: Optional[bool] = Query(None, description="Filter by read status (true/false)"),
-    start_date: Optional[datetime] = Query(None, description="Filter alerts created on or after this ISO datetime"),
-    end_date: Optional[datetime] = Query(None, description="Filter alerts created on or before this ISO datetime"),
-    is_simulated: Optional[bool] = Query(None, description="Filter by simulation status"),
+    city: str | None = Query(None, description="Filter by city name"),
+    station_id: int | None = Query(None, description="Filter by monitoring station ID"),
+    severity: str | None = Query(None, description="Filter by severity: Low, Moderate, High, Critical"),
+    is_read: bool | None = Query(None, description="Filter by read status (true/false)"),
+    start_date: datetime | None = Query(None, description="Filter alerts created on or after this ISO datetime"),
+    end_date: datetime | None = Query(None, description="Filter alerts created on or before this ISO datetime"),
+    is_simulated: bool | None = Query(None, description="Filter by simulation status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size (max 100)"),
     db: Session = Depends(get_db),
@@ -66,7 +66,7 @@ def get_alerts(
     summary="[Retired] Get unread alert count",
     description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def get_unread_count() -> Dict[str, str]:
+def get_unread_count() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -82,7 +82,7 @@ def get_unread_count() -> Dict[str, str]:
 )
 def mark_alert_read(
     alert_id: int = Path(..., ge=1, description="ID of the alert"),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -96,7 +96,7 @@ def mark_alert_read(
     summary="[Retired] Mark all alerts as read",
     description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def mark_all_alerts_read() -> Dict[str, str]:
+def mark_all_alerts_read() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -110,7 +110,7 @@ def mark_all_alerts_read() -> Dict[str, str]:
     summary="[Retired] Get user alert preferences",
     description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def get_user_preferences() -> Dict[str, str]:
+def get_user_preferences() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -124,7 +124,7 @@ def get_user_preferences() -> Dict[str, str]:
     summary="[Retired] Set or update alert preferences",
     description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def update_user_preferences() -> Dict[str, str]:
+def update_user_preferences() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -164,7 +164,7 @@ def get_alert_status(
     "/test-notification",
     response_model=AlertTestNotificationResponse,
     summary="Test notification channel delivery",
-    description="Send a test notification via email, web push, or in-app to verify provider credentials and configuration. Protected by X-Admin-Secret.",
+    description="Send a test notification via web push or in-app to verify provider credentials and configuration. Protected by X-Admin-Secret.",
 )
 async def test_notification(
     request: AlertTestNotificationRequest,
@@ -182,7 +182,7 @@ async def test_notification(
     summary="[Retired] Register Web Push subscription",
     description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
 )
-def subscribe_push() -> Dict[str, str]:
+def subscribe_push() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,

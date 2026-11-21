@@ -1,6 +1,6 @@
 """Monitoring stations API endpoints."""
 
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,16 +15,16 @@ router = APIRouter()
 
 @router.get(
     "",
-    response_model=List[StationResponse],
+    response_model=list[StationResponse],
     summary="List Monitoring Stations",
     description="Retrieve registered environmental monitoring stations filtered by city, state, or provider.",
 )
 async def list_monitoring_stations(
-    city: Optional[str] = Query(None, description="Filter by city name"),
-    state: Optional[str] = Query(None, description="Filter by state name"),
-    provider: Optional[str] = Query(None, description="Filter by provider (e.g. CPCB)"),
+    city: str | None = Query(None, description="Filter by city name"),
+    state: str | None = Query(None, description="Filter by state name"),
+    provider: str | None = Query(None, description="Filter by provider (e.g. CPCB)"),
     db: Session = Depends(get_db),
-) -> List[StationResponse]:
+) -> list[StationResponse]:
     """Query known monitoring stations."""
     stmt = select(MonitoringStation).join(City, MonitoringStation.city_id == City.id)
 

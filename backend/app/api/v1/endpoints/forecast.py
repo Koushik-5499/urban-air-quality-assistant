@@ -1,6 +1,6 @@
 """API v1 endpoints for air quality forecasting, hourly projections, daily summaries, and model status."""
 
-from typing import Optional
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -29,11 +29,11 @@ def get_forecast_service(
 
 
 def verify_forecast_admin_access(
-    x_admin_secret: Optional[str] = Header(None, alias="X-Admin-Secret"),
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
     settings: Settings = Depends(get_settings),
 ) -> None:
     """Verify administrator secret header for triggering on-demand model training and forecast generation.
-    
+
     In development mode, if FORECAST_ADMIN_SECRET is empty/unset, access is permitted.
     If FORECAST_ADMIN_SECRET is set, the X-Admin-Secret header must match.
     In non-development environments, an admin secret is always mandatory.
@@ -61,8 +61,8 @@ def verify_forecast_admin_access(
 )
 async def get_aqi_forecast(
     city: str = Query(..., min_length=1, max_length=100, description="City name (e.g. 'Delhi', 'Bengaluru')"),
-    station_id: Optional[int] = Query(None, description="Optional monitoring station ID"),
-    horizon: Optional[str] = Query(None, description="Optional target horizon: '1h', '6h', '12h', '24h', '48h', '72h'"),
+    station_id: int | None = Query(None, description="Optional monitoring station ID"),
+    horizon: str | None = Query(None, description="Optional target horizon: '1h', '6h', '12h', '24h', '48h', '72h'"),
     include_uncertainty: bool = Query(True, description="Whether to include lower and upper prediction interval bounds"),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
@@ -85,7 +85,7 @@ async def get_aqi_forecast(
 )
 async def get_hourly_forecast(
     city: str = Query(..., min_length=1, max_length=100, description="City name"),
-    station_id: Optional[int] = Query(None, description="Optional monitoring station ID"),
+    station_id: int | None = Query(None, description="Optional monitoring station ID"),
     hours: int = Query(24, ge=1, le=72, description="Number of future hours to project (1 to 72)"),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
@@ -107,7 +107,7 @@ async def get_hourly_forecast(
 )
 async def get_daily_forecast(
     city: str = Query(..., min_length=1, max_length=100, description="City name"),
-    station_id: Optional[int] = Query(None, description="Optional monitoring station ID"),
+    station_id: int | None = Query(None, description="Optional monitoring station ID"),
     days: int = Query(3, ge=1, le=7, description="Number of future days (1 to 7)"),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
@@ -129,7 +129,7 @@ async def get_daily_forecast(
 )
 def get_forecast_history(
     city: str = Query(..., min_length=1, max_length=100, description="City name"),
-    station_id: Optional[int] = Query(None, description="Optional monitoring station ID"),
+    station_id: int | None = Query(None, description="Optional monitoring station ID"),
     limit: int = Query(10, ge=1, le=100, description="Maximum number of historical runs to retrieve"),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
@@ -150,7 +150,7 @@ def get_forecast_history(
     description="Inspect model architecture, version, evaluation metrics (MAE, RMSE, MAPE), supported horizons, and weather integration status.",
 )
 def get_model_status(
-    city: Optional[str] = Query(None, description="Optional city name to scope status and latest run metrics"),
+    city: str | None = Query(None, description="Optional city name to scope status and latest run metrics"),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
 ) -> ModelStatusResponse:

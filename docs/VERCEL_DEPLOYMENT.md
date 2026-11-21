@@ -133,7 +133,7 @@ openssl rand -hex 32
 - `VAPID_PUBLIC_KEY`: *(Application VAPID public key)*
 - `VAPID_PRIVATE_KEY`: *(Application VAPID private key)*
 - `VAPID_SUBJECT`: `mailto:admin@your-domain.com`
-- `EMAIL_NOTIFICATIONS_ENABLED`: `false` (Strictly disabled)
+
 
 ---
 

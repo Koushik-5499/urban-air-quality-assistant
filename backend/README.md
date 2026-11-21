@@ -14,7 +14,7 @@ FastAPI-powered asynchronous backend service for the Urban Air Quality Assistant
 - **Database Engine**: SQLite (default local development) / PostgreSQL ready
 - **External Integration & HTTP Client**: [HTTPX](https://www.python-httpx.org/) (Asynchronous with connection pooling & bounded retries)
 - **Data Validation & Settings**: [Pydantic v2](https://docs.pydantic.dev/) and `pydantic-settings`
-- **Email Delivery**: [Resend](https://resend.com/) API via HTTPX
+- **Web Push**: VAPID-based push notifications via pywebpush
 - **Web Push Notifications**: `pywebpush` with VAPID signing
 - **Environment Management**: `python-dotenv`
 - **Testing**: `pytest`, `pytest-asyncio`, `anyio`, and `httpx`
@@ -117,7 +117,7 @@ backend/
 │       │   ├── threshold_engine.py   # Condition detection & NAQI severity mapping
 │       │   ├── deduplication.py      # Deterministic key generation & active window suppression
 │       │   ├── delivery_tracker.py   # Timezone-aware quiet hours & critical override
-│       │   ├── notification_service.py # Resend email, Web Push (VAPID) & templates
+│       │   ├── notification_service.py # Web Push (VAPID) & templates
 │       │   ├── alert_generator.py    # Alert record creation & DB persistence
 │       │   └── alert_service.py      # Orchestrator for evaluation, listing & management
 │       └── forecasting/          # Phase 8 Air Quality Forecasting System
@@ -642,7 +642,7 @@ Host: localhost:8000
 
 ## 9. Phase 7: Alerts & Notifications System
 
-The Alerts & Notifications subsystem continuously evaluates environmental conditions across all configured cities and monitoring stations. When air pollution breaches safety levels or shifts rapidly, alerts are generated and dispatched through In-App, Email (via Resend), and Web Push (via VAPID/`pywebpush`) channels.
+The Alerts & Notifications subsystem continuously evaluates environmental conditions across all configured cities and monitoring stations. When air pollution breaches safety levels or shifts rapidly, alerts are generated and dispatched through In-App and Web Push (via VAPID) (via VAPID/`pywebpush`) channels.
 
 ### 9.1 Detection Engine & Trigger Conditions
 The engine detects six primary environmental events:
@@ -677,7 +677,6 @@ To avoid alert fatigue:
 
 ### 9.5 Multi-Channel Notification Dispatch
 - **In-App Alerts**: Always persisted to the `alerts` database table with `is_read=False`.
-- **Email Dispatch**: Delivered via the official [Resend](https://resend.com) API using asynchronous HTTPX with authorization tokens, multipart HTML/plain-text templates, timeout protection, and retry bounds.
 - **Web Push**: Standard Web Push over VAPID via `pywebpush`. Auto-prunes expired subscriptions returning HTTP `410 Gone` or `404 Not Found`.
 
 ### 9.6 Simulated Data Handling & Safety

@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import List, Optional
+
 from google import genai
 from google.genai import types
 
@@ -25,18 +25,18 @@ class GeminiProvider(BaseAIProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
-        timeout: Optional[int] = None,
-        max_retries: Optional[int] = None,
-        settings: Optional[Settings] = None,
+        api_key: str | None = None,
+        model: str | None = None,
+        timeout: int | None = None,
+        max_retries: int | None = None,
+        settings: Settings | None = None,
     ):
         cfg = settings or get_settings()
         self.api_key = api_key or cfg.GEMINI_API_KEY
         self.model = model or cfg.GEMINI_MODEL or "gemini-2.5-flash"
         self.timeout = timeout or cfg.AI_REQUEST_TIMEOUT or 30
         self.max_retries = max_retries or cfg.AI_MAX_RETRIES or 2
-        self._client: Optional[genai.Client] = None
+        self._client: genai.Client | None = None
 
     def is_configured(self) -> bool:
         """Check if a non-empty Gemini API key is configured."""
@@ -58,9 +58,9 @@ class GeminiProvider(BaseAIProvider):
             self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-    def _build_contents(self, request: AICompletionRequest) -> List[types.Content]:
+    def _build_contents(self, request: AICompletionRequest) -> list[types.Content]:
         """Convert chat history and prompt into GenAI Content structures."""
-        contents: List[types.Content] = []
+        contents: list[types.Content] = []
 
         if request.conversation_history:
             for msg in request.conversation_history:
@@ -95,7 +95,7 @@ class GeminiProvider(BaseAIProvider):
             max_output_tokens=request.max_tokens,
         )
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
                 # Wrap asynchronous generation in strict timeout
@@ -115,7 +115,7 @@ class GeminiProvider(BaseAIProvider):
                     finish_reason="STOP",
                 )
 
-            except asyncio.TimeoutError as exc:
+            except TimeoutError:
                 logger.warning(
                     "Gemini API request timed out (attempt %d/%d) after %ds",
                     attempt + 1,

@@ -1,7 +1,7 @@
 """Pydantic schemas for NAQI calculation results, sub-indices, history, and processing."""
 
 from datetime import datetime
-from typing import Dict, List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -11,11 +11,11 @@ class PollutantSubIndexResult(BaseModel):
     pollutant_code: str
     concentration: float
     unit: str
-    sub_index: Optional[int] = Field(None, description="Calculated CPCB sub-index (0-500)")
-    category: Optional[str] = Field(None, description="Category for this pollutant sub-index")
+    sub_index: int | None = Field(None, description="Calculated CPCB sub-index (0-500)")
+    category: str | None = Field(None, description="Category for this pollutant sub-index")
     averaging_period: str = Field(..., description="Required averaging duration (e.g. 24-hour, 8-hour)")
     is_valid: bool = Field(True, description="Whether concentration and unit passed CPCB validation")
-    validation_error: Optional[str] = None
+    validation_error: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -25,16 +25,16 @@ class AQICalculationResponse(BaseModel):
 
     city_id: int
     city_name: str
-    station_id: Optional[int] = None
-    station_name: Optional[str] = None
-    aqi: Optional[int] = Field(None, description="Composite NAQI index value (0-500); None if data is insufficient")
-    category: Optional[str] = Field(None, description="Official CPCB NAQI category")
-    dominant_pollutant: Optional[str] = Field(None, description="Pollutant with highest sub-index")
-    pollutant_subindices: Dict[str, PollutantSubIndexResult] = Field(
+    station_id: int | None = None
+    station_name: str | None = None
+    aqi: int | None = Field(None, description="Composite NAQI index value (0-500); None if data is insufficient")
+    category: str | None = Field(None, description="Official CPCB NAQI category")
+    dominant_pollutant: str | None = Field(None, description="Pollutant with highest sub-index")
+    pollutant_subindices: dict[str, PollutantSubIndexResult] = Field(
         default_factory=dict,
         description="Dictionary of individual pollutant sub-indices",
     )
-    measurement_timestamp: Optional[datetime] = Field(None, description="Observation timestamp in UTC")
+    measurement_timestamp: datetime | None = Field(None, description="Observation timestamp in UTC")
     calculated_at: datetime = Field(..., description="Calculation timestamp in UTC")
     source: str = Field(default="CPCB", description="Source provider identifier")
     is_simulated: bool = Field(default=False, description="Whether calculation used simulated measurements")
@@ -43,8 +43,8 @@ class AQICalculationResponse(BaseModel):
         default="1-hour (indicative)",
         description="Averaging cadence (e.g. '24-hour' or '1-hour (indicative)')",
     )
-    available_pollutants: List[str] = Field(default_factory=list)
-    missing_pollutants: List[str] = Field(default_factory=list)
+    available_pollutants: list[str] = Field(default_factory=list)
+    missing_pollutants: list[str] = Field(default_factory=list)
     explanation: str = Field(..., description="Data sufficiency explanation or health advisory")
 
 
@@ -53,10 +53,10 @@ class SubIndicesOnlyResponse(BaseModel):
 
     city_id: int
     city_name: str
-    station_id: Optional[int] = None
-    station_name: Optional[str] = None
-    dominant_pollutant: Optional[str] = None
-    sub_indices: Dict[str, PollutantSubIndexResult]
+    station_id: int | None = None
+    station_name: str | None = None
+    dominant_pollutant: str | None = None
+    sub_indices: dict[str, PollutantSubIndexResult]
     calculated_at: datetime
 
 
@@ -66,11 +66,11 @@ class AQIHistoryItem(BaseModel):
     id: int
     city_id: int
     city_name: str
-    station_id: Optional[int] = None
-    station_name: Optional[str] = None
+    station_id: int | None = None
+    station_name: str | None = None
     aqi_value: int
     aqi_category: str
-    dominant_pollutant: Optional[str] = None
+    dominant_pollutant: str | None = None
     measured_at: datetime
     source: str
     is_simulated: bool
@@ -85,7 +85,7 @@ class AQIHistoryResponse(BaseModel):
     total: int
     page: int
     page_size: int
-    items: List[AQIHistoryItem]
+    items: list[AQIHistoryItem]
 
 
 class AQIProcessResponse(BaseModel):

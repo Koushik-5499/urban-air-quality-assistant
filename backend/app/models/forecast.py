@@ -1,7 +1,8 @@
 """SQLAlchemy models for Air Quality Forecasting runs, predictions, and evaluations."""
 
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
+from typing import Optional
+
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,31 +16,31 @@ class ForecastRun(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     city_id: Mapped[int] = mapped_column(ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True)
-    station_id: Mapped[Optional[int]] = mapped_column(
+    station_id: Mapped[int | None] = mapped_column(
         ForeignKey("monitoring_stations.id", ondelete="SET NULL"), nullable=True, index=True
     )
     model_name: Mapped[str] = mapped_column(String(100), nullable=False)
     model_version: Mapped[str] = mapped_column(String(50), nullable=False, default="1.0.0")
     generated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), index=True
     )
-    training_data_start: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    training_data_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    training_data_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    training_data_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     training_samples: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    evaluation_mae: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    evaluation_rmse: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    evaluation_mape: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    evaluation_mae: Mapped[float | None] = mapped_column(Float, nullable=True)
+    evaluation_rmse: Mapped[float | None] = mapped_column(Float, nullable=True)
+    evaluation_mape: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_simulated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="completed")
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     city: Mapped["City"] = relationship("City", backref="forecast_runs")  # noqa: F821
     station: Mapped[Optional["MonitoringStation"]] = relationship("MonitoringStation", backref="forecast_runs")  # noqa: F821
-    forecasts: Mapped[List["AQIForecast"]] = relationship(
+    forecasts: Mapped[list["AQIForecast"]] = relationship(
         "AQIForecast", back_populates="run", cascade="all, delete-orphan"
     )
-    evaluations: Mapped[List["ForecastEvaluation"]] = relationship(
+    evaluations: Mapped[list["ForecastEvaluation"]] = relationship(
         "ForecastEvaluation", back_populates="run", cascade="all, delete-orphan"
     )
 
@@ -59,22 +60,22 @@ class AQIForecast(Base):
         ForeignKey("forecast_runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
     city_id: Mapped[int] = mapped_column(ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True)
-    station_id: Mapped[Optional[int]] = mapped_column(
+    station_id: Mapped[int | None] = mapped_column(
         ForeignKey("monitoring_stations.id", ondelete="SET NULL"), nullable=True, index=True
     )
     forecast_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     horizon_hours: Mapped[int] = mapped_column(Integer, nullable=False)
     predicted_aqi: Mapped[int] = mapped_column(Integer, nullable=False)
     predicted_category: Mapped[str] = mapped_column(String(50), nullable=False)
-    dominant_pollutant: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    lower_bound: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    upper_bound: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    dominant_pollutant: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    lower_bound: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    upper_bound: Mapped[int | None] = mapped_column(Integer, nullable=True)
     uncertainty_status: Mapped[str] = mapped_column(String(50), nullable=False, default="estimated")
     model_name: Mapped[str] = mapped_column(String(100), nullable=False)
     model_version: Mapped[str] = mapped_column(String(50), nullable=False)
     is_simulated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     # Relationships
@@ -113,9 +114,9 @@ class ForecastEvaluation(Base):
     sample_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     mae: Mapped[float] = mapped_column(Float, nullable=False)
     rmse: Mapped[float] = mapped_column(Float, nullable=False)
-    mape: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    mape: Mapped[float | None] = mapped_column(Float, nullable=True)
     evaluated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
     # Relationship

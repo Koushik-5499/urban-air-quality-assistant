@@ -1,10 +1,9 @@
 """Data normalization service for canonical city matching and pollutant categorization."""
 
-from typing import Dict, Optional, Set, Tuple
 
 # Supported Indian cities canonical mapping
 # Maps lowercase aliases and historical names to (Canonical Name, Canonical State)
-CANONICAL_CITIES: Dict[str, Tuple[str, str]] = {
+CANONICAL_CITIES: dict[str, tuple[str, str]] = {
     "coimbatore": ("Coimbatore", "Tamil Nadu"),
     "chennai": ("Chennai", "Tamil Nadu"),
     "madras": ("Chennai", "Tamil Nadu"),
@@ -25,7 +24,7 @@ CANONICAL_CITIES: Dict[str, Tuple[str, str]] = {
     "tuticorin": ("Thoothukudi", "Tamil Nadu"),
 }
 
-CORE_POLLUTANTS: Set[str] = {"PM2.5", "PM10", "CO", "NO2", "SO2", "O3"}
+CORE_POLLUTANTS: set[str] = {"PM2.5", "PM10", "CO", "NO2", "SO2", "O3"}
 
 
 class DataNormalizationService:
@@ -35,8 +34,8 @@ class DataNormalizationService:
     def match_canonical_city(
         cls,
         city_name: str,
-        state_name: Optional[str] = None,
-    ) -> Optional[Tuple[str, str]]:
+        state_name: str | None = None,
+    ) -> tuple[str, str] | None:
         """Match an arbitrary city string to one of the ten officially supported Indian cities.
 
         Handles case insensitivity, leading/trailing whitespace, and historical aliases.

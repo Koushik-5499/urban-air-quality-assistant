@@ -1,9 +1,10 @@
 """Service layer orchestrating AQI data fetching, caching, deduplication, and database persistence."""
 
 import asyncio
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
-from sqlalchemy import desc, func, select
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -32,7 +33,7 @@ STALE_THRESHOLD_SECONDS = 14400
 class AQIDataService:
     """Central business service for air quality ingestion, freshness, and retrieval."""
 
-    def __init__(self, provider: Optional[BaseAQIProvider] = None, settings: Optional[Settings] = None):
+    def __init__(self, provider: BaseAQIProvider | None = None, settings: Settings | None = None):
         self.settings = settings or get_settings()
 
         if provider:
@@ -43,22 +44,22 @@ class AQIDataService:
             self.provider = CPCBProvider()
 
         self._sync_lock = asyncio.Lock()
-        self._cache: Dict[str, Any] = {}
-        self._last_successful_fetch: Optional[datetime] = None
-        self._last_successful_sync: Optional[datetime] = None
-        self._last_error: Optional[str] = None
-        self._last_error_category: Optional[str] = None
+        self._cache: dict[str, Any] = {}
+        self._last_successful_fetch: datetime | None = None
+        self._last_successful_sync: datetime | None = None
+        self._last_error: str | None = None
+        self._last_error_category: str | None = None
 
     async def fetch_provider_observations(
         self,
-        city: Optional[str] = None,
-        state: Optional[str] = None,
+        city: str | None = None,
+        state: str | None = None,
         limit: int = 100,
         bypass_cache: bool = False,
-    ) -> List[NormalizedObservation]:
+    ) -> list[NormalizedObservation]:
         """Fetch observations from the configured provider with in-memory caching."""
         cache_key = f"{city or 'all'}_{state or 'all'}_{limit}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Check cache freshness
         if not bypass_cache and cache_key in self._cache:
@@ -82,11 +83,11 @@ class AQIDataService:
     async def sync_and_persist(
         self,
         db: Session,
-        city: Optional[str] = None,
+        city: str | None = None,
     ) -> SyncResponse:
         """Fetch external observations, normalize, deduplicate, and persist to SQLite."""
         async with self._sync_lock:
-            now_utc = datetime.now(timezone.utc)
+            now_utc = datetime.now(UTC)
             observations = await self.fetch_provider_observations(city=city, limit=200, bypass_cache=True)
 
             readings_inserted = 0
@@ -179,7 +180,7 @@ class AQIDataService:
         if not city_entity:
             raise KeyError(f"City '{city_name}' is not in the list of supported cities.")
 
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
 
         # Retrieve active stations count
         station_count_stmt = select(func.count(MonitoringStation.id)).where(
@@ -232,7 +233,7 @@ class AQIDataService:
         # Find newest timestamp among returned pollutants
         latest_time = max(r.measured_at for r in readings)
         if latest_time.tzinfo is None:
-            latest_time = latest_time.replace(tzinfo=timezone.utc)
+            latest_time = latest_time.replace(tzinfo=UTC)
         data_age = int((now_utc - latest_time).total_seconds())
         is_stale = data_age > STALE_THRESHOLD_SECONDS
         source = readings[0].source
@@ -265,11 +266,11 @@ class AQIDataService:
             message="Fresh ambient observations available" if not is_stale else "Readings exceed freshness threshold",
         )
 
-    def get_cities_summary(self, db: Session) -> List[CityAvailabilitySummary]:
+    def get_cities_summary(self, db: Session) -> list[CityAvailabilitySummary]:
         """Return data availability and freshness summary for all registered cities."""
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         cities = list(db.execute(select(City).order_by(City.name)).scalars().all())
-        results: List[CityAvailabilitySummary] = []
+        results: list[CityAvailabilitySummary] = []
 
         for city in cities:
             # Query station count
@@ -284,7 +285,7 @@ class AQIDataService:
 
             if latest_time is not None:
                 if latest_time.tzinfo is None:
-                    latest_time = latest_time.replace(tzinfo=timezone.utc)
+                    latest_time = latest_time.replace(tzinfo=UTC)
                 data_age = int((now_utc - latest_time).total_seconds())
                 is_stale = data_age > STALE_THRESHOLD_SECONDS
                 results.append(
@@ -326,7 +327,7 @@ class AQIDataService:
         elif self._last_successful_fetch is None:
             freshness_status = "no_data"
         else:
-            age = (datetime.now(timezone.utc) - self._last_successful_fetch).total_seconds()
+            age = (datetime.now(UTC) - self._last_successful_fetch).total_seconds()
             freshness_status = "fresh" if age <= self.settings.AQI_CACHE_TTL_SECONDS * 2 else "stale"
 
         return SourceStatusResponse(
@@ -345,7 +346,7 @@ class AQIDataService:
 
 
 # Global singleton instance for service state reuse
-_aqi_service_instance: Optional[AQIDataService] = None
+_aqi_service_instance: AQIDataService | None = None
 
 
 def get_aqi_data_service() -> AQIDataService:

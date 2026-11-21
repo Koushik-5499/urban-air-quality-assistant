@@ -1,7 +1,8 @@
 """Data mapper transforming CPCB data.gov.in raw records into NormalizedObservation schemas."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
+
 from app.core.logging import get_logger
 from app.integrations.base import NormalizedObservation
 
@@ -40,10 +41,10 @@ class CPCBRecordMapper:
     """Transforms raw CPCB records into domain observation objects."""
 
     @classmethod
-    def parse_datetime(cls, date_str: Optional[str]) -> datetime:
+    def parse_datetime(cls, date_str: str | None) -> datetime:
         """Parse CPCB timestamp (IST: DD-MM-YYYY HH:MM:SS) and normalize to UTC."""
         if not date_str or not isinstance(date_str, str):
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
         cleaned = date_str.strip()
         # Primary CPCB format: "20-11-2026 18:00:00"
@@ -51,7 +52,7 @@ class CPCBRecordMapper:
             try:
                 dt_naive = datetime.strptime(cleaned, fmt)
                 dt_ist = dt_naive.replace(tzinfo=IST)
-                return dt_ist.astimezone(timezone.utc)
+                return dt_ist.astimezone(UTC)
             except ValueError:
                 continue
 
@@ -60,13 +61,13 @@ class CPCBRecordMapper:
             dt = datetime.fromisoformat(cleaned)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=IST)
-            return dt.astimezone(timezone.utc)
+            return dt.astimezone(UTC)
         except Exception:
             logger.warning("Unrecognized date format '%s', falling back to current UTC time", date_str)
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
     @classmethod
-    def parse_float(cls, value: Any) -> Optional[float]:
+    def parse_float(cls, value: Any) -> float | None:
         """Safely parse float value, returning None for missing or invalid values."""
         if value is None:
             return None
@@ -81,7 +82,7 @@ class CPCBRecordMapper:
             return None
 
     @classmethod
-    def map_record(cls, record: Dict[str, Any]) -> Optional[NormalizedObservation]:
+    def map_record(cls, record: dict[str, Any]) -> NormalizedObservation | None:
         """Convert a single CPCB record dictionary into a NormalizedObservation."""
         if not isinstance(record, dict):
             return None
@@ -144,13 +145,13 @@ class CPCBRecordMapper:
         )
 
     @classmethod
-    def map_records(cls, raw_data: Dict[str, Any]) -> List[NormalizedObservation]:
+    def map_records(cls, raw_data: dict[str, Any]) -> list[NormalizedObservation]:
         """Map entire CPCB response records array."""
         records = raw_data.get("records", [])
         if not isinstance(records, list):
             return []
 
-        observations: List[NormalizedObservation] = []
+        observations: list[NormalizedObservation] = []
         for rec in records:
             obs = cls.map_record(rec)
             if obs is not None:

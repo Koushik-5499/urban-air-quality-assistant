@@ -1,9 +1,9 @@
 """Asynchronous HTTP client for retrieving meteorological observations from Open-Meteo."""
 
 import asyncio
-from datetime import datetime, timezone
 import logging
-from typing import Dict, Optional, Tuple
+from datetime import UTC, datetime
+
 import httpx
 
 from app.core.config import Settings, get_settings
@@ -16,18 +16,18 @@ class WeatherClient:
     """Asynchronous client for fetching real-time meteorological data with caching and retry logic."""
 
     # Key: (round(lat, 2), round(lon, 2)), Value: (WeatherObservation, cache_time)
-    _cache: Dict[Tuple[float, float], Tuple[WeatherObservation, datetime]] = {}
+    _cache: dict[tuple[float, float], tuple[WeatherObservation, datetime]] = {}
 
-    def __init__(self, settings: Optional[Settings] = None):
+    def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
 
     async def get_current_weather(
         self,
         latitude: float,
         longitude: float,
-    ) -> Optional[WeatherObservation]:
+    ) -> WeatherObservation | None:
         """Fetch current weather observation for given coordinates.
-        
+
         Returns None gracefully if weather integration is disabled or provider is unreachable.
         """
         if not self.settings.WEATHER_ENABLED:
@@ -36,7 +36,7 @@ class WeatherClient:
 
         # Check in-memory cache
         cache_key = (round(latitude, 2), round(longitude, 2))
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
 
         if cache_key in self._cache:
             obs, cached_at = self._cache[cache_key]
@@ -85,7 +85,7 @@ class WeatherClient:
                         data = resp.json()
                         current_data = data.get("current", {})
                         time_str = current_data.get("time")
-                        obs_time = datetime.fromisoformat(time_str).replace(tzinfo=timezone.utc) if time_str else now_utc
+                        obs_time = datetime.fromisoformat(time_str).replace(tzinfo=UTC) if time_str else now_utc
 
                         observation = WeatherObservation(
                             latitude=latitude,

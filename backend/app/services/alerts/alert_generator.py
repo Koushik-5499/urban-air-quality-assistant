@@ -1,7 +1,7 @@
 """Generates persistent Alert database entities grounded in knowledge-base health precautions."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy.orm import Session
 
 from app.models.alert import Alert
@@ -19,12 +19,12 @@ class AlertGenerator:
         db: Session,
         city_id: int,
         condition: AlertCondition,
-        station_id: Optional[int] = None,
-        aqi_reading_id: Optional[int] = None,
+        station_id: int | None = None,
+        aqi_reading_id: int | None = None,
         expiration_hours: int = 24,
     ) -> Alert:
         """Create and populate a new Alert model instance."""
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         expires_at = now_utc + timedelta(hours=expiration_hours)
 
         # Generate deterministic deduplication key

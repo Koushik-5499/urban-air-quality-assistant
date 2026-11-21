@@ -1,10 +1,10 @@
 """Repeatable seed utility for Indian cities."""
 
 import sys
-from typing import Dict
+
 from sqlalchemy.orm import Session
+
 from app.db.session import SessionLocal
-from app.models.city import City
 from app.repositories.city_repository import CityRepository
 from app.schemas.city import CityCreate
 
@@ -83,7 +83,7 @@ SUPPORTED_CITIES = [
 ]
 
 
-def seed_cities(db: Session) -> Dict[str, int]:
+def seed_cities(db: Session) -> dict[str, int]:
     """Idempotently seed the ten supported Indian cities.
 
     Checks for existing records by (name, state) pair before inserting.

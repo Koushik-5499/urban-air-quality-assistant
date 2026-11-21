@@ -1,6 +1,5 @@
 """AI health provider integration package."""
 
-from typing import Optional
 
 from app.core.config import Settings, get_settings
 from app.integrations.ai.base import BaseAIProvider
@@ -21,7 +20,7 @@ from app.integrations.ai.schemas import (
 )
 
 
-def get_ai_provider(settings: Optional[Settings] = None) -> BaseAIProvider:
+def get_ai_provider(settings: Settings | None = None) -> BaseAIProvider:
     """Factory creating configured AI provider instance based on settings."""
     cfg = settings or get_settings()
     return GeminiProvider(settings=cfg)

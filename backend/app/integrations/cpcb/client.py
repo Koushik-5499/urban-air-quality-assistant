@@ -1,8 +1,10 @@
 """Asynchronous HTTP client for CPCB data.gov.in API."""
 
 import asyncio
-from typing import Any, Dict, Optional
+from typing import Any
+
 import httpx
+
 from app.core.logging import get_logger
 from app.integrations.cpcb.exceptions import (
     CPCBAuthError,
@@ -21,7 +23,7 @@ class CPCBClient:
     def __init__(
         self,
         base_url: str,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         timeout: float = 10.0,
         max_retries: int = 2,
     ):
@@ -29,7 +31,7 @@ class CPCBClient:
         self.api_key = api_key
         self.timeout = timeout
         self.max_retries = max(0, max_retries)
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
         """Lazy initialization of httpx.AsyncClient."""
@@ -45,11 +47,11 @@ class CPCBClient:
 
     async def get_raw_records(
         self,
-        city: Optional[str] = None,
-        state: Optional[str] = None,
+        city: str | None = None,
+        state: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fetch raw records from the data.gov.in CPCB endpoint.
 
         Implements bounded exponential backoff for transient 5xx/timeout errors.
@@ -60,7 +62,7 @@ class CPCBClient:
 
         client = self._get_client()
 
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "api-key": self.api_key,
             "format": "json",
             "limit": limit,

@@ -1,3 +1,4 @@
+// @deprecated This file is a legacy re-export shim. Import from './api/index' or the specific sub-modules (e.g. './api/alertsApi') directly. This file is retained for backwards compatibility with existing test imports only.
 export * from './api/index';
 
 export interface ApiResponse<T> {

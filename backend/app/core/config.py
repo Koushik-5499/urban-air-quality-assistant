@@ -3,7 +3,7 @@
 import json
 import os
 from functools import lru_cache
-from typing import List, Optional, Union
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         default="/api/v1",
         description="Routing prefix for v1 API endpoints",
     )
-    CORS_ORIGINS: List[str] = Field(
+    CORS_ORIGINS: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"],
         description="Allowed CORS origins",
     )
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
         default="sqlite:///./air_quality.db",
         description="Database connection URL",
     )
-    GEMINI_API_KEY: Optional[str] = Field(
+    GEMINI_API_KEY: str | None = Field(
         default=None,
         description="Optional Gemini AI API key",
     )
@@ -76,7 +76,7 @@ class Settings(BaseSettings):
         default="https://api.data.gov.in/resource/3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69",
         description="Official CPCB real-time AQI dataset endpoint on data.gov.in",
     )
-    CPCB_API_KEY: Optional[str] = Field(
+    CPCB_API_KEY: str | None = Field(
         default=None,
         description="Optional API key for data.gov.in platform",
     )
@@ -96,7 +96,7 @@ class Settings(BaseSettings):
         default=2,
         description="Maximum retry attempts for transient HTTP failures",
     )
-    SYNC_ADMIN_SECRET: Optional[str] = Field(
+    SYNC_ADMIN_SECRET: str | None = Field(
         default=None,
         description="Optional administrative secret key required for POST /api/v1/air-quality/sync",
     )
@@ -122,23 +122,9 @@ class Settings(BaseSettings):
         default=24,
         description="Hours after creation before an alert automatically expires",
     )
-    ALERT_ADMIN_SECRET: Optional[str] = Field(
+    ALERT_ADMIN_SECRET: str | None = Field(
         default=None,
         description="Optional secret key required for POST /api/v1/alerts/process in production",
-    )
-
-    # Email Notifications (Resend)
-    RESEND_API_KEY: Optional[str] = Field(
-        default=None,
-        description="Optional API key for Resend email delivery",
-    )
-    ALERT_EMAIL_FROM: str = Field(
-        default="alerts@urbanairquality.org",
-        description="Sender email address for alert notifications",
-    )
-    EMAIL_NOTIFICATIONS_ENABLED: bool = Field(
-        default=False,
-        description="Toggle to enable or disable outgoing email alerts",
     )
 
     # Web Push Notifications (VAPID)
@@ -146,11 +132,11 @@ class Settings(BaseSettings):
         default=False,
         description="Toggle to enable browser web push notifications",
     )
-    VAPID_PUBLIC_KEY: Optional[str] = Field(
+    VAPID_PUBLIC_KEY: str | None = Field(
         default=None,
         description="VAPID application server public key for Web Push",
     )
-    VAPID_PRIVATE_KEY: Optional[str] = Field(
+    VAPID_PRIVATE_KEY: str | None = Field(
         default=None,
         description="VAPID application server private key for Web Push",
     )
@@ -164,7 +150,7 @@ class Settings(BaseSettings):
         default="open-meteo",
         description="Active meteorological data provider: 'open-meteo' or 'mock'",
     )
-    WEATHER_API_KEY: Optional[str] = Field(
+    WEATHER_API_KEY: str | None = Field(
         default=None,
         description="Optional API key for external weather provider",
     )
@@ -194,7 +180,7 @@ class Settings(BaseSettings):
         default=24,
         description="Minimum chronological historical observations required to train or evaluate forecasting model",
     )
-    FORECAST_ADMIN_SECRET: Optional[str] = Field(
+    FORECAST_ADMIN_SECRET: str | None = Field(
         default=None,
         description="Optional administrative secret key required for POST /api/v1/forecast/generate",
     )
@@ -202,10 +188,14 @@ class Settings(BaseSettings):
         default=24,
         description="Default prediction horizon in hours",
     )
+    TRUSTED_PROXY: bool = Field(
+        default=False,
+        description="When True, trust the X-Forwarded-For header for client IP extraction (use only behind a known proxy)",
+    )
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def assemble_database_url(cls, v: Optional[str]) -> str:
+    def assemble_database_url(cls, v: str | None) -> str:
         """Handle default database URL and serverless environment adjustments."""
         url = v or "sqlite:///./air_quality.db"
         if (os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) and url.startswith("sqlite:///."):
@@ -214,7 +204,7 @@ class Settings(BaseSettings):
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         """Parse CORS origins from a JSON array string, comma-separated string, or list."""
         if isinstance(v, str):
             stripped = v.strip()
@@ -241,7 +231,7 @@ class Settings(BaseSettings):
         return self.APP_ENV.lower() in ("production", "prod")
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Retrieve cached application settings instance."""
     return Settings()

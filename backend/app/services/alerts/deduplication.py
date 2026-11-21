@@ -1,7 +1,7 @@
 """Deduplication service ensuring alerts are not duplicated across polling runs."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,17 +14,17 @@ class AlertDeduplicator:
     @staticmethod
     def generate_dedup_key(
         city_id: int,
-        station_id: Optional[int],
+        station_id: int | None,
         alert_type: str,
         current_aqi: int,
-        measurement_timestamp: Optional[datetime] = None,
-        timestamp: Optional[datetime] = None,
-        aqi_value: Optional[int] = None,
+        measurement_timestamp: datetime | None = None,
+        timestamp: datetime | None = None,
+        aqi_value: int | None = None,
     ) -> str:
         """Create a deterministic deduplication string based on observation time and event."""
-        ts = measurement_timestamp or timestamp or datetime.now(timezone.utc)
+        ts = measurement_timestamp or timestamp or datetime.now(UTC)
         if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
+            ts = ts.replace(tzinfo=UTC)
 
         aqi = aqi_value if aqi_value is not None else current_aqi
 
@@ -40,15 +40,15 @@ class AlertDeduplicator:
         cls,
         db: Session,
         dedup_key: str,
-        city_id: Optional[int] = None,
-        alert_type: Optional[str] = None,
-        station_id: Optional[int] = None,
+        city_id: int | None = None,
+        alert_type: str | None = None,
+        station_id: int | None = None,
         dedup_window_hours: int = 2,
-        window_hours: Optional[int] = None,
-        now_utc: Optional[datetime] = None,
+        window_hours: int | None = None,
+        now_utc: datetime | None = None,
     ) -> bool:
         """Check whether a duplicate alert was already generated within the active deduplication window."""
-        ref_time = now_utc or datetime.now(timezone.utc)
+        ref_time = now_utc or datetime.now(UTC)
         eff_window = window_hours if window_hours is not None else dedup_window_hours
         window_start = ref_time - timedelta(hours=eff_window)
 

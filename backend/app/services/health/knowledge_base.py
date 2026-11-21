@@ -1,6 +1,6 @@
 """Authoritative health guidance knowledge base grounded in CPCB and WHO guidelines."""
 
-from typing import Dict, List, Optional
+
 from app.integrations.ai.schemas import CategoryGuideline, PollutantExplanationResponse
 
 MEDICAL_DISCLAIMER = (
@@ -31,7 +31,7 @@ TARGET_GROUPS = [
 class HealthKnowledgeBase:
     """Provides structured, scientifically validated public health guidance."""
 
-    CATEGORY_GUIDELINES: Dict[str, CategoryGuideline] = {
+    CATEGORY_GUIDELINES: dict[str, CategoryGuideline] = {
         "Good": CategoryGuideline(
             category="Good",
             aqi_range="0–50",
@@ -112,7 +112,7 @@ class HealthKnowledgeBase:
         ),
     }
 
-    POLLUTANT_DETAILS: Dict[str, PollutantExplanationResponse] = {
+    POLLUTANT_DETAILS: dict[str, PollutantExplanationResponse] = {
         "PM2.5": PollutantExplanationResponse(
             pollutant_code="PM2.5",
             full_name="Fine Particulate Matter (Diameter ≤ 2.5 µm)",
@@ -311,7 +311,7 @@ class HealthKnowledgeBase:
     }
 
     @classmethod
-    def get_category_guideline(cls, category: Optional[str]) -> CategoryGuideline:
+    def get_category_guideline(cls, category: str | None) -> CategoryGuideline:
         """Retrieve authoritative guideline for a given NAQI category."""
         cat_key = category or "Moderate"
         # Normalize category
@@ -330,7 +330,7 @@ class HealthKnowledgeBase:
         return cls.CATEGORY_GUIDELINES["Moderate"]
 
     @classmethod
-    def get_pollutant_explanation(cls, code: str) -> Optional[PollutantExplanationResponse]:
+    def get_pollutant_explanation(cls, code: str) -> PollutantExplanationResponse | None:
         """Retrieve deep-dive explanation for criteria pollutant."""
         norm_code = code.strip().upper()
         if norm_code == "PB":

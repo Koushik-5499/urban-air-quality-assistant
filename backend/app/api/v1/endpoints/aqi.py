@@ -1,7 +1,7 @@
 """Air Quality Index calculation and processing endpoints following CPCB NAQI."""
 
 from datetime import datetime
-from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -26,8 +26,8 @@ router = APIRouter()
     description="Calculate Indian National Air Quality Index (NAQI) sub-indices and overall index using CPCB methodology.",
 )
 async def calculate_aqi(
-    city: Optional[str] = Query(None, description="City name (e.g. Delhi, Coimbatore)"),
-    station_id: Optional[int] = Query(None, description="Monitoring station ID"),
+    city: str | None = Query(None, description="City name (e.g. Delhi, Coimbatore)"),
+    station_id: int | None = Query(None, description="Monitoring station ID"),
     db: Session = Depends(get_db),
 ) -> AQICalculationResponse:
     """Compute CPCB sub-indices, data sufficiency, and overall AQI from stored observations."""
@@ -45,8 +45,8 @@ async def calculate_aqi(
     description="Retrieve individual pollutant sub-indices (0-500) and dominant pollutant for a location.",
 )
 async def get_pollutant_subindices(
-    city: Optional[str] = Query(None, description="City name filter"),
-    station_id: Optional[int] = Query(None, description="Monitoring station ID filter"),
+    city: str | None = Query(None, description="City name filter"),
+    station_id: int | None = Query(None, description="Monitoring station ID filter"),
     db: Session = Depends(get_db),
 ) -> SubIndicesOnlyResponse:
     """Retrieve isolated pollutant sub-indices and dominant driver pollutant."""
@@ -64,8 +64,8 @@ async def get_pollutant_subindices(
     description="Retrieve the latest persisted AQI record for a specified city or monitoring station.",
 )
 async def get_latest_aqi(
-    city: Optional[str] = Query(None, description="City name filter"),
-    station_id: Optional[int] = Query(None, description="Monitoring station ID filter"),
+    city: str | None = Query(None, description="City name filter"),
+    station_id: int | None = Query(None, description="Monitoring station ID filter"),
     db: Session = Depends(get_db),
 ) -> AQIHistoryItem:
     """Query the most recent stored AQI reading."""
@@ -90,10 +90,10 @@ async def get_latest_aqi(
     description="Query historical calculated AQI readings with optional date-range and pagination filtering.",
 )
 async def get_aqi_history(
-    city: Optional[str] = Query(None, description="Filter by city name"),
-    station_id: Optional[int] = Query(None, description="Filter by monitoring station ID"),
-    start_date: Optional[datetime] = Query(None, description="ISO datetime start filter"),
-    end_date: Optional[datetime] = Query(None, description="ISO datetime end filter"),
+    city: str | None = Query(None, description="Filter by city name"),
+    station_id: int | None = Query(None, description="Filter by monitoring station ID"),
+    start_date: datetime | None = Query(None, description="ISO datetime start filter"),
+    end_date: datetime | None = Query(None, description="ISO datetime end filter"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Items per page"),
     db: Session = Depends(get_db),
@@ -117,7 +117,7 @@ async def get_aqi_history(
     description="Evaluate stored pollutant readings against CPCB sufficiency rules and persist calculated AQI readings.",
 )
 async def process_aqi_readings(
-    city_id: Optional[int] = Query(None, description="Optional city ID to scope processing"),
+    city_id: int | None = Query(None, description="Optional city ID to scope processing"),
     _admin: None = Depends(verify_admin_access),
     db: Session = Depends(get_db),
 ) -> AQIProcessResponse:

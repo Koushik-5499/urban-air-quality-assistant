@@ -1,3 +1,4 @@
+// @deprecated This is a legacy API client. Use the new client at './api/client' instead. This file is retained for backwards compatibility with existing test imports only.
 import { API_CONFIG } from '../config/apiConfig';
 import type { ApiResponse, RequestOptions } from '../types/api';
 

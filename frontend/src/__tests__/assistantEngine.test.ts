@@ -8,7 +8,7 @@ describe('AI Assistant Simulated Health Engine', () => {
 
   it('includes pre-configured suggested questions', () => {
     expect(SUGGESTED_QUESTIONS.length).toBeGreaterThanOrEqual(4);
-    expect(SUGGESTED_QUESTIONS[1].question).toContain('Is it safe');
+    expect(SUGGESTED_QUESTIONS[1].question).toContain('exercise');
     expect(SUGGESTED_QUESTIONS[0].id).toBeDefined();
   });
 

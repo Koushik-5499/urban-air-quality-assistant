@@ -1,8 +1,7 @@
 """Evaluates quiet hours, recipient timezones, and delivery status tracking."""
 
-from datetime import datetime, time, timezone
 import logging
-from typing import Optional, Tuple
+from datetime import UTC, datetime, time
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -14,14 +13,14 @@ class DeliveryTracker:
     @classmethod
     def is_in_quiet_hours(
         cls,
-        quiet_hours_start: Optional[str] = None,
-        quiet_hours_end: Optional[str] = None,
+        quiet_hours_start: str | None = None,
+        quiet_hours_end: str | None = None,
         tz_name: str = "Asia/Kolkata",
-        current_time_utc: Optional[datetime] = None,
-        quiet_start: Optional[str] = None,
-        quiet_end: Optional[str] = None,
-        user_tz: Optional[str] = None,
-        now_utc: Optional[datetime] = None,
+        current_time_utc: datetime | None = None,
+        quiet_start: str | None = None,
+        quiet_end: str | None = None,
+        user_tz: str | None = None,
+        now_utc: datetime | None = None,
     ) -> bool:
         """Check if current timestamp falls within the user's local quiet hours window."""
         start_str = quiet_hours_start or quiet_start
@@ -37,7 +36,7 @@ class DeliveryTracker:
         except Exception:
             user_zone = ZoneInfo("Asia/Kolkata")
 
-        now = ref_time or datetime.now(timezone.utc)
+        now = ref_time or datetime.now(UTC)
         user_now = now.astimezone(user_zone)
         current_t = user_now.time()
 
@@ -63,15 +62,15 @@ class DeliveryTracker:
     def should_deliver(
         cls,
         severity: str,
-        quiet_hours_start: Optional[str] = None,
-        quiet_hours_end: Optional[str] = None,
+        quiet_hours_start: str | None = None,
+        quiet_hours_end: str | None = None,
         tz_name: str = "Asia/Kolkata",
-        current_time_utc: Optional[datetime] = None,
-        quiet_start: Optional[str] = None,
-        quiet_end: Optional[str] = None,
-        user_tz: Optional[str] = None,
-        now_utc: Optional[datetime] = None,
-    ) -> Tuple[bool, str]:
+        current_time_utc: datetime | None = None,
+        quiet_start: str | None = None,
+        quiet_end: str | None = None,
+        user_tz: str | None = None,
+        now_utc: datetime | None = None,
+    ) -> tuple[bool, str]:
         """Determine whether an alert should be dispatched immediately or suppressed for quiet hours."""
         start_str = quiet_hours_start or quiet_start
         end_str = quiet_hours_end or quiet_end
@@ -99,14 +98,14 @@ class DeliveryTracker:
     def can_deliver_now(
         cls,
         severity: str,
-        quiet_hours_start: Optional[str] = None,
-        quiet_hours_end: Optional[str] = None,
+        quiet_hours_start: str | None = None,
+        quiet_hours_end: str | None = None,
         tz_name: str = "Asia/Kolkata",
-        current_time_utc: Optional[datetime] = None,
-        quiet_start: Optional[str] = None,
-        quiet_end: Optional[str] = None,
-        user_tz: Optional[str] = None,
-        now_utc: Optional[datetime] = None,
+        current_time_utc: datetime | None = None,
+        quiet_start: str | None = None,
+        quiet_end: str | None = None,
+        user_tz: str | None = None,
+        now_utc: datetime | None = None,
     ) -> bool:
         """Helper returning boolean indicating whether delivery is permitted right now."""
         deliver, _ = cls.should_deliver(

@@ -1,7 +1,8 @@
 """Database session factory, connection pooling, and request dependencies."""
 
 import sqlite3
-from typing import Generator
+from collections.abc import Generator
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
