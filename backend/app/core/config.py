@@ -1,6 +1,7 @@
 """Centralized application configuration using Pydantic Settings."""
 
 import json
+import os
 from functools import lru_cache
 from typing import List, Optional, Union
 from pydantic import Field, field_validator
@@ -201,6 +202,15 @@ class Settings(BaseSettings):
         default=24,
         description="Default prediction horizon in hours",
     )
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_database_url(cls, v: Optional[str]) -> str:
+        """Handle default database URL and serverless environment adjustments."""
+        url = v or "sqlite:///./air_quality.db"
+        if (os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) and url.startswith("sqlite:///."):
+            return "sqlite:////tmp/air_quality.db"
+        return url
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

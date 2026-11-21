@@ -2,7 +2,7 @@
 
 from datetime import datetime, time, timezone
 import logging
-from typing import Tuple
+from typing import Optional, Tuple
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)

@@ -30,6 +30,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     logger.info("Starting %s v%s in [%s] mode...", settings.APP_NAME, settings.APP_VERSION, settings.APP_ENV)
     logger.info("Configured CORS origins: %s", settings.CORS_ORIGINS)
+    try:
+        from app.db.base import Base
+        from app.db.session import engine, SessionLocal
+        from app.db.seed import seed_cities
+        Base.metadata.create_all(bind=engine)
+        with SessionLocal() as session:
+            seed_cities(session)
+    except Exception as e:
+        logger.warning("Database startup init/seed note: %s", str(e))
     yield
     logger.info("Shutting down %s...", settings.APP_NAME)
 

@@ -11,6 +11,7 @@ from app.integrations.ai.exceptions import AIProviderError
 from app.integrations.ai.gemini_provider import GeminiProvider
 from app.integrations.ai.schemas import (
     AICompletionRequest,
+    AQIContextSnapshot,
     ChatMessage,
     HealthAskRequest,
     HealthAskResponse,
