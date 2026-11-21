@@ -47,7 +47,7 @@ class Settings(BaseSettings):
         description="Optional Gemini AI API key",
     )
     GEMINI_MODEL: str = Field(
-        default="gemini-2.5-flash",
+        default="gemini-3.5-flash-lite",
         description="Configured Gemini model identifier",
     )
     AI_PROVIDER: str = Field(
