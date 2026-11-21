@@ -64,6 +64,11 @@ export interface HealthAdvice {
   outdoorActivity: string;
   protectiveMeasures: string[];
   disclaimer: string;
+  winterSmogAdvice?: string;
+  lowEmissionRoutines?: string[];
+  indoorAirHacks?: string[];
+  sustainableAlternatives?: string[];
+  impactExplanation?: string;
 }
 
 export interface RecentUpdateItem {

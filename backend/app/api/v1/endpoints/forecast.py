@@ -1,5 +1,6 @@
 """API v1 endpoints for air quality forecasting, hourly projections, daily summaries, and model status."""
 
+import hmac
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -40,7 +41,9 @@ def verify_forecast_admin_access(
     """
     secret = settings.FORECAST_ADMIN_SECRET or settings.ALERT_ADMIN_SECRET
     if secret:
-        if not x_admin_secret or x_admin_secret != secret:
+        if not x_admin_secret or not hmac.compare_digest(
+            x_admin_secret.encode(), secret.encode()
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Invalid or missing X-Admin-Secret header.",

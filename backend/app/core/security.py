@@ -89,7 +89,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                         self.max_bytes,
                     )
                     return JSONResponse(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                         content={
                             "detail": f"Request payload exceeds maximum permitted size of {self.max_bytes // (1024*1024)}MB."
                         },

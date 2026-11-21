@@ -46,3 +46,14 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Media & Recordings
+*.mp4
+*.webm
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+demo_assets/
+
+

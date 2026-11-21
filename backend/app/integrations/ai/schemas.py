@@ -40,6 +40,14 @@ class RecommendationItem(BaseModel):
     priority: str = Field(..., pattern="^(high|medium|low)$", description="Priority level: high, medium, low")
     reason: str = Field(..., description="Underlying physiological or environmental justification")
     supporting_source: str = Field(..., description="Authoritative reference (e.g. 'CPCB NAQI / WHO 2021')")
+    category_type: str = Field(
+        default="general_health",
+        description="Pillar: winter_smog, low_emission_routine, indoor_hack, sustainable_alternative, general_health",
+    )
+    impact_explanation: str | None = Field(
+        default=None,
+        description="Quantified direct impact of this choice (e.g. 'Reduces PM2.5 inhalation by ~45%, cuts 2.4kg CO2/day')",
+    )
 
 
 class AQIContextSnapshot(BaseModel):
@@ -142,4 +150,40 @@ class HealthStatusResponse(BaseModel):
     api_key_configured: bool = Field(..., description="Whether a valid API key is present in environment")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CommunitySolutionsResponse(BaseModel):
+    """Response payload for Challenge 6 community solutions and winter smog guidance."""
+
+    title: str = Field(
+        default="Winter Smog Navigation, Low-Emission Routines & Indoor Air Quality Hacks",
+        description="Section title",
+    )
+    challenge_vertical: str = Field(
+        default="Urban Air Quality Monitoring & Health Advisory for Indian Cities",
+        description="Hackathon challenge vertical",
+    )
+    winter_smog_guidance: list[RecommendationItem] = Field(
+        default_factory=list,
+        description="Protocols for families navigating severe winter smog and nocturnal inversion layers",
+    )
+    low_emission_routines: list[RecommendationItem] = Field(
+        default_factory=list,
+        description="Daily low-emission scheduling, commute timing, and active transit options",
+    )
+    indoor_air_hacks: list[RecommendationItem] = Field(
+        default_factory=list,
+        description="Low-cost indoor hacks: diurnal ventilation timing, DIY HEPA filtration, wet cleaning",
+    )
+    sustainable_alternatives: list[RecommendationItem] = Field(
+        default_factory=list,
+        description="Clean energy and lifestyle alternatives tailored to location and urban lifestyle",
+    )
+    direct_impact_analysis: list[str] = Field(
+        default_factory=list,
+        description="Direct quantified explanations of how individual and community choices cut pollution and exposure",
+    )
+    sources: list[str] = Field(default_factory=list, description="Authoritative environmental and clinical references")
+    disclaimer: str = Field(..., description="Standard medical disclaimer")
+
 

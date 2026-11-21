@@ -16,12 +16,13 @@ export type HealthSeverity = 'low' | 'moderate' | 'high' | 'severe';
 
 export interface HealthRecommendationCard {
   id: string;
-  category: 'activity' | 'masks' | 'ventilation' | 'vulnerable' | 'general';
+  category: 'activity' | 'masks' | 'ventilation' | 'vulnerable' | 'general' | 'winter_smog' | 'low_emission' | 'indoor_hack' | 'sustainable';
   title: string;
   description: string;
   severity: HealthSeverity;
   iconName: string;
   bullets: string[];
+  impactExplanation?: string;
 }
 
 export interface SuggestedQuestion {

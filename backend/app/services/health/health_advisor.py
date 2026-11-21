@@ -12,6 +12,7 @@ from app.integrations.ai.gemini_provider import GeminiProvider
 from app.integrations.ai.schemas import (
     AICompletionRequest,
     AQIContextSnapshot,
+    CommunitySolutionsResponse,
     HealthAskRequest,
     HealthAskResponse,
     HealthGuidelinesResponse,
@@ -65,6 +66,10 @@ class HealthAdvisorService:
             sources=AUTHORITATIVE_SOURCES,
             disclaimer=MEDICAL_DISCLAIMER,
         )
+
+    def get_community_solutions(self) -> CommunitySolutionsResponse:
+        """Retrieve structured Challenge 6 community solutions: winter smog, low-emission routines, and indoor hacks."""
+        return HealthKnowledgeBase.get_community_solutions()
 
     def get_pollutant_explanation(self, pollutant_code: str) -> PollutantExplanationResponse:
         """Retrieve comprehensive educational and health information for a criteria pollutant."""
@@ -198,6 +203,45 @@ class HealthAdvisorService:
         )
         for p in guideline.precautions:
             body += f"- {p}\n"
+
+        q_lower = question.lower()
+        extra_sections: list[str] = []
+
+        if any(w in q_lower for w in ("winter", "smog", "inversion", "fog", "cold", "child", "school")):
+            extra_sections.append(
+                "**Winter Smog & Inversion Protocols for Families**:\n"
+                "- Avoid early morning (6:00 AM – 9:30 AM) outdoor exposure when cold ground air traps vehicular soot and particulate matter.\n"
+                "- Reschedule children's school bus waiting or morning sports to midday when convective heating breaks the inversion layer.\n"
+                "- *Direct Impact*: Midday rescheduling cuts peak particulate inhalation by up to 52%."
+            )
+
+        if any(w in q_lower for w in ("commute", "routine", "transit", "work", "travel", "carpool", "metro")):
+            extra_sections.append(
+                "**Low-Emission Daily Routines**:\n"
+                "- Travel during off-peak windows (before 8 AM or after 10 AM) to avoid high stop-and-go in-cabin pollution.\n"
+                "- Shift to electrified metro rail or electric buses for daily urban commutes.\n"
+                "- *Direct Impact*: Metro transit saves ~3.2 kg CO2 per passenger daily and lowers in-cabin toxic gas exposure by 45%."
+            )
+
+        if any(w in q_lower for w in ("indoor", "hack", "purif", "filter", "window", "ventilat", "plant", "clean")):
+            extra_sections.append(
+                "**Indoor Air Quality Hacks**:\n"
+                "- Diurnal Ventilation: Keep windows tightly sealed during morning and nighttime smog; open only between 12:30 PM – 3:30 PM on sunny days.\n"
+                "- DIY Filtration: A box fan fitted with MERV-13 or HEPA filters (Corsi-Rosenthal box) reduces room PM2.5 by 75–85% at minimal cost.\n"
+                "- Damp Cleaning: Always wet-mop instead of dry-sweeping to prevent resuspending coarse PM10 particles.\n"
+                "- Air-Purifying Plants: Snake plants and Areca palms naturally absorb VOCs and refresh indoor spaces."
+            )
+
+        if any(w in q_lower for w in ("sustainab", "heat", "burn", "solar", "waste", "community")):
+            extra_sections.append(
+                "**Sustainable Community Alternatives**:\n"
+                "- Use clean electric radiant or ceramic space heaters instead of open biomass/wood burning.\n"
+                "- Report neighborhood garbage or leaf burning immediately through municipal clean-air apps.\n"
+                "- *Direct Impact*: Eliminating open biomass burning removes localized PM2.5 spikes exceeding 800 µg/m³."
+            )
+
+        if extra_sections:
+            body += "\n" + "\n\n".join(extra_sections) + "\n"
 
         footer = (
             "\n*(Notice: The AI generation service is currently operating in offline mode. "

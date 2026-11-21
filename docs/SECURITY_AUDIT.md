@@ -14,7 +14,7 @@ A comprehensive security audit, hardening pass, and reliability assessment was c
 2. **Backend:** FastAPI + SQLAlchemy 2.0 + SQLite/PostgreSQL-ready + Pydantic 2 (`backend/`)
 3. **External Integrations:** Central Pollution Control Board / OpenAQ providers, Google Gemini AI (GenAI SDK), and Web Push (VAPID).
 
-The audit verified zero critical vulnerabilities in application code, eliminated common API vulnerabilities (denial of service via large payloads, unthrottled endpoint abuse, missing security headers, log credential leakage, and header injection), hardened administrative interfaces, and achieved 100% test pass rates across both frontend (51 tests) and backend (153 tests).
+The audit verified zero critical vulnerabilities in application code, eliminated common API vulnerabilities (denial of service via large payloads, unthrottled endpoint abuse, missing security headers, log credential leakage, and header injection), hardened administrative interfaces with constant-time cryptographic token verification, and achieved 100% test pass rates across both frontend (55 tests) and backend (154 tests, 209 total).
 
 ---
 

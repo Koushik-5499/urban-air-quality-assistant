@@ -13,24 +13,34 @@ export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
     category: 'Outdoor Guidance',
   },
   {
-    id: 'sq-3',
-    question: 'What are the current PM2.5 levels and health risks for elderly residents?',
-    category: 'Sensitive Groups',
+    id: 'sq-winter',
+    question: 'How can our family navigate severe winter smog and protect children from inversion layers?',
+    category: 'Winter Smog',
   },
   {
-    id: 'sq-4',
-    question: 'Should outdoor workers take precautions given today\'s air quality forecast?',
-    category: 'Outdoor Workers',
+    id: 'sq-routine',
+    question: 'What low-emission daily routines and commute times cut our pollution exposure?',
+    category: 'Low-Emission Routines',
+  },
+  {
+    id: 'sq-indoor',
+    question: 'What are practical indoor air quality hacks and DIY air filtration tips for our home?',
+    category: 'Indoor Hacks',
+  },
+  {
+    id: 'sq-sustain',
+    question: 'What sustainable heating and clean transport alternatives can our community adopt?',
+    category: 'Sustainable Alternatives',
+  },
+  {
+    id: 'sq-impact',
+    question: 'What is the direct health and emission impact of switching our commute to public transit?',
+    category: 'Direct Impact',
   },
   {
     id: 'sq-5',
     question: 'What indoor precautions should I take during Very Unhealthy air quality?',
     category: 'Protection',
-  },
-  {
-    id: 'sq-6',
-    question: 'How does today\'s AQI compare to safe WHO guidelines?',
-    category: 'AQI Context',
   },
 ];
 
@@ -215,7 +225,119 @@ export function generateAssistantResponse(
       `*Educational disclaimer: Simulated demonstration data.*`;
   }
 
-  // 6. Topic: How can I protect myself? / Masks / HEPA / Purifiers
+  // 6. Topic: Winter Smog & Thermal Inversion Navigation
+  if (
+    q.includes('winter') ||
+    q.includes('smog') ||
+    q.includes('inversion') ||
+    q.includes('fog') ||
+    q.includes('cold air')
+  ) {
+    return `### ❄️ Winter Smog & Thermal Inversion Protocol for ${location.city}\n\n` +
+      `During cold winter months, **nocturnal radiation inversion** acts like a heavy atmospheric ceiling, trapping vehicular exhaust, biomass smoke, and dust in the lowest 50–100 meters of the urban breathing layer.\n\n` +
+      `**Critical Family Guidelines:**\n` +
+      `• **Morning Trap Window (6:00 AM – 9:30 AM):** Ground-level PM2.5 can spike 3x–5x higher than afternoon levels. Reschedule morning dog walks, outdoor running, and children's school bus departure away from dawn fog.\n` +
+      `• **Midday Sun Window (11:30 AM – 3:30 PM):** Solar convective heating disperses the inversion lid. This is the optimal window for outdoor errands, school physical play, and controlled home ventilation.\n` +
+      `• **Community Defense:** Ban open trash and leaf burning in neighborhood compounds. Equip night security personnel with electric ceramic space heaters instead of open braziers.\n\n` +
+      `**Direct Impact:** Rescheduling outdoor activities from dawn to midday avoids up to **52% of diurnal peak particulate exposure**, directly protecting children and asthmatics from severe airway inflammation.\n\n` +
+      `*Educational disclaimer: Environmental awareness guidance based on meteorological telemetry.*`;
+  }
+
+  // 7. Topic: Direct Quantified Impact of Choices
+  if (
+    q.includes('impact') ||
+    q.includes('choice') ||
+    q.includes('quantif') ||
+    q.includes('reduction') ||
+    q.includes('how much') ||
+    q.includes('benefit')
+  ) {
+    return `### 📊 Direct Quantified Impact of Your Air Quality Choices\n\n` +
+      `Every operational decision you make has a measurable impact on personal exposure and community emissions:\n\n` +
+      `• **Commute Modal Shift:** Taking electric metro instead of a diesel car for a 20 km round-trip prevents **~4.2 kg CO2 and 15g particulate emissions**, while cutting personal toxic inhalation by **45%**.\n` +
+      `• **Ventilation Timing:** Sealing windows during morning inversion peaks (6–10 AM) and opening only during midday lows cuts indoor particulate infiltration by **70–80%**.\n` +
+      `• **DIY Air Cleaning:** Operating a 4-filter Corsi-Rosenthal DIY box in a bedroom lowers ambient PM2.5 from **250 µg/m³ to under 35 µg/m³ in under an hour** (86% reduction).\n` +
+      `• **Wet Cleaning vs Sweeping:** Damp microfiber mopping prevents **65% of settled PM10 dust** from re-suspending into your family's breathing zone.\n` +
+      `• **Clean Heating:** Choosing electric radiant heating over open wood burning eliminates toxic polycyclic aromatic hydrocarbons (PAHs) and point-source black carbon completely.\n\n` +
+      `*Educational disclaimer: Quantified metrics synthesized from peer-reviewed CPCB, WHO, and EPA environmental studies.*`;
+  }
+
+  // 8. Topic: Low-Emission Daily Routines & Commute Scheduling
+  if (
+    q.includes('low-emission') ||
+    q.includes('routine') ||
+    q.includes('commute') ||
+    q.includes('traffic') ||
+    q.includes('transit') ||
+    q.includes('carpool') ||
+    q.includes('metro')
+  ) {
+    return `### 🚲 Low-Emission Daily Routines for ${location.city}\n\n` +
+      `Individual mobility choices directly influence both your personal toxic inhalation and neighborhood ambient emissions:\n\n` +
+      `**Optimized Daily Routine:**\n` +
+      `• **Smart Departure Scheduling:** Travel before 8:00 AM or after 10:15 AM to avoid heavy stop-and-go congestion. In-cabin toxic gas concentrations inside congested corridors are up to **40% higher** than ambient sidewalk air.\n` +
+      `• **Electrified Metro & Public Transit:** Replace private diesel or petrol car trips with electrified metro rail or electric feeder buses.\n` +
+      `• **Diurnal Workout Timing:** Shift intense cardio workouts from dawn to early afternoon (1:00 PM – 4:00 PM) or to indoor air-filtered environments.\n` +
+      `• **Anti-Idling Habits:** Switch off combustion engines at red lights lasting over 20 seconds and near school zones.\n\n` +
+      `**Direct Impact:** Switching a 15 km daily commute from a private car to metro rail prevents **~3.2 kg CO2 and 18g NOx emissions daily**, while lowering personal particulate inhalation by **45%**.\n\n` +
+      `*Educational disclaimer: Environmental awareness guidance.*`;
+  }
+
+  // 8. Topic: Indoor Air Quality Hacks & DIY Filtration
+  if (
+    q.includes('indoor hack') ||
+    q.includes('hacks') ||
+    q.includes('diy') ||
+    q.includes('corsi') ||
+    q.includes('rosenthal') ||
+    q.includes('ventilation timing') ||
+    q.includes('plants') ||
+    q.includes('plant') ||
+    q.includes('dusting') ||
+    q.includes('mopping')
+  ) {
+    return `### 🏡 Practical Indoor Air Quality Hacks for ${location.city}\n\n` +
+      `High outdoor pollution doesn't mean you need expensive commercial purifiers. Deploy these verified, science-backed indoor hacks:\n\n` +
+      `**1. Diurnal Ventilation Window Hack:**\n` +
+      `• Keep doors and windows firmly sealed during morning and evening rush-hour smog spikes.\n` +
+      `• Open windows for 20–30 minutes strictly between **12:30 PM and 3:30 PM** on sunny afternoons when ambient particulates reach their diurnal low.\n\n` +
+      `**2. DIY Corsi-Rosenthal Air Filtration Box:**\n` +
+      `• Tape 4 MERV-13 or HEPA filters together into a cube with a standard 20-inch box fan on top.\n` +
+      `• Achieves commercial-grade Clean Air Delivery Rate (CADR >250 CFM) for <20% of the cost of commercial units, cutting indoor PM2.5 by **75–85% within 45 minutes**.\n\n` +
+      `**3. Damp Mopping Protocol (Zero Dry Sweeping):**\n` +
+      `• Never dry-sweep with a broom—dry sweeping aerosolizes settled coarse PM10 particles and allergens back into breathing level.\n` +
+      `• Use microfiber wet mopping and damp cloth wiping to trap 65% of settled dust permanently.\n\n` +
+      `**4. Phyto-Remediation (Air-Purifying Houseplants):**\n` +
+      `• Place Snake Plants (Sansevieria - releases O2 at night), Areca Palms (natural humidification), and Spider Plants in bedrooms to absorb trace VOCs.\n\n` +
+      `**Direct Impact:** Combining diurnal ventilation with wet mopping reduces indoor particulate penetration by **up to 78%** without requiring high electricity consumption.\n\n` +
+      `*Educational disclaimer: Educational guidance for indoor environmental optimization.*`;
+  }
+
+  // 9. Topic: Sustainable Alternatives & Community Action
+  if (
+    q.includes('sustainable') ||
+    q.includes('alternatives') ||
+    q.includes('heating') ||
+    q.includes('burning') ||
+    q.includes('solar') ||
+    q.includes('community action')
+  ) {
+    return `### 🌱 Sustainable Community Alternatives for ${location.city}\n\n` +
+      `Community-level action and sustainable lifestyle alternatives create lasting urban air quality improvements:\n\n` +
+      `**1. Clean Space Heating Alternatives:**\n` +
+      `• Replace solid-fuel, wood, or coal space heaters with energy-efficient oil-filled ceramic radiant electric heaters.\n` +
+      `• Use thermal curtains and door draft stoppers to insulate living rooms without needing continuous heating combustion.\n\n` +
+      `**2. Community Waste Management & Reporting:**\n` +
+      `• Composting of garden leaves and organic waste instead of open burning.\n` +
+      `• Report open municipal garbage or stubble burning incidents immediately via clean air grievance apps.\n\n` +
+      `**3. Clean Transport Integration:**\n` +
+      `• Advocate for shared EV charging points in apartment residential societies (RWAs).\n` +
+      `• Transition community security patrol vehicles to electric 2-wheelers.\n\n` +
+      `**Direct Impact:** Replacing open wood braziers with electric radiant heating removes dangerous localized PM2.5 spikes exceeding **800 µg/m³**, eliminating point-source black carbon emissions entirely.\n\n` +
+      `*Educational disclaimer: Environmental policy and public awareness guidance.*`;
+  }
+
+  // 11. Topic: How can I protect myself? / Masks / HEPA / Purifiers
   if (
     q.includes('protect myself') ||
     q.includes('how to protect') ||
@@ -238,7 +360,7 @@ export function generateAssistantResponse(
       `*Educational disclaimer: Masks and purifiers reduce exposure but do not guarantee complete protection from all pollutants.*`;
   }
 
-  // 7. Topic: Precautions for children
+  // 12. Topic: Precautions for children
   if (
     q.includes('children') ||
     q.includes('kids') ||
@@ -259,7 +381,7 @@ export function generateAssistantResponse(
       `*Educational disclaimer: Guidance is educational. Consult pediatricians for clinical child health plans.*`;
   }
 
-  // 8. Topic: Precautions for elderly / seniors / cardiac
+  // 13. Topic: Precautions for elderly / seniors / cardiac
   if (
     q.includes('elderly') ||
     q.includes('seniors') ||
@@ -278,7 +400,7 @@ export function generateAssistantResponse(
       `*Educational disclaimer: Educational information only, not clinical medical advice.*`;
   }
 
-  // 9. Topic: Asthma / COPD / Respiratory
+  // 14. Topic: Asthma / COPD / Respiratory
   if (
     q.includes('asthma') ||
     q.includes('copd') ||
@@ -299,7 +421,7 @@ export function generateAssistantResponse(
       `*Educational disclaimer: Educational guidance only. Seek urgent medical care for acute breathing distress.*`;
   }
 
-  // 10. Intelligent Fallback
+  // 15. Intelligent Fallback
   return `I'm analyzing the atmospheric telemetry for **${location.city}, ${location.state}**:\n\n` +
     `• **Current AQI Score:** **${aqi}** (${category})\n` +
     `• **Dominant Factor:** ${dominantPollutant}\n` +
@@ -392,6 +514,28 @@ export function getHealthRecommendationsForCity(
         : isModerate
         ? ['Encourage hydration breaks', 'Monitor children with allergies']
         : ['Curtail intense outdoor school sports', 'Older adults should remain indoors'],
+    },
+    {
+      id: 'rec-winter-routines',
+      category: 'winter_smog',
+      title: 'Winter Smog & Low-Emission Routines',
+      description: isGood
+        ? 'Clean winter atmosphere. Ideal for active walking and community sports.'
+        : isModerate
+        ? 'Reschedule workouts away from traffic peak hours. Practice midday ventilation windows.'
+        : 'Inversion layers trap morning pollution. Delay outdoor trips until midday sun; use electrified transit.',
+      severity: isGood ? 'low' : isModerate ? 'moderate' : 'high',
+      iconName: 'Snowflake',
+      bullets: isGood
+        ? ['Walk & cycle for short errands', 'Open windows midday']
+        : isModerate
+        ? ['Off-peak commute (before 8 AM or after 10 AM)', 'Damp mop instead of dry sweeping']
+        : ['Midday outdoor window (11:30 AM–3:30 PM)', 'Cuts peak particulate exposure by up to 52%'],
+      impactExplanation: isGood
+        ? 'Active travel saves ~160g CO2 per kilometer.'
+        : isModerate
+        ? 'Off-peak travel cuts in-cabin toxic gas inhalation by up to 35%.'
+        : 'Rescheduling avoids 52% of peak diurnal particulate inhalation.',
     },
   ];
 }

@@ -9,6 +9,7 @@ from app.core.config import Settings, get_settings
 from app.db.init_db import check_database_health
 from app.db.session import get_db
 from app.integrations.ai.schemas import (
+    CommunitySolutionsResponse,
     HealthAskRequest,
     HealthAskResponse,
     HealthGuidelinesResponse,
@@ -96,6 +97,20 @@ def get_health_guidelines(
 ) -> HealthGuidelinesResponse:
     """Return general and vulnerable-group guidance for all 6 NAQI categories."""
     return advisor.get_guidelines()
+
+
+@router.get(
+    "/community-solutions",
+    response_model=CommunitySolutionsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get Community Solutions & Winter Smog Protocols",
+    description="Retrieve structured Challenge 6 community guidance: winter smog navigation, low-emission daily routines, indoor air quality hacks, sustainable alternatives, and direct impact explanations.",
+)
+def get_community_solutions(
+    advisor: HealthAdvisorService = Depends(get_health_advisor),
+) -> CommunitySolutionsResponse:
+    """Return categorized winter smog guidance, low-emission routines, indoor hacks, and impact metrics."""
+    return advisor.get_community_solutions()
 
 
 @router.get(

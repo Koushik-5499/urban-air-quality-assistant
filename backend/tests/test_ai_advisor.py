@@ -468,3 +468,74 @@ async def test_post_health_ask_city_isolation(client: AsyncClient, db_session: S
     finally:
         app.dependency_overrides.pop(get_health_advisor, None)
 
+
+# ---------------------------------------------------------------------------
+# Challenge 6 Alignment & Community Solutions Tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.anyio
+async def test_get_community_solutions_endpoint(client: AsyncClient):
+    """Verify Challenge 6 community solutions endpoint returns structured guidance across all 5 pillars."""
+    response = await client.get("/api/v1/health/community-solutions")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "Winter Smog" in data["title"]
+    assert len(data["winter_smog_guidance"]) >= 2
+    assert len(data["low_emission_routines"]) >= 3
+    assert len(data["indoor_air_hacks"]) >= 3
+    assert len(data["sustainable_alternatives"]) >= 2
+    assert len(data["direct_impact_analysis"]) >= 4
+
+    # Verify impact explanations are quantified
+    for item in data["winter_smog_guidance"] + data["low_emission_routines"] + data["indoor_air_hacks"]:
+        assert item["impact_explanation"] is not None
+        assert any(unit in item["impact_explanation"] for unit in ("%", "kg", "µg/m³"))
+
+
+def test_recommendation_engine_challenge_pillars():
+    """Verify recommendation engine categorizes guidance into specific Challenge 6 pillars."""
+    from app.integrations.ai.schemas import AQIContextSnapshot
+
+    poor_snapshot = AQIContextSnapshot(
+        city_name="Delhi",
+        aqi=260,
+        category="Poor",
+        dominant_pollutant="PM2.5",
+        is_stale=False,
+        is_simulated=False,
+    )
+    recs = RecommendationEngine.generate_recommendations(poor_snapshot)
+
+    category_types = {r.category_type for r in recs}
+    assert "indoor_hack" in category_types
+    assert "low_emission_routine" in category_types
+    assert any(r.impact_explanation is not None for r in recs)
+
+
+@pytest.mark.anyio
+async def test_knowledge_base_fallback_winter_smog_enrichment(client: AsyncClient, health_test_data):
+    """Verify knowledge-base fallback answer dynamically appends winter smog & direct impact guidance."""
+    from app.api.v1.endpoints.health import get_health_advisor
+    from app.main import app
+
+    failing_provider = MockAIProvider(should_fail=True)
+    advisor = HealthAdvisorService(ai_provider=failing_provider)
+    app.dependency_overrides[get_health_advisor] = lambda: advisor
+
+    try:
+        payload = {
+            "city": "Delhi",
+            "question": "How should my family protect children during severe winter smog?",
+        }
+        response = await client.post("/api/v1/health/ask", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["response_type"] == "knowledge_base_fallback"
+        assert "Winter Smog & Inversion Protocols for Families" in data["answer"]
+        assert "Direct Impact" in data["answer"]
+    finally:
+        app.dependency_overrides.pop(get_health_advisor, None)
+
+
