@@ -50,3 +50,4 @@ describe('ThemeContext', () => {
     expect(final).toBe(initial);
   });
 });
+
