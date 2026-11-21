@@ -21,7 +21,7 @@ class RootResponse(BaseModel):
 
     message: str = Field(description="Welcome message")
     status: str = Field(default="online", description="Service availability status")
-    docs: str = Field(description="Interactive documentation URL")
-    redoc: str = Field(description="ReDoc documentation URL")
+    docs: Optional[str] = Field(default=None, description="Interactive documentation URL")
+    redoc: Optional[str] = Field(default=None, description="ReDoc documentation URL")
     version: str = Field(description="API version")
     api_v1_prefix: str = Field(description="Prefix for version 1 API endpoints")
