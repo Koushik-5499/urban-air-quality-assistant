@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import desc, func, select
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.config import Settings, get_settings
 from app.integrations.weather.client import WeatherClient
 from app.models.city import City
+from app.models.monitoring_station import MonitoringStation
 from app.models.forecast import AQIForecast, ForecastEvaluation, ForecastRun
 from app.schemas.forecast import (
     AQIForecastItem,
@@ -25,7 +27,7 @@ from app.schemas.forecast import (
     ModelStatusResponse,
 )
 from app.services.forecasting.confidence import UncertaintyEstimator
-from app.services.forecasting.data_preparation import DataPreparationService
+from app.services.forecasting.data_preparation import DataPreparationService, PreparedDataset
 from app.services.forecasting.evaluation import ForecastEvaluator
 from app.services.forecasting.models.factory import ModelFactory
 from app.services.forecasting.validators import SUPPORTED_HORIZONS, ForecastValidator
@@ -62,6 +64,190 @@ class ForecastService:
         else:
             return "Severe"
 
+    @staticmethod
+    def _check_recent_forecast_run(
+        db: Session,
+        city: City,
+        station: MonitoringStation | None,
+        now_utc: datetime,
+        target_horizons: list[int],
+    ) -> ForecastGenerateResponse | None:
+        """Return cached response if a recent run exists within the last hour."""
+        recent_stmt = (
+            select(ForecastRun)
+            .where(
+                ForecastRun.city_id == city.id,
+                ForecastRun.station_id == (station.id if station else None),
+                ForecastRun.status == "completed",
+                ForecastRun.generated_at >= now_utc - timedelta(hours=1),
+            )
+            .order_by(desc(ForecastRun.generated_at))
+            .limit(1)
+        )
+        existing_run = db.execute(recent_stmt).scalar_one_or_none()
+        if not existing_run:
+            return None
+
+        forecast_count_stmt = select(func.count(AQIForecast.id)).where(
+            AQIForecast.forecast_run_id == existing_run.id
+        )
+        f_count = db.execute(forecast_count_stmt).scalar() or 0
+
+        return ForecastGenerateResponse(
+            success=True,
+            city=city.name,
+            station_id=station.id if station else None,
+            model_name=existing_run.model_name,
+            model_version=existing_run.model_version,
+            horizons_generated=[f"{h}h" for h in target_horizons],
+            generated_forecasts_count=f_count,
+            training_samples=existing_run.training_samples,
+            evaluation_mae=existing_run.evaluation_mae,
+            evaluation_rmse=existing_run.evaluation_rmse,
+            weather_integrated=False,
+            is_simulated=existing_run.is_simulated,
+            generated_at=existing_run.generated_at,
+            message="Reused recent valid forecast run from database cache.",
+        )
+
+    @staticmethod
+    def _handle_insufficient_dataset(
+        db: Session,
+        city: City,
+        station: MonitoringStation | None,
+        dataset: PreparedDataset,
+        now_utc: datetime,
+    ) -> None:
+        """Persist failed run record and raise HTTP 422 for insufficient training data."""
+        run_rec = ForecastRun(
+            city_id=city.id,
+            station_id=station.id if station else None,
+            model_name="ExponentialSmoothingForecaster",
+            model_version="1.2.0",
+            generated_at=now_utc,
+            training_data_start=dataset.start_time,
+            training_data_end=dataset.end_time,
+            training_samples=dataset.sample_count,
+            status="insufficient_data",
+            error_message=dataset.insufficiency_reason,
+            is_simulated=dataset.is_simulated,
+        )
+        db.add(run_rec)
+        db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=dataset.insufficiency_reason or "Insufficient historical data for forecasting.",
+        )
+
+    async def _fetch_optional_weather(self, city: City) -> Any:
+        """Fetch meteorological readings if weather service is enabled."""
+        if not (self.settings.WEATHER_ENABLED and city.latitude and city.longitude):
+            return None
+        try:
+            return await self.weather_client.get_current_weather(
+                latitude=city.latitude,
+                longitude=city.longitude,
+            )
+        except Exception as exc:
+            logger.warning("Weather fetch failed for %s: %s", city.name, exc)
+            return None
+
+    @staticmethod
+    def _persist_forecast_run(
+        db: Session,
+        city: City,
+        station: MonitoringStation | None,
+        model: Any,
+        dataset: PreparedDataset,
+        eval_report: Any,
+        now_utc: datetime,
+    ) -> ForecastRun:
+        """Save ForecastRun and associated horizon evaluation records."""
+        forecast_run = ForecastRun(
+            city_id=city.id,
+            station_id=station.id if station else None,
+            model_name=model.name,
+            model_version=model.version,
+            generated_at=now_utc,
+            training_data_start=dataset.start_time,
+            training_data_end=dataset.end_time,
+            training_samples=dataset.sample_count,
+            evaluation_mae=eval_report.overall_mae,
+            evaluation_rmse=eval_report.overall_rmse,
+            evaluation_mape=eval_report.overall_mape,
+            is_simulated=dataset.is_simulated,
+            status="completed",
+            error_message=None,
+        )
+        db.add(forecast_run)
+        db.flush()
+
+        for h_eval in eval_report.horizon_metrics:
+            eval_entry = ForecastEvaluation(
+                forecast_run_id=forecast_run.id,
+                horizon_hours=h_eval.horizon_hours,
+                sample_count=h_eval.sample_count,
+                mae=h_eval.mae,
+                rmse=h_eval.rmse,
+                mape=h_eval.mape,
+                evaluated_at=now_utc,
+            )
+            db.add(eval_entry)
+
+        return forecast_run
+
+    def _build_step_forecasts(
+        self,
+        forecast_run_id: int,
+        city: City,
+        station: MonitoringStation | None,
+        model: Any,
+        dataset: PreparedDataset,
+        raw_predictions: list[float],
+        max_horizon: int,
+        residual_std: float | None,
+        val_count: int,
+        now_utc: datetime,
+    ) -> list[AQIForecast]:
+        """Generate hourly step forecast models with uncertainty intervals."""
+        latest_time = dataset.timestamps[-1]
+        latest_dom = dataset.dominant_pollutants[-1] if dataset.dominant_pollutants else "PM2.5"
+
+        forecast_records: list[AQIForecast] = []
+        for step_h in range(1, max_horizon + 1):
+            pred_aqi = int(round(raw_predictions[step_h - 1]))
+            target_timestamp = latest_time + timedelta(hours=step_h)
+            pred_cat = self.get_category_for_aqi(pred_aqi)
+
+            uncertainty = UncertaintyEstimator.estimate_interval(
+                predicted_aqi=pred_aqi,
+                horizon_hours=step_h,
+                residual_std=residual_std,
+                sample_count=val_count,
+            )
+
+            f_point = AQIForecast(
+                forecast_run_id=forecast_run_id,
+                city_id=city.id,
+                station_id=station.id if station else None,
+                forecast_timestamp=target_timestamp,
+                horizon_hours=step_h,
+                predicted_aqi=pred_aqi,
+                predicted_category=pred_cat,
+                dominant_pollutant=latest_dom,
+                lower_bound=uncertainty.lower_bound,
+                upper_bound=uncertainty.upper_bound,
+                uncertainty_status=uncertainty.uncertainty_status,
+                model_name=model.name,
+                model_version=model.version,
+                is_simulated=dataset.is_simulated,
+                created_at=now_utc,
+            )
+            forecast_records.append(f_point)
+
+        return forecast_records
+
     async def generate_forecast_run(
         self,
         db: Session,
@@ -76,96 +262,27 @@ class ForecastService:
             city, station = ForecastValidator.resolve_city_and_station(db, city_name, station_id)
             target_horizons = ForecastValidator.validate_horizons_list(requested_horizons)
 
-            # 1. Check if a very recent run already exists (< 1 hour old) unless force_retrain is requested
             if not force_retrain:
-                recent_stmt = (
-                    select(ForecastRun)
-                    .where(
-                        ForecastRun.city_id == city.id,
-                        ForecastRun.station_id == (station.id if station else None),
-                        ForecastRun.status == "completed",
-                        ForecastRun.generated_at >= now_utc - timedelta(hours=1),
-                    )
-                    .order_by(desc(ForecastRun.generated_at))
-                    .limit(1)
-                )
-                existing_run = db.execute(recent_stmt).scalar_one_or_none()
-                if existing_run:
-                    forecast_count_stmt = select(func.count(AQIForecast.id)).where(
-                        AQIForecast.forecast_run_id == existing_run.id
-                    )
-                    f_count = db.execute(forecast_count_stmt).scalar() or 0
+                cached_res = self._check_recent_forecast_run(db, city, station, now_utc, target_horizons)
+                if cached_res:
+                    return cached_res
 
-                    return ForecastGenerateResponse(
-                        success=True,
-                        city=city.name,
-                        station_id=station.id if station else None,
-                        model_name=existing_run.model_name,
-                        model_version=existing_run.model_version,
-                        horizons_generated=[f"{h}h" for h in target_horizons],
-                        generated_forecasts_count=f_count,
-                        training_samples=existing_run.training_samples,
-                        evaluation_mae=existing_run.evaluation_mae,
-                        evaluation_rmse=existing_run.evaluation_rmse,
-                        weather_integrated=False,
-                        is_simulated=existing_run.is_simulated,
-                        generated_at=existing_run.generated_at,
-                        message="Reused recent valid forecast run from database cache.",
-                    )
-
-            # 2. Extract and prepare historical observations
             dataset = DataPreparationService.load_and_prepare_dataset(
                 db=db,
                 city_id=city.id,
                 station_id=station.id if station else None,
                 min_required_samples=self.settings.FORECAST_MIN_TRAINING_SAMPLES,
             )
-
             if not dataset.is_sufficient:
-                # Record failed or insufficient run
-                run_rec = ForecastRun(
-                    city_id=city.id,
-                    station_id=station.id if station else None,
-                    model_name="ExponentialSmoothingForecaster",
-                    model_version="1.2.0",
-                    generated_at=now_utc,
-                    training_data_start=dataset.start_time,
-                    training_data_end=dataset.end_time,
-                    training_samples=dataset.sample_count,
-                    status="insufficient_data",
-                    error_message=dataset.insufficiency_reason,
-                    is_simulated=dataset.is_simulated,
-                )
-                db.add(run_rec)
-                db.commit()
+                self._handle_insufficient_dataset(db, city, station, dataset, now_utc)
 
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=dataset.insufficiency_reason or "Insufficient historical data for forecasting.",
-                )
-
-            # 3. Partition data chronologically for out-of-sample evaluation
             splits = DataPreparationService.split_chronological(dataset)
-
-            # 4. Instantiate model and evaluate
             model = ModelFactory.get_model(self.settings.FORECAST_MODEL)
             eval_report = ForecastEvaluator.evaluate_model(model, splits, horizons=target_horizons)
-
-            # 5. Fit model on complete dataset up to the latest observation
             model.fit(dataset.aqi_values, dataset.timestamps)
 
-            # 6. Fetch optional meteorological data
-            weather_obs = None
-            if self.settings.WEATHER_ENABLED and city.latitude and city.longitude:
-                try:
-                    weather_obs = await self.weather_client.get_current_weather(
-                        latitude=city.latitude,
-                        longitude=city.longitude,
-                    )
-                except Exception as exc:
-                    logger.warning("Weather fetch failed for %s: %s", city.name, exc)
+            weather_obs = await self._fetch_optional_weather(city)
 
-            # 7. Compute empirical residual standard deviation for prediction intervals
             val_actuals = splits.val_values + splits.test_values
             val_model = ModelFactory.get_model(self.settings.FORECAST_MODEL)
             val_model.fit(splits.train_values, splits.train_timestamps)
@@ -176,78 +293,17 @@ class ForecastService:
                 predictions=val_preds,
             )
 
-            # 8. Project forecasts across max horizon
             max_horizon = max(target_horizons)
             raw_predictions = model.predict(max_horizon)
 
-            # 9. Create ForecastRun record
-            forecast_run = ForecastRun(
-                city_id=city.id,
-                station_id=station.id if station else None,
-                model_name=model.name,
-                model_version=model.version,
-                generated_at=now_utc,
-                training_data_start=dataset.start_time,
-                training_data_end=dataset.end_time,
-                training_samples=dataset.sample_count,
-                evaluation_mae=eval_report.overall_mae,
-                evaluation_rmse=eval_report.overall_rmse,
-                evaluation_mape=eval_report.overall_mape,
-                is_simulated=dataset.is_simulated,
-                status="completed",
-                error_message=None,
+            forecast_run = self._persist_forecast_run(
+                db, city, station, model, dataset, eval_report, now_utc
             )
-            db.add(forecast_run)
-            db.flush()
 
-            # 10. Save per-horizon evaluation metrics
-            for h_eval in eval_report.horizon_metrics:
-                eval_entry = ForecastEvaluation(
-                    forecast_run_id=forecast_run.id,
-                    horizon_hours=h_eval.horizon_hours,
-                    sample_count=h_eval.sample_count,
-                    mae=h_eval.mae,
-                    rmse=h_eval.rmse,
-                    mape=h_eval.mape,
-                    evaluated_at=now_utc,
-                )
-                db.add(eval_entry)
-
-            # 11. Generate step-by-step forecast records
-            latest_time = dataset.timestamps[-1]
-            latest_dom = dataset.dominant_pollutants[-1] if dataset.dominant_pollutants else "PM2.5"
-
-            forecast_records: list[AQIForecast] = []
-            for step_h in range(1, max_horizon + 1):
-                pred_aqi = int(round(raw_predictions[step_h - 1]))
-                target_timestamp = latest_time + timedelta(hours=step_h)
-                pred_cat = self.get_category_for_aqi(pred_aqi)
-
-                uncertainty = UncertaintyEstimator.estimate_interval(
-                    predicted_aqi=pred_aqi,
-                    horizon_hours=step_h,
-                    residual_std=residual_std,
-                    sample_count=len(val_actuals),
-                )
-
-                f_point = AQIForecast(
-                    forecast_run_id=forecast_run.id,
-                    city_id=city.id,
-                    station_id=station.id if station else None,
-                    forecast_timestamp=target_timestamp,
-                    horizon_hours=step_h,
-                    predicted_aqi=pred_aqi,
-                    predicted_category=pred_cat,
-                    dominant_pollutant=latest_dom,
-                    lower_bound=uncertainty.lower_bound,
-                    upper_bound=uncertainty.upper_bound,
-                    uncertainty_status=uncertainty.uncertainty_status,
-                    model_name=model.name,
-                    model_version=model.version,
-                    is_simulated=dataset.is_simulated,
-                    created_at=now_utc,
-                )
-                forecast_records.append(f_point)
+            forecast_records = self._build_step_forecasts(
+                forecast_run.id, city, station, model, dataset, raw_predictions,
+                max_horizon, residual_std, len(val_actuals), now_utc
+            )
 
             db.add_all(forecast_records)
             db.commit()
