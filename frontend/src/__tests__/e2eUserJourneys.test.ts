@@ -6,7 +6,7 @@ import {
   forecastApi,
   formatApiErrorMessage,
   ApiError,
-} from '../services/api';
+} from '../services/api/index';
 import { DASHBOARD_DATA } from '../data/dashboardData';
 import { generateHistoricalData, calculateAnalyticsSummary } from '../services/analyticsService';
 import { generateAssistantResponse } from '../services/assistantEngine';

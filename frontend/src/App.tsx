@@ -7,7 +7,7 @@ import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { ROUTES } from './constants/routes';
 
 // Code-split pages via React.lazy for optimized initial bundle delivery
-const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const Dashboard = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const LocationsPage = lazy(() =>
   import('./pages/LocationsPage').then((m) => ({ default: m.LocationsPage }))
 );
