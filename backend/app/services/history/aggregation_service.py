@@ -149,10 +149,7 @@ class AggregationService:
         station_id: int | None = None,
         station_name: str | None = None,
     ) -> list[AQIHistoryRecord]:
-        """
-        Group and aggregate AQI readings into chronological buckets without fabricating missing
-        data.
-        """
+        """Group and aggregate AQI readings into buckets without fabricating missing data."""
         if not readings:
             return []
 
@@ -230,10 +227,7 @@ class AggregationService:
         station_id: int | None = None,
         station_name: str | None = None,
     ) -> list[PollutantHistoryRecord]:
-        """
-        Group and aggregate pollutant readings into chronological buckets, computing
-        sub-indices.
-        """
+        """Group and aggregate pollutant readings into buckets, computing sub-indices."""
         if not readings:
             return []
 

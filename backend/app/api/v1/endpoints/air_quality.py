@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
     response_model=list[PollutantReadingResponse],
     summary="List Pollutant Observations",
     description=(
-        "Retrieve historical and latest ambient pollutant measurements filtered by city, "
-        "state, or pollutant code."
+        "Retrieve historical and latest ambient pollutant measurements "
+        "filtered by city, state, or pollutant code."
     ),
 )
 async def list_air_quality_readings(
@@ -73,8 +73,8 @@ async def list_air_quality_readings(
     response_model=list[CityAvailabilitySummary],
     summary="List Cities Data Availability",
     description=(
-        "Retrieve data availability, active station counts, and freshness status for all 10 "
-        "supported Indian cities."
+        "Retrieve data availability, active station counts, and freshness status "
+        "for all 10 supported Indian cities."
     ),
 )
 async def list_cities_availability(
@@ -90,8 +90,8 @@ async def list_cities_availability(
     response_model=CityAirQualityResponse,
     summary="Get City Air Quality",
     description=(
-        "Retrieve the latest ambient observations, active pollutants, and data age for a "
-        "specific city."
+        "Retrieve the latest ambient observations, active pollutants, and data age "
+        "for a specific city."
     ),
 )
 async def get_city_air_quality(
@@ -114,8 +114,8 @@ async def get_city_air_quality(
     response_model=SourceStatusResponse,
     summary="Get Data Source Diagnostics",
     description=(
-        "Check external CPCB provider status, licensing, and sync timestamps without exposing "
-        "credentials."
+        "Check external CPCB provider status, licensing, and sync timestamps "
+        "without exposing credentials."
     ),
 )
 async def get_source_status(
@@ -130,8 +130,8 @@ async def get_source_status(
     response_model=SyncResponse,
     summary="Trigger Provider Synchronization",
     description=(
-        "Trigger an on-demand synchronization against the configured provider with "
-        "deduplication and persistence."
+        "Trigger an on-demand synchronization against the configured provider "
+        "with deduplication and persistence."
     ),
 )
 async def trigger_sync(

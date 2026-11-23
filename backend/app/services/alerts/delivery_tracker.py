@@ -71,10 +71,7 @@ class DeliveryTracker:
         user_tz: str | None = None,
         now_utc: datetime | None = None,
     ) -> tuple[bool, str]:
-        """
-        Determine whether an alert should be dispatched immediately or suppressed for quiet
-        hours.
-        """
+        """Determine whether an alert should be dispatched or suppressed for quiet hours."""
         start_str = quiet_hours_start or quiet_start
         end_str = quiet_hours_end or quiet_end
         zone_str = user_tz or tz_name

@@ -132,8 +132,7 @@ class GeminiProvider(BaseAIProvider):
                     raise last_error
 
             except Exception as exc:
-                # Top-level SDK boundary translating provider-specific client errors to
-                # internal AI errors
+                # SDK boundary translating provider-specific client errors to internal AI errors
                 err_str = str(exc).lower()
                 logger.warning(
                     "Gemini API invocation error (attempt %d/%d): %s",

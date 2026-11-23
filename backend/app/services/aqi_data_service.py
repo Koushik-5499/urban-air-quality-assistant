@@ -1,7 +1,4 @@
-"""
-Service layer orchestrating AQI data fetching, caching, deduplication, and database
-persistence.
-"""
+"""AQI data fetching, caching, deduplication, and database persistence."""
 
 import asyncio
 from datetime import UTC, datetime
@@ -167,8 +164,8 @@ class AQIDataService:
             return SyncResponse(
                 success=True,
                 message=(
-                    f"Sync completed successfully. {readings_inserted} new "
-                    f"readings recorded across {stations_created} new stations."
+                    f"Sync completed successfully. {readings_inserted} new readings "
+                    f"recorded across {stations_created} new stations."
                 ),
                 records_fetched=len(observations),
                 readings_inserted=readings_inserted,

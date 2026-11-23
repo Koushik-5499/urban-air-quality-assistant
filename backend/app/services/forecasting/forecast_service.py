@@ -36,10 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class ForecastService:
-    """
-    Manages end-to-end AQI forecasting lifecycle, data preparation, evaluation, and
-    persistence.
-    """
+    """Manages AQI forecasting lifecycle, data preparation, evaluation, and persistence."""
 
     _generation_lock = asyncio.Lock()
 
@@ -153,8 +150,7 @@ class ForecastService:
                 longitude=city.longitude,
             )
         except Exception as exc:
-            # Optional auxiliary weather telemetry fetch failure should not block core forecast
-            # generation
+            # Auxiliary weather fetch failure should not block core forecast generation
             logger.warning("Weather fetch failed for %s: %s", city.name, exc)
             return None
 
@@ -261,10 +257,7 @@ class ForecastService:
         requested_horizons: list[str] | None = None,
         force_retrain: bool = False,
     ) -> ForecastGenerateResponse:
-        """
-        Execute a controlled model training and forecast generation task with concurrency
-        protection.
-        """
+        """Execute a model training and forecast generation task with concurrency protection."""
         async with self._generation_lock:
             now_utc = datetime.now(UTC)
             city, station = ForecastValidator.resolve_city_and_station(db, city_name, station_id)
@@ -642,10 +635,7 @@ class ForecastService:
         db: Session,
         city_name: str | None = None,
     ) -> ModelStatusResponse:
-        """
-        Report operational status, versioning, evaluation metrics, and readiness of the
-        forecasting service.
-        """
+        """Report operational status, versioning, evaluation metrics, and readiness."""
         city_entity = None
         if city_name:
             city_stmt = select(City).where(City.name.ilike(city_name.strip()))

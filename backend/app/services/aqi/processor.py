@@ -241,8 +241,7 @@ class AQIProcessingService:
                     )
                     continue
                 except Exception as exc:
-                    # Station evaluation isolation boundary preventing one faulty station from
-                    # stopping batch
+                    # Station evaluation boundary preventing one faulty station from stopping batch
                     logger.exception(
                         "Unexpected error calculating AQI for %s (station %s): %s",
                         city.name,
@@ -255,8 +254,7 @@ class AQIProcessingService:
                     skipped_insufficient += 1
                     continue
 
-                # Deduplicate: Check if AQIReading already exists for (city_id, station_id,
-                # measured_at)
+                # Deduplicate: Check if AQIReading already exists for station & timestamp
                 existing_stmt = select(AQIReading).where(
                     AQIReading.city_id == city.id,
                     AQIReading.station_id == st_id,

@@ -102,8 +102,7 @@ class WebPushNotificationChannel(BaseNotificationChannel):
                 else:
                     logger.warning("Web Push delivery failed: %s", exc)
             except Exception as exc:
-                # Top-level notification channel boundary preventing individual push failure
-                # from halting queue
+                # Channel boundary preventing individual push failure from halting queue
                 logger.exception("Unexpected error during web push: %s", exc)
 
         db.commit()

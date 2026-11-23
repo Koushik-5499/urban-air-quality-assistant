@@ -13,10 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class WeatherClient:
-    """
-    Asynchronous client for fetching real-time meteorological data with caching and retry
-    logic.
-    """
+    """Client for fetching real-time meteorological data with caching and retry logic."""
 
     # Key: (round(lat, 2), round(lon, 2)), Value: (WeatherObservation, cache_time)
     _cache: dict[tuple[float, float], tuple[WeatherObservation, datetime]] = {}

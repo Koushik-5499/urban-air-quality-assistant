@@ -17,8 +17,8 @@ router = APIRouter()
     response_model=list[StationResponse],
     summary="List Monitoring Stations",
     description=(
-        "Retrieve registered environmental monitoring stations filtered by city, state, or "
-        "provider."
+        "Retrieve registered environmental monitoring stations "
+        "filtered by city, state, or provider."
     ),
 )
 async def list_monitoring_stations(

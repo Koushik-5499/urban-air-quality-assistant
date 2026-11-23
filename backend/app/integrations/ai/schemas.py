@@ -57,15 +57,15 @@ class RecommendationItem(BaseModel):
     category_type: str = Field(
         default="general_health",
         description=(
-            "Pillar: winter_smog, low_emission_routine, indoor_hack, sustainable_alternative, "
-            "general_health"
+            "Pillar: winter_smog, low_emission_routine, indoor_hack, "
+            "sustainable_alternative, general_health"
         ),
     )
     impact_explanation: str | None = Field(
         default=None,
         description=(
-            "Quantified direct impact of this choice (e.g. 'Reduces PM2.5 inhalation by ~45%, "
-            "cuts 2.4kg CO2/day')"
+            "Quantified direct impact of this choice "
+            "(e.g. 'Reduces PM2.5 inhalation by ~45%, cuts 2.4kg CO2/day')"
         ),
     )
 
@@ -105,8 +105,7 @@ class HealthAskRequest(BaseModel):
         max_length=100,
         description=(
             "User lifestyle persona (e.g. 'family_with_children', 'daily_commuter', "
-            "'elderly_caregiver', 'outdoor_enthusiast', 'remote_worker', "
-            "'community_organizer')"
+            "'elderly_caregiver', 'outdoor_enthusiast', 'remote_worker', 'community_organizer')"
         ),
     )
     family_context: str | None = Field(
@@ -265,8 +264,8 @@ class CommunitySolutionsResponse(BaseModel):
     direct_impact_analysis: list[str] = Field(
         default_factory=list,
         description=(
-            "Direct quantified explanations of how individual and community choices cut "
-            "pollution and exposure"
+            "Direct quantified explanations of how individual and community choices "
+            "cut pollution and exposure"
         ),
     )
     sources: list[str] = Field(

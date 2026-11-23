@@ -523,10 +523,7 @@ class HistoryService:
         end_date: datetime | None = None,
         include_simulated: bool = True,
     ) -> AQISummaryResponse:
-        """
-        Calculate statistical summaries (min, max, mean, median, distributions) for valid AQI
-        readings.
-        """
+        """Calculate statistical summaries for valid AQI readings."""
         start_utc, end_utc = HistoryValidator.validate_date_range(
             start_date, end_date, is_aggregated=True
         )

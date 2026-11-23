@@ -41,8 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         with SessionLocal() as session:
             seed_cities(session)
     except Exception as e:
-        # Top-level application lifespan startup boundary preventing initialization failure
-        # from crashing app
+        # Lifespan startup boundary preventing initialization failure from crashing app
         logger.exception("Database startup init/seed note: %s", str(e))
     yield
     logger.info("Shutting down %s...", settings.APP_NAME)
@@ -160,10 +159,7 @@ def create_application() -> FastAPI:
         tags=["System"],
     )
     async def health() -> HealthResponse:
-        """
-        Root health check returning service status, version, database status, and UTC
-        timestamp.
-        """
+        """Root health check returning service status, version, DB status, and UTC timestamp."""
         db_health = check_database_health()
         overall_status = "healthy" if db_health["healthy"] else "degraded"
         return HealthResponse(

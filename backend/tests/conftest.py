@@ -1,6 +1,7 @@
 """Pytest configuration and shared test fixtures."""
 
 import os
+
 os.environ["DISABLE_SQLALCHEMY_CEXT"] = "1"
 
 import sqlite3

@@ -1,7 +1,4 @@
-"""
-Core Alert and Notification service orchestrating rules, deduplication, persistence, and
-dispatch.
-"""
+"""Alert and Notification service orchestrating rules, deduplication, and dispatch."""
 
 import asyncio
 import logging
@@ -43,10 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class AlertService:
-    """
-    Manages environmental condition detection, alert generation, user preferences, and
-    notification channels.
-    """
+    """Manages environmental condition detection, alert generation, and notifications."""
 
     _process_lock = asyncio.Lock()
     _last_processed_at: datetime | None = None
@@ -531,8 +525,7 @@ class AlertService:
                     logger.error(err_msg)
                     errors.append(err_msg)
                 except Exception as exc:
-                    # City-level alert evaluation isolation boundary preventing one failure
-                    # from halting all cities
+                    # Alert evaluation boundary preventing one failure from halting all cities
                     err_msg = f"Unexpected error processing alerts for {city.name}: {exc}"
                     logger.exception(err_msg)
                     errors.append(err_msg)

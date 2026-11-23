@@ -722,6 +722,7 @@ async def test_api_push_subscription(client: AsyncClient):
 def test_alert_service_mark_read_and_unread_count(db_session, alert_seed_data):
     """Test AlertService mark_alert_read and get_unread_count."""
     from sqlalchemy import select
+
     from app.models.alert import Alert
     from app.services.alerts.alert_service import AlertService
 
@@ -738,6 +739,7 @@ def test_alert_service_mark_read_and_unread_count(db_session, alert_seed_data):
 def test_alert_service_mark_read_not_found(db_session):
     """Test AlertService mark_alert_read raises 404 for missing alert ID."""
     from fastapi import HTTPException
+
     from app.services.alerts.alert_service import AlertService
 
     with pytest.raises(HTTPException) as exc_info:
@@ -785,6 +787,7 @@ def test_alert_service_preferences_crud(db_session, alert_seed_data):
 def test_alert_service_preferences_invalid_inputs(db_session, alert_seed_data):
     """Test AlertService set_preferences validation for quiet hours, channels, and city."""
     from fastapi import HTTPException
+
     from app.schemas.alert import AlertPreferenceCreate
     from app.services.alerts.alert_service import AlertService
 
@@ -799,10 +802,13 @@ def test_alert_service_preferences_invalid_inputs(db_session, alert_seed_data):
 
     # 2. Invalid quiet hours format
     from pydantic import ValidationError
+
     with pytest.raises((HTTPException, ValidationError)):
         AlertService.upsert_preferences(
             db_session,
-            pref_in=AlertPreferenceCreate(city="Delhi", quiet_hours_start="25:00", quiet_hours_end="07:00"),
+            pref_in=AlertPreferenceCreate(
+                city="Delhi", quiet_hours_start="25:00", quiet_hours_end="07:00"
+            ),
             user_id="u1",
         )
 
@@ -839,6 +845,7 @@ def test_alert_service_push_subscription_lifecycle(db_session):
 async def test_alert_service_status_and_test_notification_push(db_session, alert_seed_data):
     """Test AlertService get_status and send_test_notification with push channel."""
     from unittest.mock import AsyncMock, patch
+
     from app.schemas.alert import AlertTestNotificationRequest
     from app.services.alerts.alert_service import AlertService
 
@@ -848,7 +855,9 @@ async def test_alert_service_status_and_test_notification_push(db_session, alert
     assert "in_app" in status_resp.enabled_channels
 
     # Test send_test_notification with mocked push
-    with patch.object(service.notification_service, "dispatch_web_push", new_callable=AsyncMock) as mock_dispatch:
+    with patch.object(
+        service.notification_service, "dispatch_web_push", new_callable=AsyncMock
+    ) as mock_dispatch:
         mock_dispatch.return_value = 1
         req = AlertTestNotificationRequest(channel="push", city="Delhi", aqi=250)
         res = await service.send_test_notification(db_session, req)
@@ -860,11 +869,12 @@ async def test_alert_service_status_and_test_notification_push(db_session, alert
 async def test_alert_service_process_alerts_error_branch(db_session, alert_seed_data):
     """Test process_all_alerts error isolation branch."""
     from unittest.mock import patch
+
     from app.services.alerts.alert_service import AlertService
 
     service = AlertService()
-    with patch.object(service, "evaluate_and_generate_alerts", side_effect=ValueError("Simulated evaluation error")):
+    sim_error = ValueError("Simulated evaluation error")
+    with patch.object(service, "evaluate_and_generate_alerts", side_effect=sim_error):
         process_res = await service.process_all_alerts(db_session)
         assert len(process_res.errors) > 0
         assert process_res.success is False
-

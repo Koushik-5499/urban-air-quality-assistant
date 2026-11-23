@@ -2,16 +2,16 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config, pool
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Ensure backend root is on sys.path
 backend_dir = Path(__file__).resolve().parent.parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-from app.core.config import get_settings
-from app.db.base import Base
+from app.core.config import get_settings  # noqa: E402
+from app.db.base import Base  # noqa: E402
 
 settings = get_settings()
 
