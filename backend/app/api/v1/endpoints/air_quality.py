@@ -44,7 +44,8 @@ async def list_air_quality_readings(
             return []
 
     if city_id is not None:
-        return repo.list_pollutant_readings(city_id=city_id, pollutant_code=pollutant, limit=limit)
+        readings = repo.list_pollutant_readings(city_id=city_id, pollutant_code=pollutant, limit=limit)
+        return [PollutantReadingResponse.model_validate(r) for r in readings]
 
     # If no specific city, return recent readings across all cities
     from sqlalchemy import desc, select
@@ -56,7 +57,8 @@ async def list_air_quality_readings(
         stmt = stmt.where(PollutantReading.pollutant_code == pollutant)
     stmt = stmt.order_by(desc(PollutantReading.measured_at)).limit(limit)
 
-    return list(db.execute(stmt).scalars().all())
+    all_readings = db.execute(stmt).scalars().all()
+    return [PollutantReadingResponse.model_validate(r) for r in all_readings]
 
 
 @router.get(

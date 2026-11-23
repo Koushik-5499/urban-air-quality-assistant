@@ -65,7 +65,7 @@ class WeatherClient:
             return mock_obs
 
         # Live Open-Meteo API call
-        params = {
+        params: dict[str, str | float] = {
             "latitude": latitude,
             "longitude": longitude,
             "current": "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure",

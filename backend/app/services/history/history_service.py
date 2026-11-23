@@ -443,11 +443,11 @@ class HistoryService:
         if end_utc:
             filters.append(AQIReading.measured_at <= end_utc)
 
-        stmt = select(AQIReading).where(*filters).order_by(AQIReading.measured_at)
-        readings = list(db.execute(stmt).scalars().all())
+        aqi_stmt = select(AQIReading).where(*filters).order_by(AQIReading.measured_at)
+        aqi_readings = list(db.execute(aqi_stmt).scalars().all())
 
         return TrendService.calculate_aqi_trend(
-            readings=readings,
+            readings=aqi_readings,
             threshold=aqi_threshold,
             min_records_per_period=min_records_per_period,
             interval=interval_norm,

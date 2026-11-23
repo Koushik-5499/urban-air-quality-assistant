@@ -1,12 +1,16 @@
 """SQLAlchemy models for Air Quality Forecasting runs, predictions, and evaluations."""
 
 from datetime import UTC, datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
+
+if TYPE_CHECKING:
+    from app.models.city import City
+    from app.models.monitoring_station import MonitoringStation
 
 
 class ForecastRun(Base):

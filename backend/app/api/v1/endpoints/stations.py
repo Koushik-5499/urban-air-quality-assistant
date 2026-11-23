@@ -37,5 +37,5 @@ async def list_monitoring_stations(
 
     stmt = stmt.order_by(MonitoringStation.station_name)
     stations = db.execute(stmt).scalars().all()
-    return list(stations)
+    return [StationResponse.model_validate(st) for st in stations]
 

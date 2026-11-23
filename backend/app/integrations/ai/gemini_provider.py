@@ -113,6 +113,7 @@ class GeminiProvider(BaseAIProvider):
                     content=text,
                     model=self.model,
                     finish_reason="STOP",
+                    usage_tokens=None,
                 )
 
             except TimeoutError:

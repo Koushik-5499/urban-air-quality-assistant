@@ -61,11 +61,18 @@ class AQIProcessingService:
                     detail=f"Monitoring station {station_id} not found.",
                 )
             city_entity = db.get(City, station.city_id)
+            if not city_entity:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"City for monitoring station {station_id} not found.",
+                )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Either city or station_id must be provided.",
             )
+
+        assert city_entity is not None
 
         # Query latest readings for this city or station
         stmt = select(PollutantReading).where(PollutantReading.city_id == city_entity.id)
@@ -73,7 +80,7 @@ class AQIProcessingService:
             stmt = stmt.where(PollutantReading.station_id == station_id)
 
         # Get the latest readings per pollutant
-        latest_subquery = (
+        latest_sel = (
             select(
                 PollutantReading.pollutant_code,
                 func.max(PollutantReading.measured_at).label("max_measured"),
@@ -81,8 +88,8 @@ class AQIProcessingService:
             .where(PollutantReading.city_id == city_entity.id)
         )
         if station_id:
-            latest_subquery = latest_subquery.where(PollutantReading.station_id == station_id)
-        latest_subquery = latest_subquery.group_by(PollutantReading.pollutant_code).subquery()
+            latest_sel = latest_sel.where(PollutantReading.station_id == station_id)
+        latest_subquery = latest_sel.group_by(PollutantReading.pollutant_code).subquery()
 
         readings_stmt = (
             select(PollutantReading)

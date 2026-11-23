@@ -20,9 +20,11 @@ jobs:
           python-version: '3.11'
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt ruff pytest-cov
+        run: pip install -r requirements.txt ruff pytest-cov mypy
       - name: Ruff lint
         run: ruff check . --exclude=.venv --exclude=alembic
+      - name: Type check (mypy)
+        run: mypy app
       - name: Run tests with coverage
         run: pytest --cov=app --cov-report=term-missing -q
         env:

@@ -1,6 +1,7 @@
 """Repeatable seed utility for Indian cities."""
 
 import sys
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,7 @@ from app.repositories.city_repository import CityRepository
 from app.schemas.city import CityCreate
 
 # The 10 officially supported Indian cities with approximate coordinates
-SUPPORTED_CITIES = [
+SUPPORTED_CITIES: list[dict[str, Any]] = [
     {
         "name": "Coimbatore",
         "state": "Tamil Nadu",
@@ -94,11 +95,21 @@ def seed_cities(db: Session) -> dict[str, int]:
     existing = 0
 
     for city_data in SUPPORTED_CITIES:
-        found = repo.get_by_name_and_state(name=city_data["name"], state=city_data["state"])
+        c_name = str(city_data["name"])
+        c_state = str(city_data["state"])
+        found = repo.get_by_name_and_state(name=c_name, state=c_state)
         if found:
             existing += 1
         else:
-            repo.create(CityCreate(**city_data))
+            repo.create(
+                CityCreate(
+                    name=c_name,
+                    state=c_state,
+                    country=str(city_data["country"]),
+                    latitude=float(city_data["latitude"]),
+                    longitude=float(city_data["longitude"]),
+                )
+            )
             inserted += 1
 
     return {

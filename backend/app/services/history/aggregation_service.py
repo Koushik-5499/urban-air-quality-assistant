@@ -95,7 +95,7 @@ class AggregationService:
             count = len(values)
 
             # Category distribution
-            cat_counts: dict[str, int] = Counter(r.aqi_category for r in valid_items)
+            cat_counts: Counter[str] = Counter(r.aqi_category for r in valid_items if r.aqi_category)
             dominant_category = cat_counts.most_common(1)[0][0] if cat_counts else None
 
             # Dominant pollutant distribution

@@ -28,7 +28,7 @@ class AICompletionResponse(BaseModel):
     content: str = Field(..., description="Generated text response")
     model: str = Field(..., description="Model identifier used")
     finish_reason: str = Field(default="STOP", description="Finish reason")
-    usage_tokens: int | None = Field(None, description="Token usage count if reported")
+    usage_tokens: int | None = Field(default=None, description="Token usage count if reported")
 
 
 class RecommendationItem(BaseModel):
