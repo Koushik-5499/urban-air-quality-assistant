@@ -31,15 +31,24 @@ def get_alert_service(
     "",
     response_model=AlertPaginatedResponse,
     summary="List air quality alerts",
-    description="Retrieve a paginated list of public ambient alerts with optional filtering by city, station, severity, and date range.",
+    description=(
+        "Retrieve a paginated list of public ambient alerts with optional filtering by city, "
+        "station, severity, and date range."
+    ),
 )
 def get_alerts(
     city: str | None = Query(None, description="Filter by city name"),
     station_id: int | None = Query(None, description="Filter by monitoring station ID"),
-    severity: str | None = Query(None, description="Filter by severity: Low, Moderate, High, Critical"),
+    severity: str | None = Query(
+        None, description="Filter by severity: Low, Moderate, High, Critical"
+    ),
     is_read: bool | None = Query(None, description="Filter by read status (true/false)"),
-    start_date: datetime | None = Query(None, description="Filter alerts created on or after this ISO datetime"),
-    end_date: datetime | None = Query(None, description="Filter alerts created on or before this ISO datetime"),
+    start_date: datetime | None = Query(
+        None, description="Filter alerts created on or after this ISO datetime"
+    ),
+    end_date: datetime | None = Query(
+        None, description="Filter alerts created on or before this ISO datetime"
+    ),
     is_simulated: bool | None = Query(None, description="Filter by simulation status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size (max 100)"),
@@ -64,13 +73,18 @@ def get_alerts(
     "/unread-count",
     status_code=status.HTTP_410_GONE,
     summary="[Retired] Get unread alert count",
-    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
+    description=(
+        "Retired: The platform operates as a public environmental monitoring service without "
+        "personal accounts."
+    ),
 )
 def get_unread_count() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
-        detail="User-specific notification tracking has been retired. All ambient alerts are public.",
+        detail=(
+            "User-specific notification tracking has been retired. All ambient alerts are public."
+        ),
     )
 
 
@@ -78,7 +92,10 @@ def get_unread_count() -> dict[str, str]:
     "/{alert_id}/read",
     status_code=status.HTTP_410_GONE,
     summary="[Retired] Mark single alert as read",
-    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
+    description=(
+        "Retired: The platform operates as a public environmental monitoring service without "
+        "personal accounts."
+    ),
 )
 def mark_alert_read(
     alert_id: int = Path(..., ge=1, description="ID of the alert"),
@@ -86,7 +103,9 @@ def mark_alert_read(
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
-        detail="User-specific notification management has been retired. All ambient alerts are public.",
+        detail=(
+            "User-specific notification management has been retired. All ambient alerts are public."
+        ),
     )
 
 
@@ -94,13 +113,18 @@ def mark_alert_read(
     "/read-all",
     status_code=status.HTTP_410_GONE,
     summary="[Retired] Mark all alerts as read",
-    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
+    description=(
+        "Retired: The platform operates as a public environmental monitoring service without "
+        "personal accounts."
+    ),
 )
 def mark_all_alerts_read() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
-        detail="User-specific notification tracking has been retired. All ambient alerts are public.",
+        detail=(
+            "User-specific notification tracking has been retired. All ambient alerts are public."
+        ),
     )
 
 
@@ -108,13 +132,19 @@ def mark_all_alerts_read() -> dict[str, str]:
     "/preferences",
     status_code=status.HTTP_410_GONE,
     summary="[Retired] Get user alert preferences",
-    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
+    description=(
+        "Retired: The platform operates as a public environmental monitoring service without "
+        "personal accounts."
+    ),
 )
 def get_user_preferences() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
-        detail="Personal alert preferences have been retired. The platform operates exclusively as a public environmental monitoring service.",
+        detail=(
+            "Personal alert preferences have been retired. The platform operates exclusively "
+            "as a public environmental monitoring service."
+        ),
     )
 
 
@@ -122,13 +152,19 @@ def get_user_preferences() -> dict[str, str]:
     "/preferences",
     status_code=status.HTTP_410_GONE,
     summary="[Retired] Set or update alert preferences",
-    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
+    description=(
+        "Retired: The platform operates as a public environmental monitoring service without "
+        "personal accounts."
+    ),
 )
 def update_user_preferences() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
-        detail="Personal alert preferences have been retired. The platform operates exclusively as a public environmental monitoring service.",
+        detail=(
+            "Personal alert preferences have been retired. The platform operates exclusively "
+            "as a public environmental monitoring service."
+        ),
     )
 
 
@@ -136,7 +172,10 @@ def update_user_preferences() -> dict[str, str]:
     "/process",
     response_model=AlertProcessResponse,
     summary="Trigger alert evaluation and processing run",
-    description="Evaluate recent AQI measurements across all locations, detect events, deduplicate, generate alerts, and dispatch notifications. Protected by X-Admin-Secret.",
+    description=(
+        "Evaluate recent AQI measurements across all locations, detect events, deduplicate, "
+        "generate alerts, and dispatch notifications. Protected by X-Admin-Secret."
+    ),
 )
 async def process_alerts(
     _admin: None = Depends(verify_admin_access),
@@ -151,7 +190,10 @@ async def process_alerts(
     "/status",
     response_model=AlertStatusResponse,
     summary="Get alert engine status",
-    description="Check status of the alert engine, last evaluation time, active channels, and configured providers.",
+    description=(
+        "Check status of the alert engine, last evaluation time, active channels, and "
+        "configured providers."
+    ),
 )
 def get_alert_status(
     alert_service: AlertService = Depends(get_alert_service),
@@ -164,7 +206,10 @@ def get_alert_status(
     "/test-notification",
     response_model=AlertTestNotificationResponse,
     summary="Test notification channel delivery",
-    description="Send a test notification via web push or in-app to verify provider credentials and configuration. Protected by X-Admin-Secret.",
+    description=(
+        "Send a test notification via web push or in-app to verify provider credentials and "
+        "configuration. Protected by X-Admin-Secret."
+    ),
 )
 async def test_notification(
     request: AlertTestNotificationRequest,
@@ -180,11 +225,17 @@ async def test_notification(
     "/push/subscribe",
     status_code=status.HTTP_410_GONE,
     summary="[Retired] Register Web Push subscription",
-    description="Retired: The platform operates as a public environmental monitoring service without personal accounts.",
+    description=(
+        "Retired: The platform operates as a public environmental monitoring service without "
+        "personal accounts."
+    ),
 )
 def subscribe_push() -> dict[str, str]:
     """Retired personal endpoint returning HTTP 410 Gone."""
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
-        detail="Personal push subscriptions have been retired. The platform operates exclusively as a public environmental monitoring service.",
+        detail=(
+            "Personal push subscriptions have been retired. The platform operates exclusively "
+            "as a public environmental monitoring service."
+        ),
     )

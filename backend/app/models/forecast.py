@@ -19,7 +19,9 @@ class ForecastRun(Base):
     __tablename__ = "forecast_runs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    city_id: Mapped[int] = mapped_column(ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True)
+    city_id: Mapped[int] = mapped_column(
+        ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     station_id: Mapped[int | None] = mapped_column(
         ForeignKey("monitoring_stations.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -28,8 +30,12 @@ class ForecastRun(Base):
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), index=True
     )
-    training_data_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    training_data_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    training_data_start: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    training_data_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     training_samples: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     evaluation_mae: Mapped[float | None] = mapped_column(Float, nullable=True)
     evaluation_rmse: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -40,7 +46,9 @@ class ForecastRun(Base):
 
     # Relationships
     city: Mapped["City"] = relationship("City", backref="forecast_runs")  # noqa: F821
-    station: Mapped[Optional["MonitoringStation"]] = relationship("MonitoringStation", backref="forecast_runs")  # noqa: F821
+    station: Mapped[Optional["MonitoringStation"]] = relationship(
+        "MonitoringStation", backref="forecast_runs"
+    )  # noqa: F821
     forecasts: Mapped[list["AQIForecast"]] = relationship(
         "AQIForecast", back_populates="run", cascade="all, delete-orphan"
     )
@@ -50,7 +58,8 @@ class ForecastRun(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<ForecastRun(id={self.id}, city_id={self.city_id}, model={self.model_name}, status={self.status})>"
+            f"<ForecastRun(id={self.id}, city_id={self.city_id}, "
+            f"model={self.model_name}, status={self.status})>"
         )
 
 
@@ -63,11 +72,15 @@ class AQIForecast(Base):
     forecast_run_id: Mapped[int] = mapped_column(
         ForeignKey("forecast_runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    city_id: Mapped[int] = mapped_column(ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True)
+    city_id: Mapped[int] = mapped_column(
+        ForeignKey("cities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     station_id: Mapped[int | None] = mapped_column(
         ForeignKey("monitoring_stations.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    forecast_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    forecast_timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     horizon_hours: Mapped[int] = mapped_column(Integer, nullable=False)
     predicted_aqi: Mapped[int] = mapped_column(Integer, nullable=False)
     predicted_category: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -139,4 +152,3 @@ class ForecastEvaluation(Base):
             f"<ForecastEvaluation(run_id={self.forecast_run_id}, horizon={self.horizon_hours}h, "
             f"MAE={self.mae:.2f}, RMSE={self.rmse:.2f})>"
         )
-

@@ -66,6 +66,7 @@ class Alert(Base):
 
     # Relationships
     city: Mapped["City"] = relationship("City", back_populates="alerts")
-    aqi_reading: Mapped[Optional["AQIReading"]] = relationship("AQIReading", back_populates="alerts")
+    aqi_reading: Mapped[Optional["AQIReading"]] = relationship(
+        "AQIReading", back_populates="alerts"
+    )
     station: Mapped[Optional["MonitoringStation"]] = relationship("MonitoringStation")
-

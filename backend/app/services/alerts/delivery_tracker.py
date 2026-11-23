@@ -33,7 +33,7 @@ class DeliveryTracker:
 
         try:
             user_zone = ZoneInfo(zone_str)
-        except Exception:
+        except (KeyError, ValueError, TypeError):
             user_zone = ZoneInfo("Asia/Kolkata")
 
         now = ref_time or datetime.now(UTC)
@@ -45,7 +45,7 @@ class DeliveryTracker:
             end_parts = [int(p) for p in end_str.split(":")]
             start_t = time(hour=start_parts[0], minute=start_parts[1])
             end_t = time(hour=end_parts[0], minute=end_parts[1])
-        except Exception as exc:
+        except (ValueError, IndexError) as exc:
             logger.warning("Failed parsing quiet hours '%s'-'%s': %s", start_str, end_str, exc)
             return False
 
@@ -71,7 +71,10 @@ class DeliveryTracker:
         user_tz: str | None = None,
         now_utc: datetime | None = None,
     ) -> tuple[bool, str]:
-        """Determine whether an alert should be dispatched immediately or suppressed for quiet hours."""
+        """
+        Determine whether an alert should be dispatched immediately or suppressed for quiet
+        hours.
+        """
         start_str = quiet_hours_start or quiet_start
         end_str = quiet_hours_end or quiet_end
         zone_str = user_tz or tz_name

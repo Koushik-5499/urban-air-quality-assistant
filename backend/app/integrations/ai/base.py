@@ -27,4 +27,3 @@ class BaseAIProvider(ABC):
     def get_model_name(self) -> str:
         """Return the active model identifier."""
         pass
-

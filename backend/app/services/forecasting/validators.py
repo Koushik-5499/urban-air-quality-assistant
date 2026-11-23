@@ -1,6 +1,5 @@
 """Validation helpers for air quality forecasting horizons, parameters, and datasets."""
 
-
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,7 +43,10 @@ class ForecastValidator:
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported horizon '{horizon_str}'. Supported horizons: {sorted(list(HORIZON_LABEL_MAP.keys()))}.",
+            detail=(
+                f"Unsupported horizon '{horizon_str}'. Supported "
+                f"horizons: {sorted(list(HORIZON_LABEL_MAP.keys()))}."
+            ),
         )
 
     @staticmethod
@@ -83,8 +85,9 @@ class ForecastValidator:
             if not station:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Monitoring station with ID {station_id} not found in city '{city_name}'.",
+                    detail=(
+                        f"Monitoring station with ID {station_id} not found in city '{city_name}'."
+                    ),
                 )
 
         return city, station
-

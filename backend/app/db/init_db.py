@@ -3,6 +3,7 @@
 from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -25,8 +26,15 @@ def check_database_health(db: Session | None = None) -> dict[str, Any]:
             "status": "connected" if is_healthy else "degraded",
             "healthy": is_healthy,
         }
+    except SQLAlchemyError as e:
+        logger.error("Database health check failed (SQLAlchemy error): %s", str(e))
+        return {
+            "status": "disconnected",
+            "healthy": False,
+        }
     except Exception as e:
-        logger.error("Database health check failed: %s", str(e))
+        # Top-level boundary fallback for unexpected connection errors
+        logger.exception("Unexpected error during database health check: %s", str(e))
         return {
             "status": "disconnected",
             "healthy": False,
@@ -34,4 +42,3 @@ def check_database_health(db: Session | None = None) -> dict[str, Any]:
     finally:
         if owns_session:
             db.close()
-

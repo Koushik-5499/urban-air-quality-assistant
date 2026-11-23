@@ -1,6 +1,5 @@
 """AI health provider integration package."""
 
-
 from app.core.config import Settings, get_settings
 from app.integrations.ai.base import BaseAIProvider
 from app.integrations.ai.exceptions import (
@@ -41,4 +40,3 @@ __all__ = [
     "AIValidationError",
     "AIUnavailableError",
 ]
-

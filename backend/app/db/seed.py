@@ -3,6 +3,7 @@
 import sys
 from typing import Any
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -128,8 +129,12 @@ def main() -> None:
             f"City seeding completed: {results['inserted']} inserted, "
             f"{results['existing']} already existed (Total: {results['total']})."
         )
+    except SQLAlchemyError as exc:
+        print(f"Database error seeding cities: {exc}", file=sys.stderr)
+        sys.exit(1)
     except Exception as exc:
-        print(f"Error seeding cities: {exc}", file=sys.stderr)
+        # Top-level CLI boundary catch for unexpected runtime crashes
+        print(f"Unexpected error seeding cities: {exc}", file=sys.stderr)
         sys.exit(1)
     finally:
         db.close()
@@ -137,4 +142,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

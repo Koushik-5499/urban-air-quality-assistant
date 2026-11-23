@@ -14,10 +14,14 @@ class NormalizedObservation(BaseModel):
     state: str = Field(..., description="Indian State name")
     city: str = Field(..., description="City name")
     station_name: str = Field(..., description="Full monitoring station name")
-    external_station_id: str | None = Field(None, description="Official provider station identifier")
+    external_station_id: str | None = Field(
+        None, description="Official provider station identifier"
+    )
     latitude: float | None = Field(None, description="Geographic latitude")
     longitude: float | None = Field(None, description="Geographic longitude")
-    pollutant_code: str = Field(..., description="Standardized pollutant code: PM2.5, PM10, NO2, SO2, CO, O3")
+    pollutant_code: str = Field(
+        ..., description="Standardized pollutant code: PM2.5, PM10, NO2, SO2, CO, O3"
+    )
     concentration: float = Field(..., ge=0.0, description="Measured concentration value")
     unit: str = Field(default="µg/m³", description="Preserved measurement unit")
     measured_at: datetime = Field(..., description="Timestamp of observation normalized to UTC")
@@ -61,4 +65,3 @@ class BaseAQIProvider(ABC):
     async def close(self) -> None:
         """Gracefully release HTTP clients and connections."""
         pass
-

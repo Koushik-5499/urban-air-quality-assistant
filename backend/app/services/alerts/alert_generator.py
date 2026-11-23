@@ -68,4 +68,3 @@ class AlertGenerator:
 
         db.add(alert)
         return alert
-

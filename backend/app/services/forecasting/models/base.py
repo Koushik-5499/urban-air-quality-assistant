@@ -33,4 +33,3 @@ class BaseForecastModel(ABC):
     def predict(self, steps: int) -> list[float]:
         """Generate forecasts for the specified number of future hourly steps."""
         pass
-

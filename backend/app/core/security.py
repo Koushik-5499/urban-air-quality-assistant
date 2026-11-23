@@ -91,7 +91,8 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                     return JSONResponse(
                         status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                         content={
-                            "detail": f"Request payload exceeds maximum permitted size of {self.max_bytes // (1024*1024)}MB."
+                            "detail": "Request payload exceeds maximum permitted size of "
+                            "{self.max_bytes // (1024 * 1024)}MB."
                         },
                     )
             except ValueError:
@@ -117,7 +118,9 @@ class InMemoryRateLimiter:
         }
         self._call_count: int = 0
 
-    def check_rate_limit(self, client_ip: str, path: str, is_test_env: bool = False) -> tuple[bool, int, int]:
+    def check_rate_limit(
+        self, client_ip: str, path: str, is_test_env: bool = False
+    ) -> tuple[bool, int, int]:
         """Check if request is permitted. Returns (allowed, remaining, retry_after)."""
         if is_test_env:
             return True, 999, 0
@@ -155,7 +158,7 @@ rate_limiter = InMemoryRateLimiter()
 
 def get_client_ip(request: Request, settings: Settings) -> str:
     """Extract client IP, respecting X-Forwarded-For only when TRUSTED_PROXY is enabled."""
-    if getattr(settings, 'TRUSTED_PROXY', False):
+    if getattr(settings, "TRUSTED_PROXY", False):
         forwarded_for = request.headers.get("X-Forwarded-For", "")
         if forwarded_for:
             # Take the leftmost (original client) IP
@@ -216,16 +219,16 @@ def verify_admin_access(
 
     Accepts credentials via X-Admin-Secret, X-API-Key, or Bearer token in Authorization header.
     In development mode, if administrative secret is unset, access is permitted.
-    If secret is configured, provided credentials must match using constant-time hmac.compare_digest.
+    If secret is configured, provided credentials must match using constant-time
+    hmac.compare_digest.
     In non-development environments, an admin secret is strictly mandatory.
     """
     secret = (
-        settings.ALERT_ADMIN_SECRET
-        or settings.SYNC_ADMIN_SECRET
-        or settings.FORECAST_ADMIN_SECRET
+        settings.ALERT_ADMIN_SECRET or settings.SYNC_ADMIN_SECRET or settings.FORECAST_ADMIN_SECRET
     )
 
-    # Extract token from any supported header, handling direct function calls where defaults are Header(...)
+    # Extract token from any supported header, handling direct function calls where defaults
+    # are Header(...)
     provided_secret: str | None = None
     if isinstance(x_admin_secret, str) and x_admin_secret.strip():
         provided_secret = x_admin_secret.strip()
@@ -252,4 +255,3 @@ def verify_admin_access(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Admin secret must be configured in non-development environments.",
             )
-

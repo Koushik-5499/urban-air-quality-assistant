@@ -1,6 +1,5 @@
 """Pure computational logic for CPCB Indian National Air Quality Index (NAQI)."""
 
-
 from app.services.aqi.breakpoints import CPCB_BREAKPOINTS
 from app.services.aqi.categories import get_aqi_category
 from app.services.aqi.dominant_pollutant import DominantPollutantResolver
@@ -17,7 +16,8 @@ class AQICalculator:
         concentration: float,
         unit: str = "µg/m³",
     ) -> int | None:
-        """Compute the CPCB sub-index for a single pollutant concentration using linear interpolation.
+        """Compute the CPCB sub-index for a single pollutant concentration
+        using linear interpolation.
 
         Formula:
             I_p = I_low + ((I_high - I_low) / (B_high - B_low)) * (C_p - B_low)
@@ -62,7 +62,14 @@ class AQICalculator:
         """Calculate composite CPCB Overall NAQI from individual pollutant sub-indices.
 
         Returns:
-            (overall_aqi, aqi_category, dominant_pollutant, is_sufficient, explanation, missing_requirements)
+            (
+            overall_aqi,
+            aqi_category,
+            dominant_pollutant,
+            is_sufficient,
+            explanation,
+            missing_requirements,
+        )
         """
         if not sub_indices:
             return (
@@ -75,7 +82,9 @@ class AQICalculator:
             )
 
         # Check CPCB data sufficiency
-        is_sufficient, explanation, missing = AQIValidator.evaluate_data_sufficiency(list(sub_indices.keys()))
+        is_sufficient, explanation, missing = AQIValidator.evaluate_data_sufficiency(
+            list(sub_indices.keys())
+        )
 
         dominant = DominantPollutantResolver.resolve_dominant_pollutant(sub_indices)
 
@@ -91,7 +100,7 @@ class AQICalculator:
             category,
             dominant,
             True,
-            f"Overall AQI calculated successfully using CPCB worst-pollutant rule (Dominant: {dominant}).",
+            f"Overall AQI calculated successfully using CPCB worst-pollutant rule "
+            f"(Dominant: {dominant}).",
             [],
         )
-

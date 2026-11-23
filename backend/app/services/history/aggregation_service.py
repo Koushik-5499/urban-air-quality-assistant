@@ -65,13 +65,17 @@ class AggregationService:
         return buckets
 
     @staticmethod
-    def _extract_dominant_meta(valid_items: list[AQIReading]) -> tuple[str | None, dict[str, int], str | None]:
+    def _extract_dominant_meta(
+        valid_items: list[AQIReading],
+    ) -> tuple[str | None, dict[str, int], str | None]:
         """Extract dominant category, category distribution, and dominant pollutant."""
         cat_counts: Counter[str] = Counter(r.aqi_category for r in valid_items if r.aqi_category)
         dominant_category = cat_counts.most_common(1)[0][0] if cat_counts else None
 
         pollutant_candidates = [r.dominant_pollutant for r in valid_items if r.dominant_pollutant]
-        dominant_pollutant = Counter(pollutant_candidates).most_common(1)[0][0] if pollutant_candidates else None
+        dominant_pollutant = (
+            Counter(pollutant_candidates).most_common(1)[0][0] if pollutant_candidates else None
+        )
         return dominant_category, dict(cat_counts), dominant_pollutant
 
     @staticmethod
@@ -99,7 +103,9 @@ class AggregationService:
         station_name: str | None,
     ) -> AQIHistoryRecord | None:
         """Compute statistics and categorical summary for a single AQI time bucket."""
-        valid_items = [r for r in bucket_items if r.aqi_value is not None and r.data_quality != "invalid"]
+        valid_items = [
+            r for r in bucket_items if r.aqi_value is not None and r.data_quality != "invalid"
+        ]
         if not valid_items:
             return None
 
@@ -143,7 +149,10 @@ class AggregationService:
         station_id: int | None = None,
         station_name: str | None = None,
     ) -> list[AQIHistoryRecord]:
-        """Group and aggregate AQI readings into chronological buckets without fabricating missing data."""
+        """
+        Group and aggregate AQI readings into chronological buckets without fabricating missing
+        data.
+        """
         if not readings:
             return []
 
@@ -172,7 +181,9 @@ class AggregationService:
         station_name: str | None,
     ) -> PollutantHistoryRecord | None:
         """Compute statistics and sub-index for a single pollutant time bucket."""
-        valid_items = [r for r in bucket_items if r.concentration is not None and r.concentration >= 0]
+        valid_items = [
+            r for r in bucket_items if r.concentration is not None and r.concentration >= 0
+        ]
         if not valid_items:
             return None
 
@@ -219,7 +230,10 @@ class AggregationService:
         station_id: int | None = None,
         station_name: str | None = None,
     ) -> list[PollutantHistoryRecord]:
-        """Group and aggregate pollutant readings into chronological buckets, computing sub-indices."""
+        """
+        Group and aggregate pollutant readings into chronological buckets, computing
+        sub-indices.
+        """
         if not readings:
             return []
 
@@ -232,11 +246,16 @@ class AggregationService:
 
         for window_start in sorted(buckets.keys()):
             rec = cls._aggregate_single_pollutant_bucket(
-                window_start, buckets[window_start], interval, pollutant_code, unit,
-                city_name, station_id, station_name
+                window_start,
+                buckets[window_start],
+                interval,
+                pollutant_code,
+                unit,
+                city_name,
+                station_id,
+                station_name,
             )
             if rec:
                 aggregated_records.append(rec)
 
         return aggregated_records
-

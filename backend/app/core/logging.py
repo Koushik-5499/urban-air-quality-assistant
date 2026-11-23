@@ -41,8 +41,7 @@ class SecretRedactionFilter(logging.Filter):
                 }
             elif isinstance(record.args, (list, tuple)):
                 record.args = tuple(
-                    redact_secrets(v) if isinstance(v, str) else v
-                    for v in record.args
+                    redact_secrets(v) if isinstance(v, str) else v for v in record.args
                 )
         return True
 

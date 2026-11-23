@@ -83,7 +83,8 @@ POLLUTANT_INFO: dict[str, PollutantMetadata] = {
 }
 
 # CPCB NAQI Breakpoint intervals: (C_low, C_high, I_low, I_high, Category)
-# Source: Central Pollution Control Board (CPCB), Ministry of Environment, Forest and Climate Change, Govt. of India
+# Source: Central Pollution Control Board (CPCB), Ministry of Environment, Forest and Climate
+# Change, Govt. of India
 CPCB_BREAKPOINTS: dict[str, list[BreakpointRange]] = {
     "PM2.5": [
         BreakpointRange(0.0, 30.0, 0, 50, "Good"),
@@ -150,4 +151,3 @@ CPCB_BREAKPOINTS: dict[str, list[BreakpointRange]] = {
         BreakpointRange(3.5, 5.0, 401, 500, "Severe"),
     ],
 }
-

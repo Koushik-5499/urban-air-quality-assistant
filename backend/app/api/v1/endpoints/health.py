@@ -90,7 +90,10 @@ def get_health_recommendations(
     response_model=HealthGuidelinesResponse,
     status_code=status.HTTP_200_OK,
     summary="Get Health Guidelines",
-    description="Retrieve authoritative CPCB and WHO health guidance across all NAQI categories and vulnerable groups.",
+    description=(
+        "Retrieve authoritative CPCB and WHO health guidance across all NAQI categories and "
+        "vulnerable groups."
+    ),
 )
 def get_health_guidelines(
     advisor: HealthAdvisorService = Depends(get_health_advisor),
@@ -104,12 +107,19 @@ def get_health_guidelines(
     response_model=CommunitySolutionsResponse,
     status_code=status.HTTP_200_OK,
     summary="Get Community Solutions & Winter Smog Protocols",
-    description="Retrieve structured Challenge 6 community guidance: winter smog navigation, low-emission daily routines, indoor air quality hacks, sustainable alternatives, and direct impact explanations.",
+    description=(
+        "Retrieve structured Challenge 6 community guidance: winter smog navigation, "
+        "low-emission daily routines, indoor air quality hacks, sustainable alternatives, and "
+        "direct impact explanations."
+    ),
 )
 def get_community_solutions(
     advisor: HealthAdvisorService = Depends(get_health_advisor),
 ) -> CommunitySolutionsResponse:
-    """Return categorized winter smog guidance, low-emission routines, indoor hacks, and impact metrics."""
+    """
+    Return categorized winter smog guidance, low-emission routines, indoor hacks, and impact
+    metrics.
+    """
     return advisor.get_community_solutions()
 
 
@@ -118,7 +128,10 @@ def get_community_solutions(
     response_model=PollutantExplanationResponse,
     status_code=status.HTTP_200_OK,
     summary="Get Pollutant Health Explanation",
-    description="Retrieve detailed sources, health impacts, and mitigation measures for a criteria pollutant.",
+    description=(
+        "Retrieve detailed sources, health impacts, and mitigation measures for a criteria "
+        "pollutant."
+    ),
 )
 def get_pollutant_explanation(
     pollutant_code: str,
@@ -133,7 +146,10 @@ def get_pollutant_explanation(
     response_model=HealthStatusResponse,
     status_code=status.HTTP_200_OK,
     summary="Get AI Health Advisor Status",
-    description="Check whether the AI provider is configured and available without exposing sensitive secrets.",
+    description=(
+        "Check whether the AI provider is configured and available without exposing sensitive "
+        "secrets."
+    ),
 )
 def get_ai_status(
     advisor: HealthAdvisorService = Depends(get_health_advisor),

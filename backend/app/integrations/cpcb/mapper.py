@@ -62,8 +62,10 @@ class CPCBRecordMapper:
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=IST)
             return dt.astimezone(UTC)
-        except Exception:
-            logger.warning("Unrecognized date format '%s', falling back to current UTC time", date_str)
+        except (ValueError, TypeError):
+            logger.warning(
+                "Unrecognized date format '%s', falling back to current UTC time", date_str
+            )
             return datetime.now(UTC)
 
     @classmethod
@@ -91,19 +93,25 @@ class CPCBRecordMapper:
         city = (record.get("city") or record.get("City") or "").strip()
         state = (record.get("state") or record.get("State") or "").strip()
         country = (record.get("country") or record.get("Country") or "India").strip()
-        station = (record.get("station") or record.get("Station") or f"{city} Monitoring Station").strip()
+        station = (
+            record.get("station") or record.get("Station") or f"{city} Monitoring Station"
+        ).strip()
 
         if not city or not state:
             return None
 
         # Extract and normalize pollutant code
-        raw_pollutant = str(record.get("pollutant_id") or record.get("Pollutant") or "").strip().upper()
+        raw_pollutant = (
+            str(record.get("pollutant_id") or record.get("Pollutant") or "").strip().upper()
+        )
         if not raw_pollutant:
             return None
         pollutant_code = POLLUTANT_MAP.get(raw_pollutant, raw_pollutant)
 
         # Extract concentration (prefer avg, then max, then min)
-        avg_val = cls.parse_float(record.get("pollutant_avg") or record.get("avg") or record.get("Avg"))
+        avg_val = cls.parse_float(
+            record.get("pollutant_avg") or record.get("avg") or record.get("Avg")
+        )
         if avg_val is None:
             avg_val = cls.parse_float(record.get("pollutant_max"))
         if avg_val is None:
@@ -158,4 +166,3 @@ class CPCBRecordMapper:
                 observations.append(obs)
 
         return observations
-

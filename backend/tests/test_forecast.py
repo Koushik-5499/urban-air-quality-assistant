@@ -64,14 +64,17 @@ def forecast_seed_data(db_session: Session):
     db_session.flush()
 
     # 3. Populate 72 consecutive hourly readings for Delhi (3 full diurnal days)
-    # Diurnal pattern: baseline ~180, morning rush peak at 09:00 (+40), afternoon dispersion at 15:00 (-30)
+    # Diurnal pattern: baseline ~180, morning rush peak at 09:00 (+40), afternoon dispersion at
+    # 15:00 (-30)
     readings = []
     start_time = now_utc - timedelta(hours=72)
     for i in range(72):
         t = start_time + timedelta(hours=i)
         hour = t.hour
         # Diurnal fluctuation
-        diurnal = 35.0 * (1.0 if (8 <= hour <= 11 or 19 <= hour <= 22) else (-0.8 if 13 <= hour <= 16 else 0.0))
+        diurnal = 35.0 * (
+            1.0 if (8 <= hour <= 11 or 19 <= hour <= 22) else (-0.8 if 13 <= hour <= 16 else 0.0)
+        )
         val = int(round(180.0 + diurnal + (i * 0.2)))
         cat = ForecastService.get_category_for_aqi(val)
 
@@ -315,7 +318,10 @@ def test_uncertainty_interval_expansion():
 
 
 def test_uncertainty_unavailable_when_sample_sparse():
-    """Verify intervals are marked 'unavailable' without arbitrary hallucination when sample count is low."""
+    """
+    Verify intervals are marked 'unavailable' without arbitrary hallucination when sample count
+    is low.
+    """
     est = UncertaintyEstimator.estimate_interval(
         predicted_aqi=200,
         horizon_hours=6,
@@ -487,9 +493,12 @@ async def test_api_get_model_status(client: AsyncClient, forecast_seed_data):
 
 
 @pytest.mark.anyio
-async def test_api_generate_forecast_admin_protection(client: AsyncClient, monkeypatch, forecast_seed_data):
+async def test_api_generate_forecast_admin_protection(
+    client: AsyncClient, monkeypatch, forecast_seed_data
+):
     """Test POST /api/v1/forecast/generate enforces admin secret check."""
     from app.core.config import get_settings
+
     settings = get_settings()
     monkeypatch.setattr(settings, "FORECAST_ADMIN_SECRET", "super_forecast_secret_123")
 
@@ -531,4 +540,3 @@ async def test_api_validation_errors(client: AsyncClient, forecast_seed_data):
     resp_city = await client.get("/api/v1/forecast/aqi?city=AtlantisCity")
     assert resp_city.status_code == 404
     assert "not found" in resp_city.json()["detail"]
-

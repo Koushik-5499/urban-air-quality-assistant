@@ -58,7 +58,10 @@ class HistoryValidator:
             if start_utc > end_utc:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"start_date ({start_utc.isoformat()}) cannot be after end_date ({end_utc.isoformat()}).",
+                    detail=(
+                        f"start_date ({start_utc.isoformat()}) cannot "
+                        f"be after end_date ({end_utc.isoformat()})."
+                    ),
                 )
 
             max_days = MAX_AGGREGATED_QUERY_DAYS if is_aggregated else MAX_RAW_QUERY_DAYS
@@ -66,7 +69,10 @@ class HistoryValidator:
             if span_days > max_days:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Requested date range exceeds maximum allowed limit of {max_days} days (requested {span_days:.1f} days).",
+                    detail=(
+                        f"Requested date range exceeds maximum allowed limit "
+                        f"of {max_days} days (requested {span_days:.1f} days)."
+                    ),
                 )
 
         return start_utc, end_utc
@@ -80,7 +86,10 @@ class HistoryValidator:
         if interval_norm not in VALID_INTERVALS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unsupported interval '{interval}'. Supported intervals: {sorted(list(VALID_INTERVALS))}.",
+                detail=(
+                    f"Unsupported interval '{interval}'. Supported "
+                    f"intervals: {sorted(list(VALID_INTERVALS))}."
+                ),
             )
         return interval_norm
 
@@ -99,7 +108,10 @@ class HistoryValidator:
         if canon.upper() not in VALID_POLLUTANTS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid pollutant code '{code}'. Supported criteria pollutants: {sorted(list(VALID_POLLUTANTS))}.",
+                detail=(
+                    f"Invalid pollutant code '{code}'. Supported criteria "
+                    f"pollutants: {sorted(list(VALID_POLLUTANTS))}."
+                ),
             )
         return canon
 
@@ -183,4 +195,3 @@ class HistoryValidator:
             )
 
         return parsed_cities, parsed_stations
-

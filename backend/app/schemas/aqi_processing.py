@@ -13,8 +13,12 @@ class PollutantSubIndexResult(BaseModel):
     unit: str
     sub_index: int | None = Field(None, description="Calculated CPCB sub-index (0-500)")
     category: str | None = Field(None, description="Category for this pollutant sub-index")
-    averaging_period: str = Field(..., description="Required averaging duration (e.g. 24-hour, 8-hour)")
-    is_valid: bool = Field(True, description="Whether concentration and unit passed CPCB validation")
+    averaging_period: str = Field(
+        ..., description="Required averaging duration (e.g. 24-hour, 8-hour)"
+    )
+    is_valid: bool = Field(
+        True, description="Whether concentration and unit passed CPCB validation"
+    )
     validation_error: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -27,7 +31,9 @@ class AQICalculationResponse(BaseModel):
     city_name: str
     station_id: int | None = None
     station_name: str | None = None
-    aqi: int | None = Field(None, description="Composite NAQI index value (0-500); None if data is insufficient")
+    aqi: int | None = Field(
+        None, description="Composite NAQI index value (0-500); None if data is insufficient"
+    )
     category: str | None = Field(None, description="Official CPCB NAQI category")
     dominant_pollutant: str | None = Field(None, description="Pollutant with highest sub-index")
     pollutant_subindices: dict[str, PollutantSubIndexResult] = Field(
@@ -37,8 +43,12 @@ class AQICalculationResponse(BaseModel):
     measurement_timestamp: datetime | None = Field(None, description="Observation timestamp in UTC")
     calculated_at: datetime = Field(..., description="Calculation timestamp in UTC")
     source: str = Field(default="CPCB", description="Source provider identifier")
-    is_simulated: bool = Field(default=False, description="Whether calculation used simulated measurements")
-    data_quality: str = Field(..., description="'sufficient', 'insufficient_data', or 'invalid_input'")
+    is_simulated: bool = Field(
+        default=False, description="Whether calculation used simulated measurements"
+    )
+    data_quality: str = Field(
+        ..., description="'sufficient', 'insufficient_data', or 'invalid_input'"
+    )
     averaging_period: str = Field(
         default="1-hour (indicative)",
         description="Averaging cadence (e.g. '24-hour' or '1-hour (indicative)')",
@@ -97,4 +107,3 @@ class AQIProcessResponse(BaseModel):
     skipped_insufficient_data: int
     processed_at: datetime
     message: str
-

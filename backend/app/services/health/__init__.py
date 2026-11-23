@@ -21,4 +21,3 @@ __all__ = [
     "AUTHORITATIVE_SOURCES",
     "TARGET_GROUPS",
 ]
-

@@ -39,7 +39,10 @@ async def test_request_size_limit_rejection(client: AsyncClient):
 
 @pytest.mark.anyio
 async def test_user_id_validation(client: AsyncClient):
-    """Verify alerts endpoint is public without identity headers, and personal endpoints return 410."""
+    """
+    Verify alerts endpoint is public without identity headers, and personal endpoints return
+    410.
+    """
     # 1. Public alerts request without any X-User-Id header succeeds
     res_no_user = await client.get("/api/v1/alerts")
     assert res_no_user.status_code == 200
@@ -52,7 +55,9 @@ async def test_user_id_validation(client: AsyncClient):
     res_pref = await client.get("/api/v1/alerts/preferences", headers={"X-User-Id": "victim_user"})
     assert res_pref.status_code == 410
 
-    res_push = await client.post("/api/v1/alerts/push/subscribe", json={}, headers={"X-User-Id": "victim_user"})
+    res_push = await client.post(
+        "/api/v1/alerts/push/subscribe", json={}, headers={"X-User-Id": "victim_user"}
+    )
     assert res_push.status_code == 410
 
 
@@ -74,7 +79,9 @@ async def test_admin_secret_enforcement_in_production(client: AsyncClient):
         assert res1.status_code == 403
 
         # 2. Invalid secret
-        res2 = await client.post("/api/v1/air-quality/sync", headers={"X-Admin-Secret": "wrong_key"})
+        res2 = await client.post(
+            "/api/v1/air-quality/sync", headers={"X-Admin-Secret": "wrong_key"}
+        )
         assert res2.status_code == 403
 
         # 3. Correct secret

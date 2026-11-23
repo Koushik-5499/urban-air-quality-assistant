@@ -54,4 +54,3 @@ class MonitoringStation(Base):
         "AQIReading",
         back_populates="station",
     )
-

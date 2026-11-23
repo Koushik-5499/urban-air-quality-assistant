@@ -5,4 +5,3 @@ from app.repositories.reading_repository import ReadingRepository
 from app.repositories.station_repository import StationRepository
 
 __all__ = ["CityRepository", "ReadingRepository", "StationRepository"]
-

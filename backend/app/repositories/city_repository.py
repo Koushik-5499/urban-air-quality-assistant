@@ -1,6 +1,5 @@
 """City repository for database CRUD operations."""
 
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -50,4 +49,3 @@ class CityRepository:
         self.db.commit()
         self.db.refresh(city)
         return city
-

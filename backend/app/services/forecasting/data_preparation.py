@@ -196,4 +196,3 @@ class DataPreparationService:
             test_timestamps=test_ts,
             test_values=test_y,
         )
-

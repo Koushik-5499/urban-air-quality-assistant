@@ -36,7 +36,10 @@ class AlertCondition(BaseModel):
 
 
 class ThresholdEngine:
-    """Evaluates chronological AQI readings to detect meaningful threshold and category transitions."""
+    """
+    Evaluates chronological AQI readings to detect meaningful threshold and category
+    transitions.
+    """
 
     @staticmethod
     def get_severity_for_category(category: str | None) -> str:
@@ -133,7 +136,8 @@ class ThresholdEngine:
                         severity=curr_severity,
                         title=f"{sim_prefix}Air Quality Alert: {curr_cat} in {location_label}",
                         description=(
-                            f"Current AQI is {curr_aqi} ({curr_cat}), driven primarily by {curr_dom}. "
+                            f"Current AQI is {curr_aqi} ({curr_cat}), "
+                            f"driven primarily by {curr_dom}. "
                             f"Air quality has reached elevated pollution levels."
                         ),
                         current_aqi=curr_aqi,
@@ -165,8 +169,10 @@ class ThresholdEngine:
                         severity=curr_severity,
                         title=f"{sim_prefix}Air Quality Worsened to {curr_cat} in {location_label}",
                         description=(
-                            f"AQI transitioned from {prev_aqi} ({prev_cat}) to {curr_aqi} ({curr_cat}). "
-                            f"Dominant pollutant is {curr_dom}. Increased health precautions are advised."
+                            f"AQI transitioned from {prev_aqi} ({prev_cat}) "
+                            f"to {curr_aqi} ({curr_cat}). "
+                            f"Dominant pollutant is {curr_dom}. "
+                            f"Increased health precautions are advised."
                         ),
                         current_aqi=curr_aqi,
                         previous_aqi=prev_aqi,
@@ -186,7 +192,8 @@ class ThresholdEngine:
                         severity="Low",
                         title=f"{sim_prefix}Air Quality Improved to {curr_cat} in {location_label}",
                         description=(
-                            f"AQI improved significantly by {abs(aqi_delta)} points, dropping from {prev_aqi} ({prev_cat}) "
+                            f"AQI improved significantly by {abs(aqi_delta)} points, "
+                            f"dropping from {prev_aqi} ({prev_cat}) "
                             f"to {curr_aqi} ({curr_cat})."
                         ),
                         current_aqi=curr_aqi,
@@ -208,7 +215,8 @@ class ThresholdEngine:
                     severity=curr_severity,
                     title=f"{sim_prefix}Sudden Pollution Spike in {location_label}",
                     description=(
-                        f"AQI spiked by +{aqi_delta} points (from {prev_aqi} to {curr_aqi}) within the recent monitoring period. "
+                        f"AQI spiked by +{aqi_delta} points (from {prev_aqi} to {curr_aqi}) "
+                        f"within the recent monitoring period. "
                         f"Category remains {curr_cat} with {curr_dom} as dominant pollutant."
                     ),
                     current_aqi=curr_aqi,
@@ -228,9 +236,12 @@ class ThresholdEngine:
                 AlertCondition(
                     alert_type="THRESHOLD_CROSSING",
                     severity=curr_severity,
-                    title=f"{sim_prefix}AQI Crossed Threshold ({min_threshold}) in {location_label}",
+                    title=(
+                        f"{sim_prefix}AQI Crossed Threshold ({min_threshold}) in {location_label}"
+                    ),
                     description=(
-                        f"AQI has crossed your alert threshold of {min_threshold}. Current AQI is {curr_aqi} ({curr_cat}), "
+                        f"AQI has crossed your alert threshold of {min_threshold}. "
+                        f"Current AQI is {curr_aqi} ({curr_cat}), "
                         f"up from {prev_aqi}."
                     ),
                     current_aqi=curr_aqi,

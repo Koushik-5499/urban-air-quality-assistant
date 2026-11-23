@@ -35,4 +35,3 @@ class CPCBDataUnavailableError(CPCBProviderError):
     """Raised when requested city or station has no available telemetry records."""
 
     pass
-

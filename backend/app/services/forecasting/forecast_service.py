@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.config import Settings, get_settings
 from app.integrations.weather.client import WeatherClient
 from app.models.city import City
-from app.models.monitoring_station import MonitoringStation
 from app.models.forecast import AQIForecast, ForecastEvaluation, ForecastRun
+from app.models.monitoring_station import MonitoringStation
 from app.schemas.forecast import (
     AQIForecastItem,
     DailyForecastResponse,
@@ -36,7 +36,10 @@ logger = logging.getLogger(__name__)
 
 
 class ForecastService:
-    """Manages end-to-end AQI forecasting lifecycle, data preparation, evaluation, and persistence."""
+    """
+    Manages end-to-end AQI forecasting lifecycle, data preparation, evaluation, and
+    persistence.
+    """
 
     _generation_lock = asyncio.Lock()
 
@@ -150,6 +153,8 @@ class ForecastService:
                 longitude=city.longitude,
             )
         except Exception as exc:
+            # Optional auxiliary weather telemetry fetch failure should not block core forecast
+            # generation
             logger.warning("Weather fetch failed for %s: %s", city.name, exc)
             return None
 
@@ -256,14 +261,19 @@ class ForecastService:
         requested_horizons: list[str] | None = None,
         force_retrain: bool = False,
     ) -> ForecastGenerateResponse:
-        """Execute a controlled model training and forecast generation task with concurrency protection."""
+        """
+        Execute a controlled model training and forecast generation task with concurrency
+        protection.
+        """
         async with self._generation_lock:
             now_utc = datetime.now(UTC)
             city, station = ForecastValidator.resolve_city_and_station(db, city_name, station_id)
             target_horizons = ForecastValidator.validate_horizons_list(requested_horizons)
 
             if not force_retrain:
-                cached_res = self._check_recent_forecast_run(db, city, station, now_utc, target_horizons)
+                cached_res = self._check_recent_forecast_run(
+                    db, city, station, now_utc, target_horizons
+                )
                 if cached_res:
                     return cached_res
 
@@ -301,8 +311,16 @@ class ForecastService:
             )
 
             forecast_records = self._build_step_forecasts(
-                forecast_run.id, city, station, model, dataset, raw_predictions,
-                max_horizon, residual_std, len(val_actuals), now_utc
+                forecast_run.id,
+                city,
+                station,
+                model,
+                dataset,
+                raw_predictions,
+                max_horizon,
+                residual_std,
+                len(val_actuals),
+                now_utc,
             )
 
             db.add_all(forecast_records)
@@ -589,7 +607,9 @@ class ForecastService:
 
         summaries = []
         for r in runs:
-            f_count_stmt = select(func.count(AQIForecast.id)).where(AQIForecast.forecast_run_id == r.id)
+            f_count_stmt = select(func.count(AQIForecast.id)).where(
+                AQIForecast.forecast_run_id == r.id
+            )
             f_count = db.execute(f_count_stmt).scalar() or 0
 
             summaries.append(
@@ -622,7 +642,10 @@ class ForecastService:
         db: Session,
         city_name: str | None = None,
     ) -> ModelStatusResponse:
-        """Report operational status, versioning, evaluation metrics, and readiness of the forecasting service."""
+        """
+        Report operational status, versioning, evaluation metrics, and readiness of the
+        forecasting service.
+        """
         city_entity = None
         if city_name:
             city_stmt = select(City).where(City.name.ilike(city_name.strip()))
@@ -632,7 +655,9 @@ class ForecastService:
         if city_entity:
             filters.append(ForecastRun.city_id == city_entity.id)
 
-        latest_run_stmt = select(ForecastRun).where(*filters).order_by(desc(ForecastRun.generated_at)).limit(1)
+        latest_run_stmt = (
+            select(ForecastRun).where(*filters).order_by(desc(ForecastRun.generated_at)).limit(1)
+        )
         latest_run = db.execute(latest_run_stmt).scalar_one_or_none()
 
         eval_metrics: list[ModelEvaluationMetric] = []
@@ -658,7 +683,8 @@ class ForecastService:
         coverage = None
         if latest_run and latest_run.training_data_start and latest_run.training_data_end:
             coverage = round(
-                (latest_run.training_data_end - latest_run.training_data_start).total_seconds() / 3600.0,
+                (latest_run.training_data_end - latest_run.training_data_start).total_seconds()
+                / 3600.0,
                 1,
             )
 
@@ -684,4 +710,3 @@ class ForecastService:
                 "base_url": self.settings.WEATHER_API_BASE_URL,
             },
         )
-

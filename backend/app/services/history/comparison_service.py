@@ -17,7 +17,9 @@ class ComparisonService:
     """Evaluates and compares air quality metrics across multiple cities and stations."""
 
     @classmethod
-    def _compute_metrics(cls, valid_readings: list[AQIReading]) -> tuple[
+    def _compute_metrics(
+        cls, valid_readings: list[AQIReading]
+    ) -> tuple[
         float | None, int | None, int | None, float | None, dict[str, int], dict[str, int], str
     ]:
         """Compute statistical metrics and distributions for valid AQI readings."""
@@ -61,8 +63,12 @@ class ComparisonService:
             query = query.where(AQIReading.measured_at <= end_date)
 
         readings = list(db.execute(query).scalars().all())
-        valid_readings = [r for r in readings if r.aqi_value is not None and r.data_quality != "invalid"]
-        avg_aqi, min_aqi, max_aqi, median_aqi, cat_dist, dom_dist, quality = cls._compute_metrics(valid_readings)
+        valid_readings = [
+            r for r in readings if r.aqi_value is not None and r.data_quality != "invalid"
+        ]
+        avg_aqi, min_aqi, max_aqi, median_aqi, cat_dist, dom_dist, quality = cls._compute_metrics(
+            valid_readings
+        )
 
         return LocationComparisonItem(
             location_type="city",
@@ -102,8 +108,12 @@ class ComparisonService:
             query = query.where(AQIReading.measured_at <= end_date)
 
         readings = list(db.execute(query).scalars().all())
-        valid_readings = [r for r in readings if r.aqi_value is not None and r.data_quality != "invalid"]
-        avg_aqi, min_aqi, max_aqi, median_aqi, cat_dist, dom_dist, quality = cls._compute_metrics(valid_readings)
+        valid_readings = [
+            r for r in readings if r.aqi_value is not None and r.data_quality != "invalid"
+        ]
+        avg_aqi, min_aqi, max_aqi, median_aqi, cat_dist, dom_dist, quality = cls._compute_metrics(
+            valid_readings
+        )
 
         return LocationComparisonItem(
             location_type="station",
@@ -139,7 +149,9 @@ class ComparisonService:
                 comparisons.append(city_item)
 
         for station_id in stations:
-            station_item = cls._evaluate_station(db, station_id, start_date, end_date, include_simulated)
+            station_item = cls._evaluate_station(
+                db, station_id, start_date, end_date, include_simulated
+            )
             if station_item:
                 comparisons.append(station_item)
 
@@ -149,4 +161,3 @@ class ComparisonService:
             location_count=len(comparisons),
             comparisons=comparisons,
         )
-

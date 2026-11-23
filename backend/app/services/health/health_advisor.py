@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 
 
 class HealthAdvisorService:
-    """Orchestrates verified environmental context injection, Gemini generation, and knowledge-base fallbacks."""
+    """
+    Orchestrates verified environmental context injection, Gemini generation, and
+    knowledge-base fallbacks.
+    """
 
     def __init__(
         self,
@@ -68,7 +71,10 @@ class HealthAdvisorService:
         )
 
     def get_community_solutions(self) -> CommunitySolutionsResponse:
-        """Retrieve structured Challenge 6 community solutions: winter smog, low-emission routines, and indoor hacks."""
+        """
+        Retrieve structured Challenge 6 community solutions: winter smog, low-emission
+        routines, and indoor hacks.
+        """
         return HealthKnowledgeBase.get_community_solutions()
 
     def get_pollutant_explanation(self, pollutant_code: str) -> PollutantExplanationResponse:
@@ -78,7 +84,10 @@ class HealthAdvisorService:
             valid_codes = list(HealthKnowledgeBase.POLLUTANT_DETAILS.keys())
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Pollutant '{pollutant_code}' is not supported. Supported pollutants: {valid_codes}.",
+                detail=(
+                    f"Pollutant '{pollutant_code}' is not supported. "
+                    f"Supported pollutants: {valid_codes}."
+                ),
             )
         return explanation
 
@@ -148,7 +157,9 @@ class HealthAdvisorService:
 
             try:
                 ai_response = await self.ai_provider.generate_response(ai_request)
-                validated_answer = HealthSafetyValidator.validate_and_sanitize_response(ai_response.content)
+                validated_answer = HealthSafetyValidator.validate_and_sanitize_response(
+                    ai_response.content
+                )
 
                 return HealthAskResponse(
                     answer=validated_answer,
@@ -164,9 +175,15 @@ class HealthAdvisorService:
                 )
 
             except AIProviderError as exc:
-                logger.warning("AI provider failed (%s), falling back to knowledge base: %s", type(exc).__name__, exc)
+                logger.warning(
+                    "AI provider failed (%s), falling back to knowledge base: %s",
+                    type(exc).__name__,
+                    exc,
+                )
             except Exception as exc:
-                logger.error("Unexpected error during AI health advisor call: %s", exc)
+                # Top-level AI advisor boundary ensuring deterministic knowledge-base fallback
+                # on unexpected error
+                logger.exception("Unexpected error during AI health advisor call: %s", exc)
 
         # 5. Deterministic Knowledge-Base Fallback (when AI is disabled, unconfigured, or failing)
         fallback_answer = self._generate_knowledge_base_fallback(
@@ -192,7 +209,9 @@ class HealthAdvisorService:
         question: str,
         snapshot: AQIContextSnapshot,
     ) -> str:
-        """Synthesize a safe, authoritative fallback answer using structured knowledge base rules."""
+        """
+        Synthesize a safe, authoritative fallback answer using structured knowledge base rules.
+        """
         city = snapshot.city_name
         aqi = snapshot.aqi
         category = snapshot.category or "Moderate"
@@ -201,13 +220,25 @@ class HealthAdvisorService:
 
         header = f"### Air Quality Guidance for {city}\n\n"
         if aqi is not None:
-            header += f"Current air quality is categorized as **{category}** (AQI: {aqi}, dominant pollutant: {dominant}).\n\n"
+            header += (
+                f"Current air quality is categorized as **{category}** "
+                f"(AQI: {aqi}, dominant pollutant: {dominant}).\n\n"
+            )
             if snapshot.is_stale:
-                header += "> **Note on Data Freshness**: The latest available measurement is over 5 hours old. Current ambient conditions may differ.\n\n"
+                header += (
+                    "> **Note on Data Freshness**: The latest available measurement "
+                    "is over 5 hours old. Current ambient conditions may differ.\n\n"
+                )
             if snapshot.is_simulated:
-                header += "> **Demonstration Note**: Current telemetry reflects simulated demonstration data.\n\n"
+                header += (
+                    "> **Demonstration Note**: Current telemetry "
+                    "reflects simulated demonstration data.\n\n"
+                )
         else:
-            header += f"Real-time observation data is currently unavailable for {city}. General urban air quality precautions apply.\n\n"
+            header += (
+                f"Real-time observation data is currently unavailable for "
+                f"{city}. General urban air quality precautions apply.\n\n"
+            )
 
         body = (
             f"**Official CPCB Impact**: {guideline.health_statement}\n\n"
@@ -221,37 +252,57 @@ class HealthAdvisorService:
         q_lower = question.lower()
         extra_sections: list[str] = []
 
-        if any(w in q_lower for w in ("winter", "smog", "inversion", "fog", "cold", "child", "school")):
+        if any(
+            w in q_lower for w in ("winter", "smog", "inversion", "fog", "cold", "child", "school")
+        ):
             extra_sections.append(
                 "**Winter Smog & Inversion Protocols for Families**:\n"
-                "- Avoid early morning (6:00 AM – 9:30 AM) outdoor exposure when cold ground air traps vehicular soot and particulate matter.\n"
-                "- Reschedule children's school bus waiting or morning sports to midday when convective heating breaks the inversion layer.\n"
-                "- *Direct Impact*: Midday rescheduling cuts peak particulate inhalation by up to 52%."
+                "- Avoid early morning (6:00 AM – 9:30 AM) outdoor exposure when cold "
+                "ground air traps vehicular soot and particulate matter.\n"
+                "- Reschedule children's school bus waiting or morning sports to midday "
+                "when convective heating breaks the inversion layer.\n"
+                "- *Direct Impact*: Midday rescheduling cuts peak particulate inhalation "
+                "by up to 52%."
             )
 
-        if any(w in q_lower for w in ("commute", "routine", "transit", "work", "travel", "carpool", "metro")):
+        if any(
+            w in q_lower
+            for w in ("commute", "routine", "transit", "work", "travel", "carpool", "metro")
+        ):
             extra_sections.append(
                 "**Low-Emission Daily Routines**:\n"
-                "- Travel during off-peak windows (before 8 AM or after 10 AM) to avoid high stop-and-go in-cabin pollution.\n"
+                "- Travel during off-peak windows (before 8 AM or after 10 AM) to avoid "
+                "high stop-and-go in-cabin pollution.\n"
                 "- Shift to electrified metro rail or electric buses for daily urban commutes.\n"
-                "- *Direct Impact*: Metro transit saves ~3.2 kg CO2 per passenger daily and lowers in-cabin toxic gas exposure by 45%."
+                "- *Direct Impact*: Metro transit saves ~3.2 kg CO2 per passenger daily "
+                "and lowers in-cabin toxic gas exposure by 45%."
             )
 
-        if any(w in q_lower for w in ("indoor", "hack", "purif", "filter", "window", "ventilat", "plant", "clean")):
+        if any(
+            w in q_lower
+            for w in ("indoor", "hack", "purif", "filter", "window", "ventilat", "plant", "clean")
+        ):
             extra_sections.append(
                 "**Indoor Air Quality Hacks**:\n"
-                "- Diurnal Ventilation: Keep windows tightly sealed during morning and nighttime smog; open only between 12:30 PM – 3:30 PM on sunny days.\n"
-                "- DIY Filtration: A box fan fitted with MERV-13 or HEPA filters (Corsi-Rosenthal box) reduces room PM2.5 by 75–85% at minimal cost.\n"
-                "- Damp Cleaning: Always wet-mop instead of dry-sweeping to prevent resuspending coarse PM10 particles.\n"
-                "- Air-Purifying Plants: Snake plants and Areca palms naturally absorb VOCs and refresh indoor spaces."
+                "- Diurnal Ventilation: Keep windows tightly sealed during morning and "
+                "nighttime smog; open only between 12:30 PM – 3:30 PM on sunny days.\n"
+                "- DIY Filtration: A box fan fitted with MERV-13 or HEPA filters "
+                "(Corsi-Rosenthal box) reduces room PM2.5 by 75–85% at minimal cost.\n"
+                "- Damp Cleaning: Always wet-mop instead of dry-sweeping to prevent "
+                "resuspending coarse PM10 particles.\n"
+                "- Air-Purifying Plants: Snake plants and Areca palms naturally absorb "
+                "VOCs and refresh indoor spaces."
             )
 
         if any(w in q_lower for w in ("sustainab", "heat", "burn", "solar", "waste", "community")):
             extra_sections.append(
                 "**Sustainable Community Alternatives**:\n"
-                "- Use clean electric radiant or ceramic space heaters instead of open biomass/wood burning.\n"
-                "- Report neighborhood garbage or leaf burning immediately through municipal clean-air apps.\n"
-                "- *Direct Impact*: Eliminating open biomass burning removes localized PM2.5 spikes exceeding 800 µg/m³."
+                "- Use clean electric radiant or ceramic space heaters instead of open "
+                "biomass/wood burning.\n"
+                "- Report neighborhood garbage or leaf burning immediately through "
+                "municipal clean-air apps.\n"
+                "- *Direct Impact*: Eliminating open biomass burning removes localized "
+                "PM2.5 spikes exceeding 800 µg/m³."
             )
 
         if extra_sections:
@@ -259,9 +310,8 @@ class HealthAdvisorService:
 
         footer = (
             "\n*(Notice: The AI generation service is currently operating in offline mode. "
-            "This guidance is provided directly from the verified CPCB and WHO public health knowledge base.)*\n\n"
-            + MEDICAL_DISCLAIMER
+            "This guidance is provided directly from the verified CPCB and WHO public "
+            "health knowledge base.)*\n\n" + MEDICAL_DISCLAIMER
         )
 
         return header + body + footer
-

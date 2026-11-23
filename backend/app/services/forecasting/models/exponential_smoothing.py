@@ -7,14 +7,17 @@ from app.services.forecasting.models.base import BaseForecastModel
 
 
 class ExponentialSmoothingModel(BaseForecastModel):
-    """Adaptive Exponential Smoothing model incorporating level, damped trend, and 24h diurnal seasonality."""
+    """
+    Adaptive Exponential Smoothing model incorporating level, damped trend, and 24h diurnal
+    seasonality.
+    """
 
     def __init__(
         self,
         alpha: float = 0.40,  # Level smoothing factor
-        beta: float = 0.10,   # Trend smoothing factor
+        beta: float = 0.10,  # Trend smoothing factor
         gamma: float = 0.20,  # Seasonal smoothing factor
-        phi: float = 0.92,    # Damped trend parameter
+        phi: float = 0.92,  # Damped trend parameter
         seasonal_period: int = 24,
     ):
         self.alpha = alpha
@@ -42,10 +45,12 @@ class ExponentialSmoothingModel(BaseForecastModel):
         """Fit level, trend, and diurnal seasonal components to the time-series."""
         n = len(series)
         if n < 2:
-            raise ValueError(f"ExponentialSmoothingModel requires at least 2 observations, got {n}.")
+            raise ValueError(
+                f"ExponentialSmoothingModel requires at least 2 observations, got {n}."
+            )
 
         m = self.seasonal_period
-        self._has_seasonality = (n >= 2 * m)
+        self._has_seasonality = n >= 2 * m
         self._last_hour = timestamps[-1].hour if timestamps else 0
 
         # 1. Initialize level and trend
@@ -57,14 +62,11 @@ class ExponentialSmoothingModel(BaseForecastModel):
         if self._has_seasonality:
             # Estimate additive seasonal factors across full periods
             num_periods = n // m
-            averages = [
-                sum(series[i * m : (i + 1) * m]) / float(m)
-                for i in range(num_periods)
-            ]
+            averages = [sum(series[i * m : (i + 1) * m]) / float(m) for i in range(num_periods)]
             for i in range(m):
                 sum_over_periods = 0.0
                 for j in range(num_periods):
-                    sum_over_periods += (series[j * m + i] - averages[j])
+                    sum_over_periods += series[j * m + i] - averages[j]
                 seasonals[i] = sum_over_periods / float(num_periods)
 
             # Normalize seasonal factors to sum to zero
@@ -122,4 +124,3 @@ class ExponentialSmoothingModel(BaseForecastModel):
             predictions.append(clamped)
 
         return predictions
-

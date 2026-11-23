@@ -1,6 +1,5 @@
 """Data normalization service for canonical city matching and pollutant categorization."""
 
-
 # Supported Indian cities canonical mapping
 # Maps lowercase aliases and historical names to (Canonical Name, Canonical State)
 CANONICAL_CITIES: dict[str, tuple[str, str]] = {
@@ -52,7 +51,10 @@ class DataNormalizationService:
             if state_name:
                 clean_state = state_name.strip().lower()
                 # Verify state roughly matches
-                if clean_state not in canonical_state.lower() and canonical_state.lower() not in clean_state:
+                if (
+                    clean_state not in canonical_state.lower()
+                    and canonical_state.lower() not in clean_state
+                ):
                     return None
             return canonical_name, canonical_state
 
@@ -71,4 +73,3 @@ class DataNormalizationService:
     def is_core_pollutant(cls, pollutant_code: str) -> bool:
         """Verify whether a pollutant code belongs to the six core criteria pollutants."""
         return pollutant_code.upper() in CORE_POLLUTANTS
-

@@ -23,7 +23,10 @@ router = APIRouter()
     "/calculate",
     response_model=AQICalculationResponse,
     summary="Calculate NAQI for City or Station",
-    description="Calculate Indian National Air Quality Index (NAQI) sub-indices and overall index using CPCB methodology.",
+    description=(
+        "Calculate Indian National Air Quality Index (NAQI) sub-indices and overall index "
+        "using CPCB methodology."
+    ),
 )
 async def calculate_aqi(
     city: str | None = Query(None, description="City name (e.g. Delhi, Coimbatore)"),
@@ -42,7 +45,9 @@ async def calculate_aqi(
     "/pollutant-subindices",
     response_model=SubIndicesOnlyResponse,
     summary="Get Pollutant Sub-Indices",
-    description="Retrieve individual pollutant sub-indices (0-500) and dominant pollutant for a location.",
+    description=(
+        "Retrieve individual pollutant sub-indices (0-500) and dominant pollutant for a location."
+    ),
 )
 async def get_pollutant_subindices(
     city: str | None = Query(None, description="City name filter"),
@@ -61,7 +66,9 @@ async def get_pollutant_subindices(
     "/latest",
     response_model=AQIHistoryItem,
     summary="Get Latest Stored AQI Reading",
-    description="Retrieve the latest persisted AQI record for a specified city or monitoring station.",
+    description=(
+        "Retrieve the latest persisted AQI record for a specified city or monitoring station."
+    ),
 )
 async def get_latest_aqi(
     city: str | None = Query(None, description="City name filter"),
@@ -78,7 +85,10 @@ async def get_latest_aqi(
         loc = city or f"station {station_id}" or "the database"
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No stored AQI reading found for {loc}. Run /api/v1/aqi/process or check /api/v1/aqi/calculate.",
+            detail=(
+                f"No stored AQI reading found for {loc}. Run "
+                f"/api/v1/aqi/process or check /api/v1/aqi/calculate."
+            ),
         )
     return result
 
@@ -87,7 +97,10 @@ async def get_latest_aqi(
     "/history",
     response_model=AQIHistoryResponse,
     summary="Get Historical AQI Readings",
-    description="Query historical calculated AQI readings with optional date-range and pagination filtering.",
+    description=(
+        "Query historical calculated AQI readings with optional date-range and pagination "
+        "filtering."
+    ),
 )
 async def get_aqi_history(
     city: str | None = Query(None, description="Filter by city name"),
@@ -114,7 +127,10 @@ async def get_aqi_history(
     "/process",
     response_model=AQIProcessResponse,
     summary="Batch Process Stored Observations into AQI Records",
-    description="Evaluate stored pollutant readings against CPCB sufficiency rules and persist calculated AQI readings.",
+    description=(
+        "Evaluate stored pollutant readings against CPCB sufficiency rules and persist "
+        "calculated AQI readings."
+    ),
 )
 async def process_aqi_readings(
     city_id: int | None = Query(None, description="Optional city ID to scope processing"),
@@ -126,4 +142,3 @@ async def process_aqi_readings(
         db=db,
         city_id=city_id,
     )
-

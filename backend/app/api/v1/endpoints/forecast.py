@@ -1,4 +1,7 @@
-"""API v1 endpoints for air quality forecasting, hourly projections, daily summaries, and model status."""
+"""
+API v1 endpoints for air quality forecasting, hourly projections, daily summaries, and model
+status.
+"""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -31,13 +34,22 @@ def get_forecast_service(
     "/aqi",
     response_model=ForecastListResponse,
     summary="Get AQI forecast predictions",
-    description="Retrieve future air quality predictions for a specified city and optional horizon (e.g. '1h', '6h', '24h', 'all').",
+    description=(
+        "Retrieve future air quality predictions for a specified city and optional horizon "
+        "(e.g. '1h', '6h', '24h', 'all')."
+    ),
 )
 async def get_aqi_forecast(
-    city: str = Query(..., min_length=1, max_length=100, description="City name (e.g. 'Delhi', 'Bengaluru')"),
+    city: str = Query(
+        ..., min_length=1, max_length=100, description="City name (e.g. 'Delhi', 'Bengaluru')"
+    ),
     station_id: int | None = Query(None, description="Optional monitoring station ID"),
-    horizon: str | None = Query(None, description="Optional target horizon: '1h', '6h', '12h', '24h', '48h', '72h'"),
-    include_uncertainty: bool = Query(True, description="Whether to include lower and upper prediction interval bounds"),
+    horizon: str | None = Query(
+        None, description="Optional target horizon: '1h', '6h', '12h', '24h', '48h', '72h'"
+    ),
+    include_uncertainty: bool = Query(
+        True, description="Whether to include lower and upper prediction interval bounds"
+    ),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
 ) -> ForecastListResponse:
@@ -77,7 +89,10 @@ async def get_hourly_forecast(
     "/daily",
     response_model=DailyForecastResponse,
     summary="Get daily AQI forecast outlook",
-    description="Retrieve daily aggregated forecast summaries (min, max, average AQI, and predominant category) for up to 7 days.",
+    description=(
+        "Retrieve daily aggregated forecast summaries (min, max, average AQI, and predominant "
+        "category) for up to 7 days."
+    ),
 )
 async def get_daily_forecast(
     city: str = Query(..., min_length=1, max_length=100, description="City name"),
@@ -99,12 +114,17 @@ async def get_daily_forecast(
     "/history",
     response_model=ForecastHistoryResponse,
     summary="Get historical forecast runs",
-    description="Retrieve previous forecast generation runs with model metadata and out-of-sample evaluation metrics.",
+    description=(
+        "Retrieve previous forecast generation runs with model metadata and out-of-sample "
+        "evaluation metrics."
+    ),
 )
 def get_forecast_history(
     city: str = Query(..., min_length=1, max_length=100, description="City name"),
     station_id: int | None = Query(None, description="Optional monitoring station ID"),
-    limit: int = Query(10, ge=1, le=100, description="Maximum number of historical runs to retrieve"),
+    limit: int = Query(
+        10, ge=1, le=100, description="Maximum number of historical runs to retrieve"
+    ),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
 ) -> ForecastHistoryResponse:
@@ -121,10 +141,15 @@ def get_forecast_history(
     "/model-status",
     response_model=ModelStatusResponse,
     summary="Get forecasting model status and evaluation metrics",
-    description="Inspect model architecture, version, evaluation metrics (MAE, RMSE, MAPE), supported horizons, and weather integration status.",
+    description=(
+        "Inspect model architecture, version, evaluation metrics (MAE, RMSE, MAPE), supported "
+        "horizons, and weather integration status."
+    ),
 )
 def get_model_status(
-    city: str | None = Query(None, description="Optional city name to scope status and latest run metrics"),
+    city: str | None = Query(
+        None, description="Optional city name to scope status and latest run metrics"
+    ),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
 ) -> ModelStatusResponse:
@@ -139,7 +164,10 @@ def get_model_status(
     "/generate",
     response_model=ForecastGenerateResponse,
     summary="Trigger model training and forecast generation run",
-    description="Train forecasting model on verified historical observations, compute out-of-sample evaluation metrics, and persist predictions. Protected by X-Admin-Secret.",
+    description=(
+        "Train forecasting model on verified historical observations, compute out-of-sample "
+        "evaluation metrics, and persist predictions. Protected by X-Admin-Secret."
+    ),
 )
 async def generate_forecast(
     request: ForecastGenerateRequest,
@@ -155,4 +183,3 @@ async def generate_forecast(
         requested_horizons=request.horizons,
         force_retrain=request.force_retrain,
     )
-

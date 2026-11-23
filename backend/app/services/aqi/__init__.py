@@ -17,4 +17,3 @@ __all__ = [
     "get_category_info",
     "POLLUTANT_INFO",
 ]
-

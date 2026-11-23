@@ -1,4 +1,7 @@
-"""Uncertainty estimation and prediction interval calculation based on empirical validation residuals."""
+"""
+Uncertainty estimation and prediction interval calculation based on empirical validation
+residuals.
+"""
 
 import math
 from dataclasses import dataclass
@@ -17,7 +20,10 @@ class UncertaintyEstimate:
 
 
 class UncertaintyEstimator:
-    """Computes calibrated prediction intervals that widen monotonically with the forecast horizon."""
+    """
+    Computes calibrated prediction intervals that widen monotonically with the forecast
+    horizon.
+    """
 
     @staticmethod
     def calculate_residual_standard_deviation(
@@ -81,4 +87,3 @@ class UncertaintyEstimator:
             confidence_level=0.90,
             methodology="empirical_residual_variance_with_horizon_expansion",
         )
-

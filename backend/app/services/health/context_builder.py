@@ -117,17 +117,28 @@ class ContextBuilder:
             if snapshot.measurement_timestamp
             else "Unavailable"
         )
-        stale_indicator = "STALE (measured over 5 hours ago - exercise caution)" if snapshot.is_stale else "Fresh observation"
-        sim_indicator = "Simulated demonstration telemetry" if snapshot.is_simulated else "Official provider observation"
+        stale_indicator = (
+            "STALE (measured over 5 hours ago - exercise caution)"
+            if snapshot.is_stale
+            else "Fresh observation"
+        )
+        sim_indicator = (
+            "Simulated demonstration telemetry"
+            if snapshot.is_simulated
+            else "Official provider observation"
+        )
 
         lifestyle_str = f"Target User Lifestyle Persona: {lifestyle}\n" if lifestyle else ""
-        family_str = f"Target Household & Community Context: {family_context}\n" if family_context else ""
+        family_str = (
+            f"Target Household & Community Context: {family_context}\n" if family_context else ""
+        )
 
         return (
             f"--- VERIFIED AIR QUALITY OBSERVATION DATA ---\n"
             f"City: {snapshot.city_name}\n"
             f"Monitoring Station: {snapshot.station_name or 'City-wide aggregate'}\n"
-            f"Current Composite NAQI: {snapshot.aqi if snapshot.aqi is not None else 'No reading available'}\n"
+            f"Current Composite NAQI: "
+            f"{snapshot.aqi if snapshot.aqi is not None else 'No reading available'}\n"
             f"NAQI Category: {snapshot.category or 'Unknown'}\n"
             f"Dominant Pollutant: {snapshot.dominant_pollutant or 'Unspecified'}\n"
             f"Measurement Timestamp: {measured_str}\n"
@@ -139,4 +150,3 @@ class ContextBuilder:
             f"{family_str}"
             f"--- END VERIFIED DATA ---"
         )
-

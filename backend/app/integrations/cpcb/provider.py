@@ -1,6 +1,5 @@
 """CPCB Provider implementation satisfying BaseAQIProvider."""
 
-
 from app.core.config import get_settings
 from app.integrations.base import BaseAQIProvider, NormalizedObservation, ProviderMetadata
 from app.integrations.cpcb.client import CPCBClient
@@ -47,4 +46,3 @@ class CPCBProvider(BaseAQIProvider):
     async def close(self) -> None:
         """Close underlying client connections."""
         await self.client.close()
-

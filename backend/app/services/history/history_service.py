@@ -152,13 +152,16 @@ class HistoryService:
         total_records = db.execute(count_stmt).scalar() or 0
         total_pages = math.ceil(total_records / page_size) if total_records > 0 else 0
 
-        data_stmt = (
-            select(AQIReading)
-            .options(joinedload(AQIReading.city), joinedload(AQIReading.station))
+        data_stmt = select(AQIReading).options(
+            joinedload(AQIReading.city), joinedload(AQIReading.station)
         )
         if filters:
             data_stmt = data_stmt.where(*filters)
-        data_stmt = data_stmt.order_by(desc(AQIReading.measured_at)).offset((page - 1) * page_size).limit(page_size)
+        data_stmt = (
+            data_stmt.order_by(desc(AQIReading.measured_at))
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
 
         raw_readings = list(db.execute(data_stmt).scalars().all())
 
@@ -210,24 +213,35 @@ class HistoryService:
         """Query historical AQI records with optional temporal aggregation and pagination."""
         page, page_size = HistoryValidator.validate_pagination(page, page_size)
         interval_norm = HistoryValidator.validate_interval(interval)
-        start_utc, end_utc = HistoryValidator.validate_date_range(start_date, end_date, is_aggregated=bool(interval_norm))
+        start_utc, end_utc = HistoryValidator.validate_date_range(
+            start_date, end_date, is_aggregated=bool(interval_norm)
+        )
 
         city_entity = HistoryValidator.resolve_city(db, city)
         station_entity = HistoryValidator.resolve_station(db, station_id)
         city_name = city_entity.name if city_entity else city
         station_name = station_entity.station_name if station_entity else None
 
-        filters = cls._build_aqi_filters(city_entity, station_entity, include_simulated, start_utc, end_utc)
+        filters = cls._build_aqi_filters(
+            city_entity, station_entity, include_simulated, start_utc, end_utc
+        )
 
         if interval_norm:
             return cls._get_aggregated_aqi_history(
-                db, filters, interval_norm, city_name, station_id, station_name,
-                start_utc, end_utc, page, page_size
+                db,
+                filters,
+                interval_norm,
+                city_name,
+                station_id,
+                station_name,
+                start_utc,
+                end_utc,
+                page,
+                page_size,
             )
 
         return cls._get_raw_aqi_history(
-            db, filters, city_name, station_id, station_name,
-            start_utc, end_utc, page, page_size
+            db, filters, city_name, station_id, station_name, start_utc, end_utc, page, page_size
         )
 
     @classmethod
@@ -308,13 +322,16 @@ class HistoryService:
         total_records = db.execute(count_stmt).scalar() or 0
         total_pages = math.ceil(total_records / page_size) if total_records > 0 else 0
 
-        data_stmt = (
-            select(PollutantReading)
-            .options(joinedload(PollutantReading.city), joinedload(PollutantReading.station))
+        data_stmt = select(PollutantReading).options(
+            joinedload(PollutantReading.city), joinedload(PollutantReading.station)
         )
         if filters:
             data_stmt = data_stmt.where(*filters)
-        data_stmt = data_stmt.order_by(desc(PollutantReading.measured_at)).offset((page - 1) * page_size).limit(page_size)
+        data_stmt = (
+            data_stmt.order_by(desc(PollutantReading.measured_at))
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
 
         raw_readings = list(db.execute(data_stmt).scalars().all())
 
@@ -377,7 +394,9 @@ class HistoryService:
         page, page_size = HistoryValidator.validate_pagination(page, page_size)
         interval_norm = HistoryValidator.validate_interval(interval)
         pollutant_norm = HistoryValidator.validate_pollutant_code(pollutant)
-        start_utc, end_utc = HistoryValidator.validate_date_range(start_date, end_date, is_aggregated=bool(interval_norm))
+        start_utc, end_utc = HistoryValidator.validate_date_range(
+            start_date, end_date, is_aggregated=bool(interval_norm)
+        )
 
         city_entity = HistoryValidator.resolve_city(db, city)
         station_entity = HistoryValidator.resolve_station(db, station_id)
@@ -390,13 +409,30 @@ class HistoryService:
 
         if interval_norm:
             return cls._get_aggregated_pollutant_history(
-                db, filters, interval_norm, pollutant_norm, city_name, station_id, station_name,
-                start_utc, end_utc, page, page_size
+                db,
+                filters,
+                interval_norm,
+                pollutant_norm,
+                city_name,
+                station_id,
+                station_name,
+                start_utc,
+                end_utc,
+                page,
+                page_size,
             )
 
         return cls._get_raw_pollutant_history(
-            db, filters, pollutant_norm, city_name, station_id, station_name,
-            start_utc, end_utc, page, page_size
+            db,
+            filters,
+            pollutant_norm,
+            city_name,
+            station_id,
+            station_name,
+            start_utc,
+            end_utc,
+            page,
+            page_size,
         )
 
     @staticmethod
@@ -425,10 +461,14 @@ class HistoryService:
         )
 
     @staticmethod
-    def _calc_summary_distributions(valid_readings: list[AQIReading]) -> tuple[dict[str, int], dict[str, int]]:
+    def _calc_summary_distributions(
+        valid_readings: list[AQIReading],
+    ) -> tuple[dict[str, int], dict[str, int]]:
         """Calculate categorical and dominant pollutant distributions."""
         cat_counts = Counter(r.aqi_category for r in valid_readings if r.aqi_category)
-        dominant_counts = Counter(r.dominant_pollutant for r in valid_readings if r.dominant_pollutant)
+        dominant_counts = Counter(
+            r.dominant_pollutant for r in valid_readings if r.dominant_pollutant
+        )
         return dict(cat_counts), dict(dominant_counts)
 
     @classmethod
@@ -444,7 +484,9 @@ class HistoryService:
         """Calculate statistical summaries for non-empty set of valid AQI readings."""
         count = len(valid_readings)
         if count == 0:
-            return cls._empty_summary_response(city_name, station_id, station_name, start_utc, end_utc)
+            return cls._empty_summary_response(
+                city_name, station_id, station_name, start_utc, end_utc
+            )
 
         values = [r.aqi_value for r in valid_readings if r.aqi_value is not None]
         avg_aqi = round(statistics.mean(values), 1)
@@ -481,14 +523,21 @@ class HistoryService:
         end_date: datetime | None = None,
         include_simulated: bool = True,
     ) -> AQISummaryResponse:
-        """Calculate statistical summaries (min, max, mean, median, distributions) for valid AQI readings."""
-        start_utc, end_utc = HistoryValidator.validate_date_range(start_date, end_date, is_aggregated=True)
+        """
+        Calculate statistical summaries (min, max, mean, median, distributions) for valid AQI
+        readings.
+        """
+        start_utc, end_utc = HistoryValidator.validate_date_range(
+            start_date, end_date, is_aggregated=True
+        )
         city_entity = HistoryValidator.resolve_city(db, city)
         station_entity = HistoryValidator.resolve_station(db, station_id)
         city_name = city_entity.name if city_entity else city
         station_name = station_entity.station_name if station_entity else None
 
-        filters = cls._build_aqi_filters(city_entity, station_entity, include_simulated, start_utc, end_utc)
+        filters = cls._build_aqi_filters(
+            city_entity, station_entity, include_simulated, start_utc, end_utc
+        )
 
         stmt = select(AQIReading)
         if filters:
@@ -496,7 +545,9 @@ class HistoryService:
         stmt = stmt.order_by(AQIReading.measured_at)
 
         all_readings = list(db.execute(stmt).scalars().all())
-        valid_readings = [r for r in all_readings if r.aqi_value is not None and r.data_quality != "invalid"]
+        valid_readings = [
+            r for r in all_readings if r.aqi_value is not None and r.data_quality != "invalid"
+        ]
 
         return cls._compute_summary_stats(
             valid_readings, city_name, station_id, station_name, start_utc, end_utc
@@ -592,7 +643,9 @@ class HistoryService:
         """Compute chronological trend comparing earlier and later periods."""
         interval_norm = HistoryValidator.validate_interval(interval) or "daily"
         pollutant_norm = HistoryValidator.validate_pollutant_code(pollutant) if pollutant else None
-        start_utc, end_utc = HistoryValidator.validate_date_range(start_date, end_date, is_aggregated=True)
+        start_utc, end_utc = HistoryValidator.validate_date_range(
+            start_date, end_date, is_aggregated=True
+        )
 
         city_entity = HistoryValidator.resolve_city(db, city)
         station_entity = HistoryValidator.resolve_station(db, station_id)
@@ -602,15 +655,34 @@ class HistoryService:
 
         if pollutant_norm:
             return cls._get_pollutant_trend_result(
-                db, city_entity, station_entity, pollutant_norm, threshold,
-                min_records_per_period, include_simulated, interval_norm,
-                city_name, station_id, station_name, start_utc, end_utc,
+                db,
+                city_entity,
+                station_entity,
+                pollutant_norm,
+                threshold,
+                min_records_per_period,
+                include_simulated,
+                interval_norm,
+                city_name,
+                station_id,
+                station_name,
+                start_utc,
+                end_utc,
             )
 
         return cls._get_aqi_trend_result(
-            db, city_entity, station_entity, threshold, min_records_per_period,
-            include_simulated, interval_norm, city_name, station_id, station_name,
-            start_utc, end_utc,
+            db,
+            city_entity,
+            station_entity,
+            threshold,
+            min_records_per_period,
+            include_simulated,
+            interval_norm,
+            city_name,
+            station_id,
+            station_name,
+            start_utc,
+            end_utc,
         )
 
     @classmethod
@@ -624,8 +696,12 @@ class HistoryService:
         include_simulated: bool = True,
     ) -> HistoryCompareResponse:
         """Compare AQI metrics for 2 to 10 cities or stations over identical date ranges."""
-        parsed_cities, parsed_stations = HistoryValidator.validate_comparison_targets(cities, stations)
-        start_utc, end_utc = HistoryValidator.validate_date_range(start_date, end_date, is_aggregated=True)
+        parsed_cities, parsed_stations = HistoryValidator.validate_comparison_targets(
+            cities, stations
+        )
+        start_utc, end_utc = HistoryValidator.validate_date_range(
+            start_date, end_date, is_aggregated=True
+        )
 
         return ComparisonService.compare_locations(
             db=db,
@@ -635,4 +711,3 @@ class HistoryService:
             end_date=end_utc,
             include_simulated=include_simulated,
         )
-

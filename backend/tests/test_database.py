@@ -358,4 +358,3 @@ def test_database_health_check(db_session: Session):
     health = check_database_health(db_session)
     assert health["healthy"] is True
     assert health["status"] == "connected"
-

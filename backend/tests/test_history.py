@@ -66,7 +66,8 @@ def history_seed_data(db_session: Session):
     base_time = datetime(2026, 11, 1, 10, 0, 0, tzinfo=UTC)
 
     # Populate 10 consecutive daily AQI readings for Delhi
-    # Values: 150, 160, 155, 145, 140 (earlier period), then 110, 105, 100, 95, 90 (later period: improving!)
+    # Values: 150, 160, 155, 145, 140 (earlier period), then 110, 105, 100, 95, 90 (later
+    # period: improving!)
     delhi_aqi_values = [150, 160, 155, 145, 140, 110, 105, 100, 95, 90]
     for i, val in enumerate(delhi_aqi_values):
         measured_time = base_time + timedelta(days=i)
@@ -171,7 +172,9 @@ async def test_get_aqi_history_date_filtering(client: AsyncClient, history_seed_
     start = (base + timedelta(days=2)).isoformat()
     end = (base + timedelta(days=5)).isoformat()
 
-    response = await client.get("/api/v1/history/aqi", params={"city": "Delhi", "start_date": start, "end_date": end})
+    response = await client.get(
+        "/api/v1/history/aqi", params={"city": "Delhi", "start_date": start, "end_date": end}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 4
@@ -227,7 +230,10 @@ async def test_get_aqi_history_weekly_aggregation(client: AsyncClient, history_s
 
 @pytest.mark.anyio
 async def test_get_pollutant_history_raw_and_subindex(client: AsyncClient, history_seed_data):
-    """Test raw pollutant concentration retrieval and reproducible CPCB NAQI sub-index calculation."""
+    """
+    Test raw pollutant concentration retrieval and reproducible CPCB NAQI sub-index
+    calculation.
+    """
     response = await client.get("/api/v1/history/pollutants?city=Delhi&pollutant=PM2.5")
     assert response.status_code == 200
     data = response.json()
@@ -239,13 +245,22 @@ async def test_get_pollutant_history_raw_and_subindex(client: AsyncClient, histo
     assert rec["unit"] == "µg/m³"
     # Reproducible sub-index
     assert rec["sub_index"] is not None
-    assert rec["sub_index_category"] in ["Good", "Satisfactory", "Moderate", "Poor", "Very Poor", "Severe"]
+    assert rec["sub_index_category"] in [
+        "Good",
+        "Satisfactory",
+        "Moderate",
+        "Poor",
+        "Very Poor",
+        "Severe",
+    ]
 
 
 @pytest.mark.anyio
 async def test_get_pollutant_history_aggregation(client: AsyncClient, history_seed_data):
     """Test daily aggregation of pollutant concentrations."""
-    response = await client.get("/api/v1/history/pollutants?city=Delhi&pollutant=PM2.5&interval=daily")
+    response = await client.get(
+        "/api/v1/history/pollutants?city=Delhi&pollutant=PM2.5&interval=daily"
+    )
     assert response.status_code == 200
     data = response.json()
 
@@ -311,7 +326,9 @@ async def test_get_trends_aqi_improving(client: AsyncClient, history_seed_data):
 async def test_get_trends_aqi_stable(client: AsyncClient, history_seed_data):
     """Test trend analysis detection of stable air quality."""
     # Bengaluru readings: [45, 50, 48, 52, 49] (5 records, split into 2 vs 3 or 3 vs 2)
-    response = await client.get("/api/v1/history/trends?city=Bengaluru&threshold=10.0&min_records_per_period=2")
+    response = await client.get(
+        "/api/v1/history/trends?city=Bengaluru&threshold=10.0&min_records_per_period=2"
+    )
     assert response.status_code == 200
     data = response.json()
 
@@ -387,7 +404,9 @@ async def test_compare_locations_validation_boundaries(client: AsyncClient):
 @pytest.mark.anyio
 async def test_validation_invalid_date_order(client: AsyncClient):
     """Test rejection when start_date is later than end_date."""
-    response = await client.get("/api/v1/history/aqi?start_date=2026-11-10T00:00:00Z&end_date=2026-11-01T00:00:00Z")
+    response = await client.get(
+        "/api/v1/history/aqi?start_date=2026-11-10T00:00:00Z&end_date=2026-11-01T00:00:00Z"
+    )
     assert response.status_code == 400
     assert "start_date" in response.json()["detail"]
 

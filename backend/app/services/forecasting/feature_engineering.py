@@ -1,4 +1,7 @@
-"""Feature engineering for time-series forecasting: lags, rolling windows, and cyclical diurnal patterns."""
+"""
+Feature engineering for time-series forecasting: lags, rolling windows, and cyclical diurnal
+patterns.
+"""
 
 import math
 from datetime import datetime
@@ -55,7 +58,9 @@ class FeatureEngineeringService:
         # 3. Rolling window means (3h, 6h, 24h)
         for window in [3, 6, 24]:
             rm = cls.calculate_rolling_mean(history_values, window)
-            features[f"rolling_mean_{window}h"] = rm if rm is not None else features.get("lag_1", 0.0)
+            features[f"rolling_mean_{window}h"] = (
+                rm if rm is not None else features.get("lag_1", 0.0)
+            )
 
         # 4. Optional meteorological feature integration
         if weather:
@@ -69,4 +74,3 @@ class FeatureEngineeringService:
                 features["weather_pressure_hpa"] = weather.surface_pressure_hpa
 
         return features
-

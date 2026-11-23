@@ -36,4 +36,3 @@ class PersistenceModel(BaseForecastModel):
         # Clamp to valid AQI range
         clamped = max(0.0, min(500.0, self._last_value))
         return [clamped] * steps
-

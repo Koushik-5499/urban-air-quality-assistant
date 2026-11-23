@@ -1,6 +1,5 @@
 """Input validation and CPCB NAQI data sufficiency evaluation."""
 
-
 from app.services.aqi.breakpoints import POLLUTANT_INFO
 
 # CPCB minimum requirement: at least one particulate matter pollutant must be monitored
@@ -12,7 +11,9 @@ class AQIValidator:
     """Validates concentrations, units, and data sufficiency according to CPCB guidelines."""
 
     @staticmethod
-    def validate_concentration(pollutant_code: str, concentration: float, unit: str) -> tuple[bool, str | None]:
+    def validate_concentration(
+        pollutant_code: str, concentration: float, unit: str
+    ) -> tuple[bool, str | None]:
         """Validate whether a concentration value and unit are suitable for NAQI calculation."""
         if concentration is None or concentration < 0.0:
             return False, f"Concentration must be a non-negative number; got {concentration}."
@@ -28,7 +29,8 @@ class AQIValidator:
         if clean_unit != clean_expected:
             return (
                 False,
-                f"Incompatible unit '{unit}' for {pollutant_code}. CPCB NAQI requires '{expected_unit}'.",
+                f"Incompatible unit '{unit}' for {pollutant_code}. "
+                f"CPCB NAQI requires '{expected_unit}'.",
             )
 
         return True, None
@@ -48,11 +50,14 @@ class AQIValidator:
         missing_requirements: list[str] = []
         if count < MINIMUM_POLLUTANTS_FOR_OVERALL_AQI:
             missing_requirements.append(
-                f"At least 3 criteria pollutants required (got {count}: {', '.join(sorted(available_set)) or 'none'})"
+                f"At least 3 criteria pollutants required "
+                f"(got {count}: {', '.join(sorted(available_set)) or 'none'})"
             )
 
         if not has_particulate:
-            missing_requirements.append("At least one particulate pollutant (PM2.5 or PM10) is mandatory")
+            missing_requirements.append(
+                "At least one particulate pollutant (PM2.5 or PM10) is mandatory"
+            )
 
         if not missing_requirements:
             return True, "Sufficient data for CPCB Overall NAQI calculation.", []
@@ -63,4 +68,3 @@ class AQIValidator:
             + ". Sub-indices computed, but overall AQI cannot be officially determined."
         )
         return False, explanation, missing_requirements
-

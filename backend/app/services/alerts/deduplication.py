@@ -28,7 +28,8 @@ class AlertDeduplicator:
 
         aqi = aqi_value if aqi_value is not None else current_aqi
 
-        # Floor measurement timestamp to hour to prevent duplicate alerts within same observation hour
+        # Floor measurement timestamp to hour to prevent duplicate alerts within same
+        # observation hour
         hour_str = ts.strftime("%Y%m%d%H")
         st_part = str(station_id) if station_id is not None else "city"
         return f"{city_id}:{st_part}:{alert_type}:{aqi}:{hour_str}"
@@ -47,7 +48,10 @@ class AlertDeduplicator:
         window_hours: int | None = None,
         now_utc: datetime | None = None,
     ) -> bool:
-        """Check whether a duplicate alert was already generated within the active deduplication window."""
+        """
+        Check whether a duplicate alert was already generated within the active deduplication
+        window.
+        """
         ref_time = now_utc or datetime.now(UTC)
         eff_window = window_hours if window_hours is not None else dedup_window_hours
         window_start = ref_time - timedelta(hours=eff_window)

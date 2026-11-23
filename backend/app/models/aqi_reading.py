@@ -35,7 +35,9 @@ class AQIReading(Base):
     aqi_value: Mapped[int] = mapped_column(Integer, nullable=False)
     aqi_category: Mapped[str] = mapped_column(String(50), nullable=False)
     dominant_pollutant: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    measured_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     source: Mapped[str] = mapped_column(String(100), default="CPCB", nullable=False)
     is_simulated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     data_quality: Mapped[str] = mapped_column(String(50), default="valid", nullable=False)
@@ -58,4 +60,3 @@ class AQIReading(Base):
         back_populates="aqi_readings",
     )
     alerts: Mapped[list["Alert"]] = relationship("Alert", back_populates="aqi_reading")
-

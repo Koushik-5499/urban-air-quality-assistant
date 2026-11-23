@@ -28,17 +28,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifecycle manager for startup and shutdown events."""
     setup_logging()
     settings = get_settings()
-    logger.info("Starting %s v%s in [%s] mode...", settings.APP_NAME, settings.APP_VERSION, settings.APP_ENV)
+    logger.info(
+        "Starting %s v%s in [%s] mode...", settings.APP_NAME, settings.APP_VERSION, settings.APP_ENV
+    )
     logger.info("Configured CORS origins: %s", settings.CORS_ORIGINS)
     try:
         from app.db.base import Base
         from app.db.seed import seed_cities
         from app.db.session import SessionLocal, engine
+
         Base.metadata.create_all(bind=engine)
         with SessionLocal() as session:
             seed_cities(session)
     except Exception as e:
-        logger.warning("Database startup init/seed note: %s", str(e))
+        # Top-level application lifespan startup boundary preventing initialization failure
+        # from crashing app
+        logger.exception("Database startup init/seed note: %s", str(e))
     yield
     logger.info("Shutting down %s...", settings.APP_NAME)
 
@@ -106,7 +111,9 @@ def create_application() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         """Handle Pydantic request validation errors."""
         logger.warning("Validation error on %s: %s", request.url.path, exc.errors())
         return JSONResponse(
@@ -153,7 +160,10 @@ def create_application() -> FastAPI:
         tags=["System"],
     )
     async def health() -> HealthResponse:
-        """Root health check returning service status, version, database status, and UTC timestamp."""
+        """
+        Root health check returning service status, version, database status, and UTC
+        timestamp.
+        """
         db_health = check_database_health()
         overall_status = "healthy" if db_health["healthy"] else "degraded"
         return HealthResponse(

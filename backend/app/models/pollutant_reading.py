@@ -34,7 +34,9 @@ class PollutantReading(Base):
     pollutant_code: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     concentration: Mapped[float] = mapped_column(Float, nullable=False)
     unit: Mapped[str] = mapped_column(String(20), default="µg/m³", nullable=False)
-    measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    measured_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     source: Mapped[str] = mapped_column(String(100), default="CPCB", nullable=False)
     is_simulated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     data_quality: Mapped[str] = mapped_column(String(50), default="valid", nullable=False)
@@ -56,4 +58,3 @@ class PollutantReading(Base):
         "MonitoringStation",
         back_populates="pollutant_readings",
     )
-

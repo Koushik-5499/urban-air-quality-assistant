@@ -18,4 +18,3 @@ class ErrorResponse(BaseModel):
 
     detail: str = Field(description="Human-readable error explanation")
     error_code: str | None = Field(default=None, description="Machine-readable error identifier")
-

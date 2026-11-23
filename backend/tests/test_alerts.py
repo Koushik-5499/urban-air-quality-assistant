@@ -94,7 +94,10 @@ def alert_seed_data(db_session: Session):
         station_id=delhi_station.id,
         aqi_reading_id=delhi_reading_curr.id,
         title="Air Quality Deteriorated to Poor",
-        description="Air quality has entered the Poor category (AQI: 240). Breathing discomfort to most people on prolonged exposure.",
+        description=(
+            "Air quality has entered the Poor category (AQI: 240). Breathing discomfort to "
+            "most people on prolonged exposure."
+        ),
         severity="High",
         alert_type="CATEGORY_CHANGE",
         current_aqi=240,
@@ -114,7 +117,10 @@ def alert_seed_data(db_session: Session):
         city_id=delhi.id,
         station_id=delhi_station.id,
         title="[Simulated] Air Quality Deterioration Spike",
-        description="AQI deteriorated by 45 points in the past hour. Sensitive individuals should reduce outdoor activities.",
+        description=(
+            "AQI deteriorated by 45 points in the past hour. Sensitive individuals should "
+            "reduce outdoor activities."
+        ),
         severity="Moderate",
         alert_type="DETERIORATION",
         current_aqi=190,
@@ -659,6 +665,7 @@ async def test_api_process_alerts_endpoint(client: AsyncClient, alert_seed_data)
 async def test_api_process_alerts_forbidden_secret(client: AsyncClient, monkeypatch):
     """Test POST /api/v1/alerts/process enforces X-Admin-Secret when configured."""
     from app.core.config import get_settings
+
     settings = get_settings()
     monkeypatch.setattr(settings, "ALERT_ADMIN_SECRET", "super_secret_admin_token")
 
@@ -667,11 +674,15 @@ async def test_api_process_alerts_forbidden_secret(client: AsyncClient, monkeypa
     assert resp_no_auth.status_code == 403
 
     # Call with wrong secret -> 403
-    resp_bad_auth = await client.post("/api/v1/alerts/process", headers={"X-Admin-Secret": "wrong_key"})
+    resp_bad_auth = await client.post(
+        "/api/v1/alerts/process", headers={"X-Admin-Secret": "wrong_key"}
+    )
     assert resp_bad_auth.status_code == 403
 
     # Call with valid secret -> 200
-    resp_good_auth = await client.post("/api/v1/alerts/process", headers={"X-Admin-Secret": "super_secret_admin_token"})
+    resp_good_auth = await client.post(
+        "/api/v1/alerts/process", headers={"X-Admin-Secret": "super_secret_admin_token"}
+    )
     assert resp_good_auth.status_code == 200
 
 

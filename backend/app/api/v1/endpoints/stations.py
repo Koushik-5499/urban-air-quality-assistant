@@ -1,6 +1,5 @@
 """Monitoring stations API endpoints."""
 
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -17,7 +16,10 @@ router = APIRouter()
     "",
     response_model=list[StationResponse],
     summary="List Monitoring Stations",
-    description="Retrieve registered environmental monitoring stations filtered by city, state, or provider.",
+    description=(
+        "Retrieve registered environmental monitoring stations filtered by city, state, or "
+        "provider."
+    ),
 )
 async def list_monitoring_stations(
     city: str | None = Query(None, description="Filter by city name"),
@@ -38,4 +40,3 @@ async def list_monitoring_stations(
     stmt = stmt.order_by(MonitoringStation.station_name)
     stations = db.execute(stmt).scalars().all()
     return [StationResponse.model_validate(st) for st in stations]
-

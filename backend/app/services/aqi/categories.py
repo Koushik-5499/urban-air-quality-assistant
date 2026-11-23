@@ -41,13 +41,18 @@ CATEGORIES: dict[str, CategoryInfo] = {
         category="Very Poor",
         aqi_range="301–400",
         color_hex="#DC2626",
-        health_statement="Respiratory illness on prolonged exposure; pronounced effect on people with lung and heart diseases.",
+        health_statement=(
+            "Respiratory illness on prolonged exposure; pronounced effect on people with lung "
+            "and heart diseases."
+        ),
     ),
     "Severe": CategoryInfo(
         category="Severe",
         aqi_range="401–500",
         color_hex="#7F1D1D",
-        health_statement="Affects healthy people and seriously impacts those with existing diseases.",
+        health_statement=(
+            "Affects healthy people and seriously impacts those with existing diseases."
+        ),
     ),
 }
 
@@ -72,4 +77,3 @@ def get_category_info(aqi_value: int) -> CategoryInfo:
     """Retrieve full category info including health advisory and display color."""
     cat_name = get_aqi_category(aqi_value)
     return CATEGORIES[cat_name]
-

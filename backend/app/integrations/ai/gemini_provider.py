@@ -84,7 +84,9 @@ class GeminiProvider(BaseAIProvider):
     async def generate_response(self, request: AICompletionRequest) -> AICompletionResponse:
         """Generate response asynchronously with timeout and bounded retries."""
         if not self.is_configured():
-            raise AIAuthError("Gemini API key is missing. Set GEMINI_API_KEY to enable AI assistance.")
+            raise AIAuthError(
+                "Gemini API key is missing. Set GEMINI_API_KEY to enable AI assistance."
+            )
 
         client = self._get_client()
         contents = self._build_contents(request)
@@ -123,11 +125,15 @@ class GeminiProvider(BaseAIProvider):
                     self.max_retries + 1,
                     self.timeout,
                 )
-                last_error = AITimeoutError(f"Gemini API request timed out after {self.timeout} seconds.")
+                last_error = AITimeoutError(
+                    f"Gemini API request timed out after {self.timeout} seconds."
+                )
                 if attempt == self.max_retries:
                     raise last_error
 
             except Exception as exc:
+                # Top-level SDK boundary translating provider-specific client errors to
+                # internal AI errors
                 err_str = str(exc).lower()
                 logger.warning(
                     "Gemini API invocation error (attempt %d/%d): %s",
@@ -143,13 +149,14 @@ class GeminiProvider(BaseAIProvider):
                 elif "503" in err_str or "unavailable" in err_str:
                     last_error = AIUnavailableError("Gemini AI service is temporarily unavailable.")
                 else:
-                    last_error = AIProviderError(f"AI provider encountered an error: {type(exc).__name__}")
+                    last_error = AIProviderError(
+                        f"AI provider encountered an error: {type(exc).__name__}"
+                    )
 
                 if attempt == self.max_retries:
                     raise last_error
 
             # Exponential backoff before retry: 0.5s, 1.0s...
-            await asyncio.sleep(0.5 * (2 ** attempt))
+            await asyncio.sleep(0.5 * (2**attempt))
 
         raise last_error or AIProviderError("Gemini generation failed after retries.")
-

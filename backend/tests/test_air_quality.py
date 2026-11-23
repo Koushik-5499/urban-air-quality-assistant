@@ -130,7 +130,9 @@ async def test_cpcb_client_auth_error_when_no_key():
 @pytest.mark.anyio
 async def test_cpcb_client_http_status_handling():
     """Verify CPCBClient handles 401, 429, and 500 status codes appropriately."""
-    client = CPCBClient(base_url="https://api.data.gov.in/resource/test", api_key="dummy_key", max_retries=0)
+    client = CPCBClient(
+        base_url="https://api.data.gov.in/resource/test", api_key="dummy_key", max_retries=0
+    )
 
     # 401 Unauthorized
     mock_resp_401 = httpx.Response(status_code=401, request=httpx.Request("GET", "http://test"))
@@ -160,11 +162,17 @@ def test_canonical_city_matching():
     assert DataNormalizationService.match_canonical_city("Calcutta") == ("Kolkata", "West Bengal")
     assert DataNormalizationService.match_canonical_city("Madras") == ("Chennai", "Tamil Nadu")
     assert DataNormalizationService.match_canonical_city("Cochin") == ("Kochi", "Kerala")
-    assert DataNormalizationService.match_canonical_city("Tuticorin") == ("Thoothukudi", "Tamil Nadu")
+    assert DataNormalizationService.match_canonical_city("Tuticorin") == (
+        "Thoothukudi",
+        "Tamil Nadu",
+    )
     assert DataNormalizationService.match_canonical_city("New Delhi") == ("Delhi", "Delhi")
 
     # Canonical names
-    assert DataNormalizationService.match_canonical_city("Coimbatore") == ("Coimbatore", "Tamil Nadu")
+    assert DataNormalizationService.match_canonical_city("Coimbatore") == (
+        "Coimbatore",
+        "Tamil Nadu",
+    )
     assert DataNormalizationService.match_canonical_city("Hyderabad") == ("Hyderabad", "Telangana")
 
     # Unknown city
@@ -293,5 +301,7 @@ async def test_api_sync_endpoint_protection(client, db_session: Session):
 
     # When no secret is configured, sync succeeds
     resp = await client.post("/api/v1/air-quality/sync")
-    assert resp.status_code in (200, 502)  # 200 if provider succeeds or 502 if unconfigured real CPCB
-
+    assert resp.status_code in (
+        200,
+        502,
+    )  # 200 if provider succeeds or 502 if unconfigured real CPCB

@@ -26,13 +26,21 @@ class CityAirQualityResponse(BaseModel):
     country: str
     data_available: bool = Field(..., description="Whether live or recent observations exist")
     source: str = Field(default="CPCB", description="Data provider")
-    is_simulated: bool = Field(default=False, description="Flag indicating simulated vs observed data")
-    is_stale: bool = Field(default=False, description="True if latest reading exceeds freshness threshold")
+    is_simulated: bool = Field(
+        default=False, description="Flag indicating simulated vs observed data"
+    )
+    is_stale: bool = Field(
+        default=False, description="True if latest reading exceeds freshness threshold"
+    )
     data_age_seconds: int | None = Field(None, description="Age of latest measurement in seconds")
     measured_at: datetime | None = Field(None, description="Timestamp of latest observation")
     fetched_at: datetime = Field(..., description="Timestamp of API retrieval")
-    pollutants: list[PollutantDetail] = Field(default_factory=list, description="Array of pollutant readings")
-    active_stations_count: int = Field(default=0, description="Number of active reporting stations in this city")
+    pollutants: list[PollutantDetail] = Field(
+        default_factory=list, description="Array of pollutant readings"
+    )
+    active_stations_count: int = Field(
+        default=0, description="Number of active reporting stations in this city"
+    )
     message: str | None = Field(None, description="Explanatory notes on coverage or availability")
 
 
@@ -78,4 +86,3 @@ class SyncResponse(BaseModel):
     readings_inserted: int
     stations_created: int
     synced_at: datetime
-

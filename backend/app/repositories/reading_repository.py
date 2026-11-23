@@ -57,11 +57,16 @@ class ReadingRepository:
         statement = statement.order_by(desc(PollutantReading.measured_at)).limit(limit)
         return list(self.db.execute(statement).scalars().all())
 
-    def get_latest_pollutant_reading(self, city_id: int, pollutant_code: str) -> PollutantReading | None:
+    def get_latest_pollutant_reading(
+        self, city_id: int, pollutant_code: str
+    ) -> PollutantReading | None:
         """Fetch the most recent reading for a given city and pollutant."""
         statement = (
             select(PollutantReading)
-            .where(PollutantReading.city_id == city_id, PollutantReading.pollutant_code == pollutant_code)
+            .where(
+                PollutantReading.city_id == city_id,
+                PollutantReading.pollutant_code == pollutant_code,
+            )
             .order_by(desc(PollutantReading.measured_at))
             .limit(1)
         )
@@ -148,4 +153,3 @@ class ReadingRepository:
             self.db.commit()
             self.db.refresh(alert)
         return alert
-

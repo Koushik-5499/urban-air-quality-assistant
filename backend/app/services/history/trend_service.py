@@ -38,10 +38,14 @@ class TrendService:
         return t_start, t_end, midpoint, earlier, later
 
     @staticmethod
-    def _compute_delta(earlier_avg: float, later_avg: float, precision: int = 1) -> tuple[float, float | None]:
+    def _compute_delta(
+        earlier_avg: float, later_avg: float, precision: int = 1
+    ) -> tuple[float, float | None]:
         """Compute absolute and percentage differences between period averages."""
         abs_change = round(later_avg - earlier_avg, precision)
-        pct_change = round(((later_avg - earlier_avg) / earlier_avg) * 100.0, 1) if earlier_avg > 0 else None
+        pct_change = (
+            round(((later_avg - earlier_avg) / earlier_avg) * 100.0, 1) if earlier_avg > 0 else None
+        )
         return abs_change, pct_change
 
     @staticmethod
@@ -56,7 +60,8 @@ class TrendService:
         if abs_change < -threshold:
             direction = "improving"
             expl = (
-                f"Air quality improved by {abs(abs_change):.1f} AQI points ({abs(pct_change or 0.0):.1f}%), "
+                f"Air quality improved by {abs(abs_change):.1f} AQI points "
+                f"({abs(pct_change or 0.0):.1f}%), "
                 f"moving from {earlier_avg:.1f} to {later_avg:.1f}."
             )
         elif abs_change > threshold:
@@ -68,7 +73,8 @@ class TrendService:
         else:
             direction = "stable"
             expl = (
-                f"Air quality remained stable within ±{threshold:.1f} threshold (net change: {abs_change:+.1f} points, "
+                f"Air quality remained stable within ±{threshold:.1f} threshold "
+                f"(net change: {abs_change:+.1f} points, "
                 f"from {earlier_avg:.1f} to {later_avg:.1f})."
             )
         return direction, expl
@@ -87,19 +93,22 @@ class TrendService:
         if abs_change < -threshold:
             direction = "improving"
             expl = (
-                f"{pollutant_code} concentration decreased by {abs(abs_change):.2f} {unit} ({abs(pct_change or 0.0):.1f}%), "
+                f"{pollutant_code} concentration decreased by {abs(abs_change):.2f} "
+                f"{unit} ({abs(pct_change or 0.0):.1f}%), "
                 f"moving from {earlier_avg:.2f} to {later_avg:.2f} {unit}."
             )
         elif abs_change > threshold:
             direction = "worsening"
             expl = (
-                f"{pollutant_code} concentration increased by {abs_change:.2f} {unit} (+{pct_change or 0.0:.1f}%), "
+                f"{pollutant_code} concentration increased by {abs_change:.2f} "
+                f"{unit} (+{pct_change or 0.0:.1f}%), "
                 f"moving from {earlier_avg:.2f} to {later_avg:.2f} {unit}."
             )
         else:
             direction = "stable"
             expl = (
-                f"{pollutant_code} concentration remained stable within ±{threshold:.2f} {unit} threshold "
+                f"{pollutant_code} concentration remained stable within "
+                f"±{threshold:.2f} {unit} threshold "
                 f"(net change: {abs_change:+.2f} {unit})."
             )
         return direction, expl
@@ -143,7 +152,8 @@ class TrendService:
             total_records=total_records,
             methodology=methodology_doc,
             explanation=(
-                f"Insufficient observations: {total_records} valid measurements found{target_name}, "
+                f"Insufficient observations: {total_records} valid measurements "
+                f"found{target_name}, "
                 f"at least {min_records_per_period * 2} required."
             ),
         )
@@ -197,7 +207,8 @@ class TrendService:
             total_records=total_records,
             methodology=methodology_doc,
             explanation=(
-                f"Insufficient period balance{target_name}: earlier period has {earlier_count} records, "
+                f"Insufficient period balance{target_name}: earlier period has "
+                f"{earlier_count} records, "
                 f"later has {later_count} records (minimum required: {min_records_per_period})."
             ),
         )
@@ -241,21 +252,34 @@ class TrendService:
         end_date: datetime | None = None,
     ) -> HistoryTrendResponse:
         """Calculate trend for AQI readings by comparing earlier and later temporal halves."""
-        valid_readings = [r for r in readings if r.aqi_value is not None and r.data_quality != "invalid"]
+        valid_readings = [
+            r for r in readings if r.aqi_value is not None and r.data_quality != "invalid"
+        ]
         total_records = len(valid_readings)
 
         methodology_doc = (
-            f"Dual-horizon comparative trend methodology: The selected time range is split into two equal chronological "
-            f"halves (earlier vs later). Average AQI is computed for each period. A minimum of {min_records_per_period} "
-            f"valid observations per period is required. Trend is classified using a stability threshold of {threshold:.1f} "
-            f"AQI points: 'improving' (decrease > {threshold:.1f}), 'worsening' (increase > {threshold:.1f}), 'stable' "
-            f"(movement within ±{threshold:.1f}), or 'insufficient_data'."
+            f"Dual-horizon comparative trend methodology: The selected time range is split "
+            f"into two equal chronological halves (earlier vs later). Average AQI is computed "
+            f"for each period. A minimum of {min_records_per_period} valid observations "
+            f"per period is required. Trend is classified using a stability threshold "
+            f"of {threshold:.1f} AQI points: 'improving' (decrease > {threshold:.1f}), "
+            f"'worsening' (increase > {threshold:.1f}), "
+            f"'stable' (movement within ±{threshold:.1f}), or 'insufficient_data'."
         )
 
         if total_records < (min_records_per_period * 2):
             return cls._insufficient_total_response(
-                total_records, min_records_per_period, city_name, station_id, station_name,
-                None, "AQI", "AQI Index", interval, threshold, methodology_doc
+                total_records,
+                min_records_per_period,
+                city_name,
+                station_id,
+                station_name,
+                None,
+                "AQI",
+                "AQI Index",
+                interval,
+                threshold,
+                methodology_doc,
             )
 
         sorted_readings = sorted(valid_readings, key=lambda r: r.measured_at)
@@ -268,15 +292,33 @@ class TrendService:
 
         if earlier_count < min_records_per_period or later_count < min_records_per_period:
             return cls._insufficient_halves_response(
-                earlier_count, later_count, min_records_per_period, total_records,
-                city_name, station_id, station_name, None, "AQI", "AQI Index", interval,
-                threshold, t_start, t_end, midpoint, earlier_vals, later_vals, methodology_doc, precision=1
+                earlier_count,
+                later_count,
+                min_records_per_period,
+                total_records,
+                city_name,
+                station_id,
+                station_name,
+                None,
+                "AQI",
+                "AQI Index",
+                interval,
+                threshold,
+                t_start,
+                t_end,
+                midpoint,
+                earlier_vals,
+                later_vals,
+                methodology_doc,
+                precision=1,
             )
 
         earlier_avg = round(statistics.mean(earlier_vals), 1)
         later_avg = round(statistics.mean(later_vals), 1)
         abs_change, pct_change = cls._compute_delta(earlier_avg, later_avg, precision=1)
-        direction, expl = cls._classify_aqi_trend(abs_change, pct_change, threshold, earlier_avg, later_avg)
+        direction, expl = cls._classify_aqi_trend(
+            abs_change, pct_change, threshold, earlier_avg, later_avg
+        )
 
         return HistoryTrendResponse(
             city=city_name,
@@ -317,23 +359,36 @@ class TrendService:
         end_date: datetime | None = None,
     ) -> HistoryTrendResponse:
         """Calculate trend for a specific pollutant concentration."""
-        valid_readings = [r for r in readings if r.concentration is not None and r.concentration >= 0]
+        valid_readings = [
+            r for r in readings if r.concentration is not None and r.concentration >= 0
+        ]
         total_records = len(valid_readings)
 
         pollutant_code, unit = cls._pollutant_meta(readings)
 
         methodology_doc = (
-            f"Dual-horizon comparative trend methodology for {pollutant_code}: Time window is split into two equal halves. "
-            f"Average concentration is evaluated across each period. A minimum of {min_records_per_period} valid observations "
-            f"per period is required. Trend is classified using a stability threshold of {threshold:.2f} {unit}: "
-            f"'improving' (decrease > {threshold:.2f}), 'worsening' (increase > {threshold:.2f}), 'stable' "
-            f"(movement within ±{threshold:.2f}), or 'insufficient_data'. Lower concentration indicates improved ambient quality."
+            f"Dual-horizon comparative trend methodology for {pollutant_code}: Time window is "
+            f"split into two equal halves. Average concentration is evaluated across each period. "
+            f"A minimum of {min_records_per_period} valid observations per period is required. "
+            f"Trend is classified using a stability threshold of {threshold:.2f} {unit}: "
+            f"'improving' (decrease > {threshold:.2f}), 'worsening' (increase > {threshold:.2f}), "
+            f"'stable' (movement within ±{threshold:.2f}), or 'insufficient_data'. "
+            f"Lower concentration indicates improved ambient quality."
         )
 
         if total_records < (min_records_per_period * 2):
             return cls._insufficient_total_response(
-                total_records, min_records_per_period, city_name, station_id, station_name,
-                pollutant_code, "Concentration", unit, interval, threshold, methodology_doc
+                total_records,
+                min_records_per_period,
+                city_name,
+                station_id,
+                station_name,
+                pollutant_code,
+                "Concentration",
+                unit,
+                interval,
+                threshold,
+                methodology_doc,
             )
 
         sorted_readings = sorted(valid_readings, key=lambda r: r.measured_at)
@@ -346,9 +401,25 @@ class TrendService:
 
         if earlier_count < min_records_per_period or later_count < min_records_per_period:
             return cls._insufficient_halves_response(
-                earlier_count, later_count, min_records_per_period, total_records,
-                city_name, station_id, station_name, pollutant_code, "Concentration", unit, interval,
-                threshold, t_start, t_end, midpoint, earlier_vals, later_vals, methodology_doc, precision=2
+                earlier_count,
+                later_count,
+                min_records_per_period,
+                total_records,
+                city_name,
+                station_id,
+                station_name,
+                pollutant_code,
+                "Concentration",
+                unit,
+                interval,
+                threshold,
+                t_start,
+                t_end,
+                midpoint,
+                earlier_vals,
+                later_vals,
+                methodology_doc,
+                precision=2,
             )
 
         earlier_avg = round(statistics.mean(earlier_vals), 2)

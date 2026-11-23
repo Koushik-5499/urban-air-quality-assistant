@@ -1,4 +1,6 @@
-"""Comprehensive automated tests for CPCB NAQI calculation engine, sub-indices, and API endpoints."""
+"""
+Comprehensive automated tests for CPCB NAQI calculation engine, sub-indices, and API endpoints.
+"""
 
 import pytest
 from sqlalchemy.orm import Session
@@ -15,6 +17,7 @@ from app.services.aqi_data_service import AQIDataService
 # ---------------------------------------------------------
 # Unit Tests: Breakpoints & Sub-Index Calculations
 # ---------------------------------------------------------
+
 
 def test_pm25_sub_index_breakpoints():
     """Verify PM2.5 calculations across all CPCB breakpoint boundaries."""
@@ -102,6 +105,7 @@ def test_nh3_and_pb_sub_index_breakpoints():
 # Unit Tests: Input Validation & Edge Cases
 # ---------------------------------------------------------
 
+
 def test_negative_concentration_rejected():
     """Negative concentration must be rejected by validator and calculator."""
     is_valid, msg = AQIValidator.validate_concentration("PM2.5", -10.0, "µg/m³")
@@ -134,6 +138,7 @@ def test_unsupported_pollutant_rejected():
 # Unit Tests: Dominant Pollutant & Tie-Breaking
 # ---------------------------------------------------------
 
+
 def test_dominant_pollutant_clear_winner():
     """Pollutant with highest sub-index is selected as dominant."""
     sub_indices = {"PM2.5": 145, "PM10": 110, "NO2": 65}
@@ -154,6 +159,7 @@ def test_dominant_pollutant_tie_breaking():
 # ---------------------------------------------------------
 # Unit Tests: CPCB Data Sufficiency Rule
 # ---------------------------------------------------------
+
 
 def test_cpcb_sufficiency_rule():
     """CPCB requires at least 3 pollutants, at least one being PM2.5 or PM10."""
@@ -182,9 +188,9 @@ def test_overall_aqi_calculation_sufficient():
     """Overall AQI equals highest sub-index with proper category and dominant pollutant."""
     sub_indices = {
         "PM2.5": 145,  # Moderate
-        "PM10": 95,    # Satisfactory
-        "NO2": 60,     # Satisfactory
-        "SO2": 45,     # Good
+        "PM10": 95,  # Satisfactory
+        "NO2": 60,  # Satisfactory
+        "SO2": 45,  # Good
     }
     aqi, category, dominant, is_suff, expl, _ = AQICalculator.calculate_overall_aqi(sub_indices)
     assert is_suff is True
@@ -199,7 +205,9 @@ def test_overall_aqi_calculation_insufficient():
         "PM2.5": 85,
         "NO2": 40,
     }
-    aqi, category, dominant, is_suff, expl, missing = AQICalculator.calculate_overall_aqi(sub_indices)
+    aqi, category, dominant, is_suff, expl, missing = AQICalculator.calculate_overall_aqi(
+        sub_indices
+    )
     assert is_suff is False
     assert aqi is None
     assert category is None
@@ -210,6 +218,7 @@ def test_overall_aqi_calculation_insufficient():
 # ---------------------------------------------------------
 # Integration Tests: Processor & Database Persistence
 # ---------------------------------------------------------
+
 
 @pytest.mark.anyio
 async def test_aqi_batch_processor_and_deduplication(db_session: Session):
@@ -238,6 +247,7 @@ async def test_aqi_batch_processor_and_deduplication(db_session: Session):
 # ---------------------------------------------------------
 # API Endpoint Tests
 # ---------------------------------------------------------
+
 
 @pytest.mark.anyio
 async def test_api_aqi_endpoints(client, db_session: Session):
@@ -277,7 +287,14 @@ async def test_api_aqi_endpoints(client, db_session: Session):
     latest_data = latest_resp.json()
     assert latest_data["city_name"] == "Delhi"
     assert latest_data["aqi_value"] > 0
-    assert latest_data["aqi_category"] in ["Good", "Satisfactory", "Moderately Polluted", "Poor", "Very Poor", "Severe"]
+    assert latest_data["aqi_category"] in [
+        "Good",
+        "Satisfactory",
+        "Moderately Polluted",
+        "Poor",
+        "Very Poor",
+        "Severe",
+    ]
 
     # 5. GET /api/v1/aqi/history?city=Delhi
     history_resp = await client.get("/api/v1/aqi/history?city=Delhi")
@@ -289,4 +306,3 @@ async def test_api_aqi_endpoints(client, db_session: Session):
     # 6. GET /api/v1/aqi/calculate?city=NonExistentCity -> 404
     resp_404 = await client.get("/api/v1/aqi/calculate?city=NonExistentCity")
     assert resp_404.status_code == 404
-

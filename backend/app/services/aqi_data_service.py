@@ -1,4 +1,7 @@
-"""Service layer orchestrating AQI data fetching, caching, deduplication, and database persistence."""
+"""
+Service layer orchestrating AQI data fetching, caching, deduplication, and database
+persistence.
+"""
 
 import asyncio
 from datetime import UTC, datetime
@@ -68,13 +71,16 @@ class AQIDataService:
                 return entry["data"]
 
         try:
-            observations = await self.provider.fetch_observations(city=city, state=state, limit=limit)
+            observations = await self.provider.fetch_observations(
+                city=city, state=state, limit=limit
+            )
             self._cache[cache_key] = {"timestamp": now, "data": observations}
             self._last_successful_fetch = now
             self._last_error = None
             self._last_error_category = None
             return observations
         except Exception as exc:
+            # Diagnostics boundary recording upstream provider fetch failures before re-raising
             self._last_error = str(exc)
             self._last_error_category = type(exc).__name__
             logger.error("Failed to fetch provider observations: %s", exc)
@@ -88,7 +94,9 @@ class AQIDataService:
         """Fetch external observations, normalize, deduplicate, and persist to SQLite."""
         async with self._sync_lock:
             now_utc = datetime.now(UTC)
-            observations = await self.fetch_provider_observations(city=city, limit=200, bypass_cache=True)
+            observations = await self.fetch_provider_observations(
+                city=city, limit=200, bypass_cache=True
+            )
 
             readings_inserted = 0
             stations_created = 0
@@ -158,7 +166,10 @@ class AQIDataService:
 
             return SyncResponse(
                 success=True,
-                message=f"Sync completed successfully. {readings_inserted} new readings recorded across {stations_created} new stations.",
+                message=(
+                    f"Sync completed successfully. {readings_inserted} new "
+                    f"readings recorded across {stations_created} new stations."
+                ),
                 records_fetched=len(observations),
                 readings_inserted=readings_inserted,
                 stations_created=stations_created,
@@ -263,7 +274,9 @@ class AQIDataService:
             fetched_at=now_utc,
             pollutants=pollutant_details,
             active_stations_count=active_stations,
-            message="Fresh ambient observations available" if not is_stale else "Readings exceed freshness threshold",
+            message="Fresh ambient observations available"
+            if not is_stale
+            else "Readings exceed freshness threshold",
         )
 
     def get_cities_summary(self, db: Session) -> list[CityAvailabilitySummary]:
@@ -274,13 +287,20 @@ class AQIDataService:
 
         for city in cities:
             # Query station count
-            station_count = db.execute(
-                select(func.count(MonitoringStation.id)).where(MonitoringStation.city_id == city.id)
-            ).scalar() or 0
+            station_count = (
+                db.execute(
+                    select(func.count(MonitoringStation.id)).where(
+                        MonitoringStation.city_id == city.id
+                    )
+                ).scalar()
+                or 0
+            )
 
             # Query newest measured_at
             latest_time = db.execute(
-                select(func.max(PollutantReading.measured_at)).where(PollutantReading.city_id == city.id)
+                select(func.max(PollutantReading.measured_at)).where(
+                    PollutantReading.city_id == city.id
+                )
             ).scalar()
 
             if latest_time is not None:
@@ -328,7 +348,9 @@ class AQIDataService:
             freshness_status = "no_data"
         else:
             age = (datetime.now(UTC) - self._last_successful_fetch).total_seconds()
-            freshness_status = "fresh" if age <= self.settings.AQI_CACHE_TTL_SECONDS * 2 else "stale"
+            freshness_status = (
+                "fresh" if age <= self.settings.AQI_CACHE_TTL_SECONDS * 2 else "stale"
+            )
 
         return SourceStatusResponse(
             provider_name=meta.provider_name,

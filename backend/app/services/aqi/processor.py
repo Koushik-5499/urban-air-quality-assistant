@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import desc, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -80,13 +81,10 @@ class AQIProcessingService:
             stmt = stmt.where(PollutantReading.station_id == station_id)
 
         # Get the latest readings per pollutant
-        latest_sel = (
-            select(
-                PollutantReading.pollutant_code,
-                func.max(PollutantReading.measured_at).label("max_measured"),
-            )
-            .where(PollutantReading.city_id == city_entity.id)
-        )
+        latest_sel = select(
+            PollutantReading.pollutant_code,
+            func.max(PollutantReading.measured_at).label("max_measured"),
+        ).where(PollutantReading.city_id == city_entity.id)
         if station_id:
             latest_sel = latest_sel.where(PollutantReading.station_id == station_id)
         latest_subquery = latest_sel.group_by(PollutantReading.pollutant_code).subquery()
@@ -157,7 +155,9 @@ class AQIProcessingService:
                 sub_indices_dict[r.pollutant_code] = sub_index
 
         # Calculate overall AQI
-        overall_aqi, cat, dominant, is_suff, expl, missing = AQICalculator.calculate_overall_aqi(sub_indices_dict)
+        overall_aqi, cat, dominant, is_suff, expl, missing = AQICalculator.calculate_overall_aqi(
+            sub_indices_dict
+        )
 
         data_quality = "sufficient" if is_suff else "insufficient_data"
 
@@ -220,9 +220,9 @@ class AQIProcessingService:
         for city in cities:
             # Retrieve stations in this city
             stations = list(
-                db.execute(
-                    select(MonitoringStation).where(MonitoringStation.city_id == city.id)
-                ).scalars().all()
+                db.execute(select(MonitoringStation).where(MonitoringStation.city_id == city.id))
+                .scalars()
+                .all()
             )
 
             targets = stations if stations else [None]
@@ -232,16 +232,31 @@ class AQIProcessingService:
                 stations_evaluated += 1
 
                 try:
-                    calc = cls.calculate_for_city_or_station(db, city_name=city.name, station_id=st_id)
+                    calc = cls.calculate_for_city_or_station(
+                        db, city_name=city.name, station_id=st_id
+                    )
+                except (SQLAlchemyError, ValueError) as exc:
+                    logger.warning(
+                        "Error calculating AQI for %s (station %s): %s", city.name, st_id, exc
+                    )
+                    continue
                 except Exception as exc:
-                    logger.warning("Error calculating AQI for %s (station %s): %s", city.name, st_id, exc)
+                    # Station evaluation isolation boundary preventing one faulty station from
+                    # stopping batch
+                    logger.exception(
+                        "Unexpected error calculating AQI for %s (station %s): %s",
+                        city.name,
+                        st_id,
+                        exc,
+                    )
                     continue
 
                 if calc.aqi is None or not calc.measurement_timestamp:
                     skipped_insufficient += 1
                     continue
 
-                # Deduplicate: Check if AQIReading already exists for (city_id, station_id, measured_at)
+                # Deduplicate: Check if AQIReading already exists for (city_id, station_id,
+                # measured_at)
                 existing_stmt = select(AQIReading).where(
                     AQIReading.city_id == city.id,
                     AQIReading.station_id == st_id,
@@ -287,7 +302,11 @@ class AQIProcessingService:
     ) -> AQIHistoryItem | None:
         """Fetch the latest stored AQIReading record from the database."""
         stmt = (
-            select(AQIReading, City.name.label("city_name"), MonitoringStation.station_name.label("station_name"))
+            select(
+                AQIReading,
+                City.name.label("city_name"),
+                MonitoringStation.station_name.label("station_name"),
+            )
             .join(City, AQIReading.city_id == City.id)
             .outerjoin(MonitoringStation, AQIReading.station_id == MonitoringStation.id)
         )
@@ -335,7 +354,11 @@ class AQIProcessingService:
     ) -> AQIHistoryResponse:
         """Retrieve paginated historical calculated AQI readings."""
         stmt = (
-            select(AQIReading, City.name.label("city_name"), MonitoringStation.station_name.label("station_name"))
+            select(
+                AQIReading,
+                City.name.label("city_name"),
+                MonitoringStation.station_name.label("station_name"),
+            )
             .join(City, AQIReading.city_id == City.id)
             .outerjoin(MonitoringStation, AQIReading.station_id == MonitoringStation.id)
         )

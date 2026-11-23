@@ -82,7 +82,9 @@ class CPCBClient:
                 # Check HTTP Status Codes
                 if response.status_code in (401, 403):
                     logger.warning("CPCB API authentication failed (HTTP %s)", response.status_code)
-                    raise CPCBAuthError(f"CPCB authentication failed with HTTP {response.status_code}")
+                    raise CPCBAuthError(
+                        f"CPCB authentication failed with HTTP {response.status_code}"
+                    )
 
                 if response.status_code == 429:
                     logger.warning("CPCB API rate limit exceeded (HTTP 429)")
@@ -100,7 +102,9 @@ class CPCBClient:
                         )
                         await asyncio.sleep(backoff)
                         continue
-                    raise CPCBProviderError(f"CPCB API server error HTTP {response.status_code} after retries")
+                    raise CPCBProviderError(
+                        f"CPCB API server error HTTP {response.status_code} after retries"
+                    )
 
                 response.raise_for_status()
 
@@ -116,7 +120,8 @@ class CPCBClient:
                 if attempt <= self.max_retries:
                     backoff = 0.5 * (2 ** (attempt - 1))
                     logger.warning(
-                        "Network error querying CPCB API (%s). Retrying in %.2fs (attempt %s/%s)...",
+                        "Network error querying CPCB API (%s). Retrying in %.2fs (attempt "
+                        "%s/%s)...",
                         type(err).__name__,
                         backoff,
                         attempt,
@@ -134,4 +139,3 @@ class CPCBClient:
         if self._client is not None and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
-

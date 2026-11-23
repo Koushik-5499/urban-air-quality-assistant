@@ -21,7 +21,9 @@ class HorizonEvaluation:
 
 @dataclass
 class EvaluationReport:
-    """Comprehensive out-of-sample evaluation report comparing model against persistence baseline."""
+    """
+    Comprehensive out-of-sample evaluation report comparing model against persistence baseline.
+    """
 
     model_name: str
     model_version: str
@@ -60,9 +62,7 @@ class ForecastEvaluator:
         """Mean Absolute Percentage Error safely handling zero or near-zero observations."""
         if not actuals or len(actuals) != len(predictions):
             return None
-        percentage_errors = [
-            abs(a - p) / max(a, 1.0) for a, p in zip(actuals, predictions)
-        ]
+        percentage_errors = [abs(a - p) / max(a, 1.0) for a, p in zip(actuals, predictions)]
         return round((sum(percentage_errors) / float(len(actuals))) * 100.0, 2)
 
     @classmethod
@@ -148,4 +148,3 @@ class ForecastEvaluator:
                 f"({improvement:+}% improvement)."
             ),
         )
-

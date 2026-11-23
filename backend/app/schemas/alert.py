@@ -10,19 +10,31 @@ class AlertBase(BaseModel):
 
     city_id: int = Field(..., description="Foreign key to city")
     station_id: int | None = Field(None, description="Optional foreign key to monitoring station")
-    aqi_reading_id: int | None = Field(None, description="Associated AQI reading if triggered by index")
+    aqi_reading_id: int | None = Field(
+        None, description="Associated AQI reading if triggered by index"
+    )
     title: str = Field(..., max_length=200, description="Alert title")
     description: str = Field(..., description="Detailed alert explanation and guidance")
     severity: str = Field(..., max_length=50, description="Severity: Low, Moderate, High, Critical")
-    alert_type: str = Field(..., max_length=100, description="Type: CATEGORY_CHANGE, THRESHOLD_CROSSING, DETERIORATION, IMPROVEMENT, STALE_DATA")
+    alert_type: str = Field(
+        ...,
+        max_length=100,
+        description=(
+            "Type: CATEGORY_CHANGE, THRESHOLD_CROSSING, DETERIORATION, IMPROVEMENT, STALE_DATA"
+        ),
+    )
     current_aqi: int | None = Field(None, description="Current AQI value triggering the alert")
     previous_aqi: int | None = Field(None, description="Previous AQI value for transition tracking")
     threshold_value: int | None = Field(None, description="Threshold level crossed")
     aqi_category: str | None = Field(None, description="Current NAQI category")
     dominant_pollutant: str | None = Field(None, description="Primary pollutant driver")
     source: str = Field(default="CPCB", max_length=100, description="Data source")
-    dedup_key: str | None = Field(None, max_length=200, description="Deterministic deduplication key")
-    delivery_status: str = Field(default="delivered", max_length=50, description="Notification delivery status")
+    dedup_key: str | None = Field(
+        None, max_length=200, description="Deterministic deduplication key"
+    )
+    delivery_status: str = Field(
+        default="delivered", max_length=50, description="Notification delivery status"
+    )
     is_read: bool = Field(default=False, description="Whether alert was acknowledged by user")
     is_simulated: bool = Field(default=False, description="Whether alert is from simulated data")
     expires_at: datetime | None = Field(None, description="Expiration time in UTC")
@@ -77,13 +89,25 @@ class AlertPreferenceBase(BaseModel):
 
     city: str = Field(..., min_length=1, max_length=100, description="City name for notifications")
     station_id: int | None = Field(None, description="Optional specific station ID")
-    min_aqi_threshold: int = Field(default=100, ge=0, le=500, description="Minimum AQI triggering alert")
-    min_severity: str = Field(default="Moderate", description="Minimum severity to receive notifications for")
+    min_aqi_threshold: int = Field(
+        default=100, ge=0, le=500, description="Minimum AQI triggering alert"
+    )
+    min_severity: str = Field(
+        default="Moderate", description="Minimum severity to receive notifications for"
+    )
     is_enabled: bool = Field(default=True, description="Whether notifications are active")
-    channels: list[str] = Field(default_factory=lambda: ["in_app"], description="Preferred channels: 'in_app', 'push'")
-    quiet_hours_start: str | None = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="HH:MM start of quiet hours")
-    quiet_hours_end: str | None = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="HH:MM end of quiet hours")
-    timezone: str = Field(default="Asia/Kolkata", max_length=50, description="User timezone (IANA format)")
+    channels: list[str] = Field(
+        default_factory=lambda: ["in_app"], description="Preferred channels: 'in_app', 'push'"
+    )
+    quiet_hours_start: str | None = Field(
+        None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="HH:MM start of quiet hours"
+    )
+    quiet_hours_end: str | None = Field(
+        None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="HH:MM end of quiet hours"
+    )
+    timezone: str = Field(
+        default="Asia/Kolkata", max_length=50, description="User timezone (IANA format)"
+    )
 
 
 class AlertPreferenceCreate(AlertPreferenceBase):

@@ -1,4 +1,7 @@
-"""Comprehensive tests for Phase 6: AI Health Advisor service, providers, guardrails, and endpoints."""
+"""
+Comprehensive tests for Phase 6: AI Health Advisor service, providers, guardrails, and
+endpoints.
+"""
 
 import asyncio
 from datetime import UTC, datetime, timedelta
@@ -34,6 +37,7 @@ from app.services.health.safety_validator import HealthSafetyValidator
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def health_test_data(db_session: Session):
@@ -95,7 +99,9 @@ def health_test_data(db_session: Session):
 class MockAIProvider(BaseAIProvider):
     """Deterministic mock provider for unit testing."""
 
-    def __init__(self, response_text: str = "Mock AI health response.", should_fail: Exception | None = None):
+    def __init__(
+        self, response_text: str = "Mock AI health response.", should_fail: Exception | None = None
+    ):
         self.response_text = response_text
         self.should_fail = should_fail
         self.calls = 0
@@ -124,6 +130,7 @@ class MockAIProvider(BaseAIProvider):
 # Unit Tests: Provider, Config & Exceptions
 # ---------------------------------------------------------------------------
 
+
 def test_gemini_provider_unconfigured():
     """Verify GeminiProvider identifies unconfigured state when API key is missing."""
     provider = GeminiProvider(api_key=None, settings=Settings(GEMINI_API_KEY=None))
@@ -138,7 +145,9 @@ async def test_gemini_provider_missing_key_raises_auth_error():
     req = AICompletionRequest(prompt="Is it safe to run?")
     with pytest.raises(AIAuthError) as exc_info:
         await provider.generate_response(req)
-    assert "missing" in str(exc_info.value).lower() or "not configured" in str(exc_info.value).lower()
+    assert (
+        "missing" in str(exc_info.value).lower() or "not configured" in str(exc_info.value).lower()
+    )
 
 
 @pytest.mark.anyio
@@ -147,6 +156,7 @@ async def test_gemini_provider_timeout_handling():
     provider = GeminiProvider(api_key="test-key", timeout=1, max_retries=1)
 
     mock_client = MagicMock()
+
     # Simulate timeout by sleeping longer than timeout
     async def slow_generate(*args, **kwargs):
         await asyncio.sleep(2)
@@ -167,7 +177,9 @@ async def test_gemini_provider_rate_limit_and_retries():
 
     mock_client = MagicMock()
     # Mock error containing 429
-    mock_client.aio.models.generate_content = AsyncMock(side_effect=Exception("429 Resource has been exhausted"))
+    mock_client.aio.models.generate_content = AsyncMock(
+        side_effect=Exception("429 Resource has been exhausted")
+    )
     provider._client = mock_client
 
     req = AICompletionRequest(prompt="Test prompt")
@@ -181,6 +193,7 @@ async def test_gemini_provider_rate_limit_and_retries():
 # ---------------------------------------------------------------------------
 # Unit Tests: Context Builder & Freshness
 # ---------------------------------------------------------------------------
+
 
 def test_context_builder_fresh_data(db_session: Session, health_test_data):
     """Verify context builder reports fresh data correctly."""
@@ -207,6 +220,7 @@ def test_context_builder_stale_and_simulated_data(db_session: Session, health_te
 def test_context_builder_unknown_city(db_session: Session):
     """Verify context builder handles non-existent city gracefully."""
     from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         ContextBuilder.build_snapshot(db_session, "UnknownCity999")
     assert exc.value.status_code == 404
@@ -216,9 +230,11 @@ def test_context_builder_unknown_city(db_session: Session):
 # Unit Tests: Recommendation Engine
 # ---------------------------------------------------------------------------
 
+
 def test_recommendation_engine_poor_aqi():
     """Verify recommendations for Poor AQI emphasize indoor alternatives and N95 masks."""
     from app.integrations.ai.schemas import AQIContextSnapshot
+
     snapshot = AQIContextSnapshot(
         city_name="Delhi",
         aqi=250,
@@ -237,6 +253,7 @@ def test_recommendation_engine_poor_aqi():
 def test_recommendation_engine_good_aqi():
     """Verify recommendations for Good AQI encourage outdoor activity and ventilation."""
     from app.integrations.ai.schemas import AQIContextSnapshot
+
     snapshot = AQIContextSnapshot(
         city_name="Bengaluru",
         aqi=35,
@@ -253,6 +270,7 @@ def test_recommendation_engine_good_aqi():
 # ---------------------------------------------------------------------------
 # Unit Tests: Safety Validator & Guardrails
 # ---------------------------------------------------------------------------
+
 
 def test_safety_validator_rejects_empty_and_oversized_questions():
     """Verify question length validation."""
@@ -287,6 +305,7 @@ def test_safety_validator_sanitizes_prescriptions_and_appends_disclaimer():
 # Unit Tests: Health Knowledge Base
 # ---------------------------------------------------------------------------
 
+
 def test_knowledge_base_guidelines():
     """Verify guidelines exist for all 6 categories."""
     for cat in ["Good", "Satisfactory", "Moderate", "Poor", "Very Poor", "Severe"]:
@@ -309,6 +328,7 @@ def test_knowledge_base_pollutants():
 # ---------------------------------------------------------------------------
 # Integration Tests: Endpoints via AsyncClient
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.anyio
 async def test_get_health_status(client: AsyncClient):
@@ -374,9 +394,13 @@ async def test_get_health_recommendations_endpoint(client: AsyncClient, health_t
 
 
 @pytest.mark.anyio
-async def test_post_health_ask_ai_generated(client: AsyncClient, db_session: Session, health_test_data):
+async def test_post_health_ask_ai_generated(
+    client: AsyncClient, db_session: Session, health_test_data
+):
     """Verify POST /api/v1/health/ask produces an AI-grounded response with verified context."""
-    mock_provider = MockAIProvider(response_text="Based on Delhi's Poor AQI of 240, running outdoors is not advisable.")
+    mock_provider = MockAIProvider(
+        response_text="Based on Delhi's Poor AQI of 240, running outdoors is not advisable."
+    )
     advisor = HealthAdvisorService(ai_provider=mock_provider)
 
     from app.api.v1.endpoints.health import get_health_advisor
@@ -409,7 +433,9 @@ async def test_post_health_ask_ai_generated(client: AsyncClient, db_session: Ses
 
 
 @pytest.mark.anyio
-async def test_post_health_ask_knowledge_base_fallback(client: AsyncClient, db_session: Session, health_test_data):
+async def test_post_health_ask_knowledge_base_fallback(
+    client: AsyncClient, db_session: Session, health_test_data
+):
     """Verify POST /api/v1/health/ask falls back to knowledge base when AI provider fails."""
     # Simulate a provider failure (e.g. timeout or rate-limit)
     failing_provider = MockAIProvider(should_fail=AITimeoutError("Gemini call timed out"))
@@ -441,7 +467,9 @@ async def test_post_health_ask_knowledge_base_fallback(client: AsyncClient, db_s
 
 
 @pytest.mark.anyio
-async def test_post_health_ask_city_isolation(client: AsyncClient, db_session: Session, health_test_data):
+async def test_post_health_ask_city_isolation(
+    client: AsyncClient, db_session: Session, health_test_data
+):
     """Verify requesting health guidance for Mumbai does not bleed Delhi's AQI context."""
     mock_provider = MockAIProvider(response_text="Guidance for Mumbai")
     advisor = HealthAdvisorService(ai_provider=mock_provider)
@@ -473,9 +501,13 @@ async def test_post_health_ask_city_isolation(client: AsyncClient, db_session: S
 # Challenge 6 Alignment & Community Solutions Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.anyio
 async def test_get_community_solutions_endpoint(client: AsyncClient):
-    """Verify Challenge 6 community solutions endpoint returns structured guidance across all 5 pillars."""
+    """
+    Verify Challenge 6 community solutions endpoint returns structured guidance across all 5
+    pillars.
+    """
     response = await client.get("/api/v1/health/community-solutions")
     assert response.status_code == 200
     data = response.json()
@@ -488,7 +520,9 @@ async def test_get_community_solutions_endpoint(client: AsyncClient):
     assert len(data["direct_impact_analysis"]) >= 4
 
     # Verify impact explanations are quantified
-    for item in data["winter_smog_guidance"] + data["low_emission_routines"] + data["indoor_air_hacks"]:
+    for item in (
+        data["winter_smog_guidance"] + data["low_emission_routines"] + data["indoor_air_hacks"]
+    ):
         assert item["impact_explanation"] is not None
         assert any(unit in item["impact_explanation"] for unit in ("%", "kg", "µg/m³"))
 
@@ -514,8 +548,13 @@ def test_recommendation_engine_challenge_pillars():
 
 
 @pytest.mark.anyio
-async def test_knowledge_base_fallback_winter_smog_enrichment(client: AsyncClient, health_test_data):
-    """Verify knowledge-base fallback answer dynamically appends winter smog & direct impact guidance."""
+async def test_knowledge_base_fallback_winter_smog_enrichment(
+    client: AsyncClient, health_test_data
+):
+    """
+    Verify knowledge-base fallback answer dynamically appends winter smog & direct impact
+    guidance.
+    """
     from app.api.v1.endpoints.health import get_health_advisor
     from app.main import app
 
@@ -539,15 +578,23 @@ async def test_knowledge_base_fallback_winter_smog_enrichment(client: AsyncClien
         app.dependency_overrides.pop(get_health_advisor, None)
 
 
-
 # ---------------------------------------------------------------------------
 # Additional Coverage Tests: RecommendationEngine all AQI branches
 # ---------------------------------------------------------------------------
 
+
 def test_recommendation_engine_good_aqi_coverage():
     """Covers AQI <= 50 branch (Good category) for Coimbatore city."""
     from app.integrations.ai.schemas import AQIContextSnapshot
-    snapshot = AQIContextSnapshot(city_name="Coimbatore", aqi=30, category="Good", dominant_pollutant="PM2.5", is_stale=False, is_simulated=False)
+
+    snapshot = AQIContextSnapshot(
+        city_name="Coimbatore",
+        aqi=30,
+        category="Good",
+        dominant_pollutant="PM2.5",
+        is_stale=False,
+        is_simulated=False,
+    )
     recs = RecommendationEngine.generate_recommendations(snapshot)
     assert len(recs) >= 3
     titles = [r.title for r in recs]
@@ -557,7 +604,15 @@ def test_recommendation_engine_good_aqi_coverage():
 def test_recommendation_engine_satisfactory_aqi_coverage():
     """Covers AQI 51-100 branch (Satisfactory) for Chennai city."""
     from app.integrations.ai.schemas import AQIContextSnapshot
-    snapshot = AQIContextSnapshot(city_name="Chennai", aqi=75, category="Satisfactory", dominant_pollutant="PM10", is_stale=False, is_simulated=False)
+
+    snapshot = AQIContextSnapshot(
+        city_name="Chennai",
+        aqi=75,
+        category="Satisfactory",
+        dominant_pollutant="PM10",
+        is_stale=False,
+        is_simulated=False,
+    )
     recs = RecommendationEngine.generate_recommendations(snapshot)
     assert len(recs) >= 2
 
@@ -565,7 +620,15 @@ def test_recommendation_engine_satisfactory_aqi_coverage():
 def test_recommendation_engine_moderate_aqi_coverage():
     """Covers AQI 101-200 branch (Moderate) for Bengaluru city."""
     from app.integrations.ai.schemas import AQIContextSnapshot
-    snapshot = AQIContextSnapshot(city_name="Bengaluru", aqi=150, category="Moderately Polluted", dominant_pollutant="NO2", is_stale=False, is_simulated=False)
+
+    snapshot = AQIContextSnapshot(
+        city_name="Bengaluru",
+        aqi=150,
+        category="Moderately Polluted",
+        dominant_pollutant="NO2",
+        is_stale=False,
+        is_simulated=False,
+    )
     recs = RecommendationEngine.generate_recommendations(snapshot)
     assert len(recs) >= 3
     priorities = [r.priority for r in recs]
@@ -575,7 +638,15 @@ def test_recommendation_engine_moderate_aqi_coverage():
 def test_recommendation_engine_very_poor_aqi():
     """Covers AQI 301-400 branch (Very Poor category) with winter smog pillars."""
     from app.integrations.ai.schemas import AQIContextSnapshot
-    snapshot = AQIContextSnapshot(city_name="Delhi", aqi=360, category="Very Poor", dominant_pollutant="PM2.5", is_stale=False, is_simulated=False)
+
+    snapshot = AQIContextSnapshot(
+        city_name="Delhi",
+        aqi=360,
+        category="Very Poor",
+        dominant_pollutant="PM2.5",
+        is_stale=False,
+        is_simulated=False,
+    )
     recs = RecommendationEngine.generate_recommendations(snapshot)
     assert len(recs) >= 5
     category_types = {r.category_type for r in recs if r.category_type}
@@ -588,7 +659,15 @@ def test_recommendation_engine_very_poor_aqi():
 def test_recommendation_engine_severe_aqi():
     """Covers AQI > 400 branch (Severe category) with all 5 Challenge 6 pillars."""
     from app.integrations.ai.schemas import AQIContextSnapshot
-    snapshot = AQIContextSnapshot(city_name="Delhi", aqi=450, category="Severe", dominant_pollutant="PM2.5", is_stale=False, is_simulated=False)
+
+    snapshot = AQIContextSnapshot(
+        city_name="Delhi",
+        aqi=450,
+        category="Severe",
+        dominant_pollutant="PM2.5",
+        is_stale=False,
+        is_simulated=False,
+    )
     recs = RecommendationEngine.generate_recommendations(snapshot)
     assert len(recs) >= 5
     category_types = {r.category_type for r in recs if r.category_type}
@@ -603,7 +682,15 @@ def test_recommendation_engine_severe_aqi():
 def test_recommendation_engine_no_aqi():
     """Covers aqi is None fallback branch."""
     from app.integrations.ai.schemas import AQIContextSnapshot
-    snapshot = AQIContextSnapshot(city_name="Unknown", aqi=None, category="Unknown", dominant_pollutant=None, is_stale=True, is_simulated=False)
+
+    snapshot = AQIContextSnapshot(
+        city_name="Unknown",
+        aqi=None,
+        category="Unknown",
+        dominant_pollutant=None,
+        is_stale=True,
+        is_simulated=False,
+    )
     recs = RecommendationEngine.generate_recommendations(snapshot)
     assert len(recs) == 1
     assert "Monitor" in recs[0].title
@@ -613,9 +700,11 @@ def test_recommendation_engine_no_aqi():
 # AQI Categories Coverage Tests
 # ---------------------------------------------------------------------------
 
+
 def test_aqi_category_mapping_all_tiers():
     """Covers get_aqi_category for all 6 CPCB tiers."""
     from app.services.aqi.categories import get_aqi_category
+
     assert get_aqi_category(25) == "Good"
     assert get_aqi_category(50) == "Good"
     assert get_aqi_category(75) == "Satisfactory"
@@ -633,6 +722,7 @@ def test_aqi_category_mapping_all_tiers():
 def test_get_category_info_all_tiers():
     """Covers get_category_info for all CPCB tiers."""
     from app.services.aqi.categories import get_category_info
+
     for aqi_val in [30, 75, 150, 250, 350, 450]:
         info = get_category_info(aqi_val)
         assert info.category
@@ -644,9 +734,11 @@ def test_get_category_info_all_tiers():
 # ComparisonService Coverage Tests
 # ---------------------------------------------------------------------------
 
+
 def test_comparison_service_empty_city_list(db_session):
     """ComparisonService with empty city list returns empty comparisons."""
     from app.services.history.comparison_service import ComparisonService
+
     result = ComparisonService.compare_locations(db=db_session, cities=[], stations=[])
     assert result.comparisons == []
 
@@ -654,13 +746,17 @@ def test_comparison_service_empty_city_list(db_session):
 def test_comparison_service_nonexistent_city(db_session):
     """ComparisonService with nonexistent city skips it gracefully."""
     from app.services.history.comparison_service import ComparisonService
-    result = ComparisonService.compare_locations(db=db_session, cities=["NonexistentCity123"], stations=[])
+
+    result = ComparisonService.compare_locations(
+        db=db_session, cities=["NonexistentCity123"], stations=[]
+    )
     assert result.comparisons == []
 
 
 def test_comparison_service_single_city_with_data(db_session, health_test_data):
     """ComparisonService with valid seeded city returns comparison data."""
     from app.services.history.comparison_service import ComparisonService
+
     result = ComparisonService.compare_locations(db=db_session, cities=["Delhi"], stations=[])
     assert len(result.comparisons) >= 1
     delhi = result.comparisons[0]
@@ -671,7 +767,10 @@ def test_comparison_service_single_city_with_data(db_session, health_test_data):
 def test_comparison_service_multiple_cities(db_session, health_test_data):
     """ComparisonService correctly compares multiple cities."""
     from app.services.history.comparison_service import ComparisonService
-    result = ComparisonService.compare_locations(db=db_session, cities=["Delhi", "Mumbai"], stations=[])
+
+    result = ComparisonService.compare_locations(
+        db=db_session, cities=["Delhi", "Mumbai"], stations=[]
+    )
     # Both may appear if data is seeded
     assert len(result.comparisons) >= 1
 
@@ -679,6 +778,7 @@ def test_comparison_service_multiple_cities(db_session, health_test_data):
 # ---------------------------------------------------------------------------
 # MockAIProvider as LSP Proof: interchangeable with GeminiProvider
 # ---------------------------------------------------------------------------
+
 
 def test_mock_ai_provider_satisfies_base_interface():
     """Verify MockAIProvider fully satisfies BaseAIProvider interface (LSP proof)."""
@@ -692,13 +792,20 @@ def test_mock_ai_provider_satisfies_base_interface():
 @pytest.mark.anyio
 async def test_mock_ai_provider_generate_response():
     """Verify MockAIProvider generates valid AICompletionResponse."""
-    mock = MockAIProvider(response_text="Take precautions during winter smog. Direct impact: reduces PM2.5 intake by 40%.")
+    mock = MockAIProvider(
+        response_text=(
+            "Take precautions during winter smog. Direct impact: reduces PM2.5 intake by 40%."
+        )
+    )
     request = AICompletionRequest(
         prompt="What precautions should I take at AQI 350?",
         system_instruction="You are an urban air quality health advisor.",
     )
     response = await mock.generate_response(request)
-    assert response.content == "Take precautions during winter smog. Direct impact: reduces PM2.5 intake by 40%."
+    assert (
+        response.content
+        == "Take precautions during winter smog. Direct impact: reduces PM2.5 intake by 40%."
+    )
     assert response.finish_reason == "STOP"
 
 
@@ -706,10 +813,12 @@ async def test_mock_ai_provider_generate_response():
 # NotificationService Coverage: Disabled push path
 # ---------------------------------------------------------------------------
 
+
 def test_notification_service_disabled_push():
     """NotificationService returns 0 when VAPID keys are unconfigured."""
     from app.core.config import Settings
     from app.services.alerts.notification_service import NotificationService
+
     settings = Settings(WEB_PUSH_ENABLED=False, VAPID_PRIVATE_KEY=None, VAPID_PUBLIC_KEY=None)
     svc = NotificationService(settings=settings)
     assert svc.settings.WEB_PUSH_ENABLED is False
@@ -719,9 +828,11 @@ def test_notification_service_disabled_push():
 # Knowledge Base: Winter Smog Guidance Validation
 # ---------------------------------------------------------------------------
 
+
 def test_knowledge_base_winter_smog_guidance():
     """Knowledge base contains actionable winter smog guidance for all 5 Challenge 6 pillars."""
     from app.services.health.knowledge_base import HealthKnowledgeBase
+
     assert len(HealthKnowledgeBase.WINTER_SMOG_GUIDANCE) >= 2
     assert len(HealthKnowledgeBase.LOW_EMISSION_ROUTINES) >= 3
     assert len(HealthKnowledgeBase.INDOOR_AIR_HACKS) >= 3
@@ -736,9 +847,13 @@ def test_knowledge_base_winter_smog_guidance():
 # Lifestyle & Household Context Tailoring (Challenge 6)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.anyio
 async def test_health_advisor_lifestyle_tailoring(db_session, health_test_data):
-    """HealthAdvisorService incorporates lifestyle persona and family context into recommendations."""
+    """
+    HealthAdvisorService incorporates lifestyle persona and family context into
+    recommendations.
+    """
     from app.core.config import Settings
     from app.integrations.ai.schemas import HealthAskRequest
     from app.services.health.health_advisor import HealthAdvisorService
@@ -763,6 +878,7 @@ async def test_health_advisor_lifestyle_tailoring(db_session, health_test_data):
 # Notification Channel Abstractions & Liskov Substitution (SOLID)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.anyio
 async def test_notification_channels_lsp(db_session):
     """BaseNotificationChannel subclasses WebPush and InApp satisfy LSP."""
@@ -784,15 +900,21 @@ async def test_notification_channels_lsp(db_session):
     assert in_app_ch.channel_name == "in_app"
 
     # Both dispatch without throwing
-    res_push = await web_push_ch.dispatch(db=db_session, recipient="test-user", title="Test", body="Body")
+    res_push = await web_push_ch.dispatch(
+        db=db_session, recipient="test-user", title="Test", body="Body"
+    )
     assert res_push == 0  # disabled
 
-    res_inapp = await in_app_ch.dispatch(db=db_session, recipient="test-user", title="Test", body="Body")
+    res_inapp = await in_app_ch.dispatch(
+        db=db_session, recipient="test-user", title="Test", body="Body"
+    )
     assert res_inapp == 1
 
     # NotificationService dispatch_all_channels
     svc = NotificationService(settings=settings)
-    all_res = await svc.dispatch_all_channels(db=db_session, user_id="test-user", title="Test", body="Body")
+    all_res = await svc.dispatch_all_channels(
+        db=db_session, user_id="test-user", title="Test", body="Body"
+    )
     assert "web_push" in all_res
     assert "in_app" in all_res
 
@@ -800,6 +922,7 @@ async def test_notification_channels_lsp(db_session):
 # ---------------------------------------------------------------------------
 # DataNormalizationService Full Coverage
 # ---------------------------------------------------------------------------
+
 
 def test_data_normalization_service_full_coverage():
     """Verify DataNormalizationService canonical matching and core pollutant verification."""
@@ -838,14 +961,13 @@ def test_data_normalization_service_full_coverage():
 # ComparisonService Station-Level Coverage
 # ---------------------------------------------------------------------------
 
+
 def test_comparison_service_station_evaluation(db_session, health_test_data):
     """ComparisonService correctly evaluates monitoring stations alongside cities."""
     from app.models.monitoring_station import MonitoringStation
     from app.services.history.comparison_service import ComparisonService
 
-    station = db_session.execute(
-        MonitoringStation.__table__.select().limit(1)
-    ).first()
+    station = db_session.execute(MonitoringStation.__table__.select().limit(1)).first()
 
     if station:
         st_id = station.id
@@ -864,6 +986,7 @@ def test_comparison_service_station_evaluation(db_session, health_test_data):
 # ---------------------------------------------------------------------------
 # Security: Multi-Header Admin Secret Verification
 # ---------------------------------------------------------------------------
+
 
 def test_verify_admin_access_multi_header():
     """verify_admin_access accepts X-Admin-Secret, X-API-Key, and Bearer token."""
@@ -890,4 +1013,3 @@ def test_verify_admin_access_multi_header():
     with pytest.raises(HTTPException) as exc_info:
         verify_admin_access(x_admin_secret="wrong", settings=settings)
     assert exc_info.value.status_code == 403
-

@@ -61,4 +61,3 @@ class City(Base):
         "Alert",
         back_populates="city",
     )
-

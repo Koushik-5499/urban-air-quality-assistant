@@ -1,8 +1,8 @@
 """Dominant pollutant identification and deterministic tie-breaking rules."""
 
-
 # CPCB tie-breaking priority ordered by public health severity:
-# Fine particulates (PM2.5) first, followed by PM10, toxic combustion gases, oxidants, and heavy metals.
+# Fine particulates (PM2.5) first, followed by PM10, toxic combustion gases, oxidants, and
+# heavy metals.
 DOMINANT_TIE_BREAKER_PRIORITY: list[str] = [
     "PM2.5",
     "PM10",
@@ -41,4 +41,3 @@ class DominantPollutantResolver:
 
         # Fallback to alphabetical if custom pollutant code
         return sorted(tied_candidates)[0]
-

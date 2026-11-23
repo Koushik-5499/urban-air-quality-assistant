@@ -14,7 +14,9 @@ class PushSubscription(Base):
     __tablename__ = "push_subscriptions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[str] = mapped_column(String(100), default="default_user", nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(
+        String(100), default="default_user", nullable=False, index=True
+    )
     endpoint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     p256dh: Mapped[str] = mapped_column(String(255), nullable=False)
     auth: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -23,4 +25,3 @@ class PushSubscription(Base):
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
-

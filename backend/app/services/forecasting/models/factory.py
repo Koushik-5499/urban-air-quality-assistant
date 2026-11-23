@@ -1,6 +1,5 @@
 """Factory for instantiating forecasting models."""
 
-
 from app.services.forecasting.models.base import BaseForecastModel
 from app.services.forecasting.models.exponential_smoothing import ExponentialSmoothingModel
 from app.services.forecasting.models.moving_average import MovingAverageModel
@@ -23,4 +22,3 @@ class ModelFactory:
             return ExponentialSmoothingModel()
         else:
             return ExponentialSmoothingModel()
-

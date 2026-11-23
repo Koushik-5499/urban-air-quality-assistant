@@ -164,7 +164,9 @@ class Settings(BaseSettings):
     )
     WEATHER_ENABLED: bool = Field(
         default=True,
-        description="Whether weather integration is enabled for meteorological feature augmentation",
+        description=(
+            "Whether weather integration is enabled for meteorological feature augmentation"
+        ),
     )
     WEATHER_CACHE_TTL_SECONDS: int = Field(
         default=900,
@@ -174,15 +176,23 @@ class Settings(BaseSettings):
     # Forecasting Engine Configuration
     FORECAST_MODEL: str = Field(
         default="exponential_smoothing",
-        description="Active forecasting model family: 'exponential_smoothing', 'moving_average', 'persistence'",
+        description=(
+            "Active forecasting model family: 'exponential_smoothing', 'moving_average', "
+            "'persistence'"
+        ),
     )
     FORECAST_MIN_TRAINING_SAMPLES: int = Field(
         default=24,
-        description="Minimum chronological historical observations required to train or evaluate forecasting model",
+        description=(
+            "Minimum chronological historical observations required to train or evaluate "
+            "forecasting model"
+        ),
     )
     FORECAST_ADMIN_SECRET: str | None = Field(
         default=None,
-        description="Optional administrative secret key required for POST /api/v1/forecast/generate",
+        description=(
+            "Optional administrative secret key required for POST /api/v1/forecast/generate"
+        ),
     )
     FORECAST_DEFAULT_HORIZON_HOURS: int = Field(
         default=24,
@@ -190,7 +200,10 @@ class Settings(BaseSettings):
     )
     TRUSTED_PROXY: bool = Field(
         default=False,
-        description="When True, trust the X-Forwarded-For header for client IP extraction (use only behind a known proxy)",
+        description=(
+            "When True, trust the X-Forwarded-For header for client IP extraction (use only "
+            "behind a known proxy)"
+        ),
     )
 
     @field_validator("DATABASE_URL", mode="before")
@@ -198,7 +211,9 @@ class Settings(BaseSettings):
     def assemble_database_url(cls, v: str | None) -> str:
         """Handle default database URL and serverless environment adjustments."""
         url = v or "sqlite:///./air_quality.db"
-        if (os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) and url.startswith("sqlite:///."):
+        if (os.getenv("VERCEL") == "1" or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) and url.startswith(
+            "sqlite:///."
+        ):
             return "sqlite:////tmp/air_quality.db"
         return url
 

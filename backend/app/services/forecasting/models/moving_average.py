@@ -25,7 +25,7 @@ class MovingAverageModel(BaseForecastModel):
         """Compute the arithmetic mean of the most recent window."""
         if not series:
             raise ValueError("Cannot fit MovingAverageModel with empty observation series.")
-        window = series[-self.window_size:] if len(series) >= self.window_size else series
+        window = series[-self.window_size :] if len(series) >= self.window_size else series
         self._mean_value = sum(window) / float(len(window))
         self._fitted = True
 
@@ -37,4 +37,3 @@ class MovingAverageModel(BaseForecastModel):
             return []
         clamped = max(0.0, min(500.0, round(self._mean_value, 2)))
         return [clamped] * steps
-

@@ -7,4 +7,3 @@ class Base(DeclarativeBase):
     """Base declarative class for all SQLAlchemy database models."""
 
     pass
-

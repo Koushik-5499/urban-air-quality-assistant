@@ -64,11 +64,13 @@ class WebPushNotificationChannel(BaseNotificationChannel):
         if not subs:
             return 0
 
-        payload_json = json.dumps({
-            "title": title,
-            "body": body,
-            "data": data_payload or {},
-        })
+        payload_json = json.dumps(
+            {
+                "title": title,
+                "body": body,
+                "data": data_payload or {},
+            }
+        )
 
         successful = 0
         vapid_claims = {
@@ -100,7 +102,9 @@ class WebPushNotificationChannel(BaseNotificationChannel):
                 else:
                     logger.warning("Web Push delivery failed: %s", exc)
             except Exception as exc:
-                logger.warning("Unexpected error during web push: %s", exc)
+                # Top-level notification channel boundary preventing individual push failure
+                # from halting queue
+                logger.exception("Unexpected error during web push: %s", exc)
 
         db.commit()
         return successful

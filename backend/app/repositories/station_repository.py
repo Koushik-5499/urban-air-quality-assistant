@@ -1,6 +1,5 @@
 """Monitoring station repository for database access."""
 
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -28,7 +27,11 @@ class StationRepository:
 
     def list_all_active(self) -> list[MonitoringStation]:
         """Retrieve all currently active monitoring stations across all cities."""
-        statement = select(MonitoringStation).where(MonitoringStation.is_active.is_(True)).order_by(MonitoringStation.station_name)
+        statement = (
+            select(MonitoringStation)
+            .where(MonitoringStation.is_active.is_(True))
+            .order_by(MonitoringStation.station_name)
+        )
         return list(self.db.execute(statement).scalars().all())
 
     def create(self, station_in: StationCreate) -> MonitoringStation:
@@ -46,4 +49,3 @@ class StationRepository:
         self.db.commit()
         self.db.refresh(station)
         return station
-

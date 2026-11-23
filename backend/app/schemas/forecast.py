@@ -14,27 +14,47 @@ class AQIForecastItem(BaseModel):
     station_name: str | None = Field(None, description="Optional monitoring station name")
     forecast_timestamp: datetime = Field(..., description="Target future timestamp in UTC")
     generated_at: datetime = Field(..., description="Timestamp when forecast was computed")
-    predicted_aqi: int = Field(..., ge=0, le=500, description="Predicted numerical AQI value (0-500)")
+    predicted_aqi: int = Field(
+        ..., ge=0, le=500, description="Predicted numerical AQI value (0-500)"
+    )
     predicted_category: str = Field(..., description="Predicted CPCB NAQI category")
     dominant_pollutant: str | None = Field(None, description="Primary predicted pollutant driver")
     horizon_hours: int = Field(..., ge=1, le=72, description="Prediction horizon in hours")
-    horizon_label: str = Field(..., description="Configurable horizon label (e.g. '1h', '6h', '24h')")
-    lower_bound: int | None = Field(None, ge=0, le=500, description="Lower prediction interval bound")
-    upper_bound: int | None = Field(None, ge=0, le=500, description="Upper prediction interval bound")
+    horizon_label: str = Field(
+        ..., description="Configurable horizon label (e.g. '1h', '6h', '24h')"
+    )
+    lower_bound: int | None = Field(
+        None, ge=0, le=500, description="Lower prediction interval bound"
+    )
+    upper_bound: int | None = Field(
+        None, ge=0, le=500, description="Upper prediction interval bound"
+    )
     uncertainty_status: str = Field(
         default="estimated",
         description="Uncertainty state: 'estimated', 'high_uncertainty', or 'unavailable'",
     )
     model_name: str = Field(..., description="Identifier of the forecasting model")
     model_version: str = Field(..., description="Model release version")
-    training_data_start: datetime | None = Field(None, description="Start time of historical training window")
-    training_data_end: datetime | None = Field(None, description="End time of historical training window")
-    training_samples: int = Field(default=0, description="Number of historical observations used for training")
+    training_data_start: datetime | None = Field(
+        None, description="Start time of historical training window"
+    )
+    training_data_end: datetime | None = Field(
+        None, description="End time of historical training window"
+    )
+    training_samples: int = Field(
+        default=0, description="Number of historical observations used for training"
+    )
     data_quality: str = Field(default="verified_cpcb", description="Source data quality label")
     source: str = Field(default="CPCB Historical Observations", description="Origin data provider")
-    is_simulated: bool = Field(default=False, description="Whether forecast is based on simulated data")
-    is_forecast: bool = Field(default=True, description="Explicit indicator that this is a modeled prediction")
-    forecast_status: str = Field(default="valid", description="Status: 'valid', 'insufficient_data', 'fallback'")
+    is_simulated: bool = Field(
+        default=False, description="Whether forecast is based on simulated data"
+    )
+    is_forecast: bool = Field(
+        default=True, description="Explicit indicator that this is a modeled prediction"
+    )
+    forecast_status: str = Field(
+        default="valid", description="Status: 'valid', 'insufficient_data', 'fallback'"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -130,7 +150,10 @@ class ModelEvaluationMetric(BaseModel):
 
 
 class ModelStatusResponse(BaseModel):
-    """Operational status, versioning, evaluation metrics, and readiness of the forecasting service."""
+    """
+    Operational status, versioning, evaluation metrics, and readiness of the forecasting
+    service.
+    """
 
     model_name: str
     model_version: str
@@ -152,9 +175,14 @@ class ForecastGenerateRequest(BaseModel):
     station_id: int | None = Field(None, description="Optional monitoring station ID")
     horizons: list[str] | None = Field(
         None,
-        description="List of target horizons (e.g. ['1h', '6h', '12h', '24h', '48h']). Defaults to all supported.",
+        description=(
+            "List of target horizons (e.g. ['1h', '6h', '12h', '24h', '48h']). Defaults to all "
+            "supported."
+        ),
     )
-    force_retrain: bool = Field(default=False, description="Whether to recompute model even if recent run exists")
+    force_retrain: bool = Field(
+        default=False, description="Whether to recompute model even if recent run exists"
+    )
 
 
 class ForecastGenerateResponse(BaseModel):
@@ -174,4 +202,3 @@ class ForecastGenerateResponse(BaseModel):
     is_simulated: bool
     generated_at: datetime
     message: str
-

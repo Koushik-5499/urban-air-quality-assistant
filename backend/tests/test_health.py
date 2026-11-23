@@ -108,12 +108,17 @@ async def test_cors_disallows_unconfigured_origin(client: AsyncClient):
         },
     )
     # FastAPIs CORSMiddleware does not return allow-origin header for disallowed origins
-    assert response.headers.get("access-control-allow-origin") != "https://unauthorized-attacker.com"
+    assert (
+        response.headers.get("access-control-allow-origin") != "https://unauthorized-attacker.com"
+    )
 
 
 @pytest.mark.anyio
 async def test_no_sensitive_data_exposure(client: AsyncClient):
-    """Ensure health and root endpoints do not expose internal paths, secrets, or environment variables."""
+    """
+    Ensure health and root endpoints do not expose internal paths, secrets, or environment
+    variables.
+    """
     for path in ["/", "/health", "/api/v1/health"]:
         response = await client.get(path)
         content_str = response.text.lower()
@@ -148,4 +153,3 @@ def test_environment_modes():
     prod_settings = Settings(APP_ENV="production")
     assert prod_settings.is_development is False
     assert prod_settings.is_production is True
-

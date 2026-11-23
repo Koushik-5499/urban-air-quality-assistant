@@ -1,4 +1,7 @@
-"""Core Alert and Notification service orchestrating rules, deduplication, persistence, and dispatch."""
+"""
+Core Alert and Notification service orchestrating rules, deduplication, persistence, and
+dispatch.
+"""
 
 import asyncio
 import logging
@@ -7,6 +10,7 @@ from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import desc, func, select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import Settings, get_settings
@@ -39,7 +43,10 @@ logger = logging.getLogger(__name__)
 
 
 class AlertService:
-    """Manages environmental condition detection, alert generation, user preferences, and notification channels."""
+    """
+    Manages environmental condition detection, alert generation, user preferences, and
+    notification channels.
+    """
 
     _process_lock = asyncio.Lock()
     _last_processed_at: datetime | None = None
@@ -51,7 +58,9 @@ class AlertService:
         settings: Settings | None = None,
     ):
         self.settings = settings or get_settings()
-        self.notification_service = notification_service or NotificationService(settings=self.settings)
+        self.notification_service = notification_service or NotificationService(
+            settings=self.settings
+        )
 
     # -----------------------------------------------------------------------
     # In-App Alerts Listing & Management
@@ -74,7 +83,9 @@ class AlertService:
     ) -> AlertPaginatedResponse:
         """Query paginated alerts with flexible filtering."""
         page, page_size = HistoryValidator.validate_pagination(page, page_size)
-        start_utc, end_utc = HistoryValidator.validate_date_range(start_date, end_date, is_aggregated=True)
+        start_utc, end_utc = HistoryValidator.validate_date_range(
+            start_date, end_date, is_aggregated=True
+        )
 
         city_entity = HistoryValidator.resolve_city(db, city) if city else None
         station_entity = HistoryValidator.resolve_station(db, station_id) if station_id else None
@@ -110,13 +121,14 @@ class AlertService:
         unread_count = db.execute(unread_stmt).scalar() or 0
 
         # Query paginated rows
-        data_stmt = (
-            select(Alert)
-            .options(joinedload(Alert.city), joinedload(Alert.station))
-        )
+        data_stmt = select(Alert).options(joinedload(Alert.city), joinedload(Alert.station))
         if filters:
             data_stmt = data_stmt.where(*filters)
-        data_stmt = data_stmt.order_by(desc(Alert.created_at)).offset((page - 1) * page_size).limit(page_size)
+        data_stmt = (
+            data_stmt.order_by(desc(Alert.created_at))
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
 
         alert_entities = list(db.execute(data_stmt).scalars().all())
 
@@ -158,7 +170,9 @@ class AlertService:
         )
 
     @classmethod
-    def get_unread_count(cls, db: Session, user_id: str = "default_user") -> AlertUnreadCountResponse:
+    def get_unread_count(
+        cls, db: Session, user_id: str = "default_user"
+    ) -> AlertUnreadCountResponse:
         """Count all unread active alerts in database."""
         stmt = select(func.count(Alert.id)).where(Alert.is_read.is_(False))
         count = db.execute(stmt).scalar() or 0
@@ -167,7 +181,11 @@ class AlertService:
     @classmethod
     def mark_alert_read(cls, db: Session, alert_id: int) -> AlertResponse:
         """Mark a specific alert as read."""
-        stmt = select(Alert).options(joinedload(Alert.city), joinedload(Alert.station)).where(Alert.id == alert_id)
+        stmt = (
+            select(Alert)
+            .options(joinedload(Alert.city), joinedload(Alert.station))
+            .where(Alert.id == alert_id)
+        )
         alert = db.execute(stmt).scalar_one_or_none()
         if not alert:
             raise HTTPException(
@@ -303,7 +321,9 @@ class AlertService:
                 detail=f"City '{pref_in.city}' not found.",
             )
 
-        station_entity = HistoryValidator.resolve_station(db, pref_in.station_id) if pref_in.station_id else None
+        station_entity = (
+            HistoryValidator.resolve_station(db, pref_in.station_id) if pref_in.station_id else None
+        )
 
         # Validate quiet hours
         if pref_in.quiet_hours_start and pref_in.quiet_hours_end:
@@ -326,7 +346,9 @@ class AlertService:
 
         channels_str = ",".join(pref_in.channels)
 
-        stmt = select(AlertPreference).where(AlertPreference.user_id == user_id, AlertPreference.city_id == city_entity.id)
+        stmt = select(AlertPreference).where(
+            AlertPreference.user_id == user_id, AlertPreference.city_id == city_entity.id
+        )
         existing = db.execute(stmt).scalar_one_or_none()
 
         if existing:
@@ -388,10 +410,7 @@ class AlertService:
     ) -> list[Alert]:
         """Evaluate chronological readings for a location and generate deduplicated alerts."""
         # Query last 2 readings
-        query = (
-            select(AQIReading)
-            .where(AQIReading.city_id == city_id)
-        )
+        query = select(AQIReading).where(AQIReading.city_id == city_id)
         if station_id:
             query = query.where(AQIReading.station_id == station_id)
         query = query.order_by(desc(AQIReading.measured_at)).limit(2)
@@ -493,7 +512,9 @@ class AlertService:
                 locations_evaluated += 1
                 try:
                     # Retrieve user preference if configured for this city
-                    pref_stmt = select(AlertPreference).where(AlertPreference.city_id == city.id).limit(1)
+                    pref_stmt = (
+                        select(AlertPreference).where(AlertPreference.city_id == city.id).limit(1)
+                    )
                     user_pref = db.execute(pref_stmt).scalar_one_or_none()
 
                     alerts = await self.evaluate_and_generate_alerts(
@@ -502,10 +523,18 @@ class AlertService:
                         user_pref=user_pref,
                     )
                     alerts_generated += len(alerts)
-                    notifications_dispatched += sum(1 for a in alerts if "delivered" in a.delivery_status)
-                except Exception as exc:
+                    notifications_dispatched += sum(
+                        1 for a in alerts if "delivered" in a.delivery_status
+                    )
+                except (SQLAlchemyError, ValueError) as exc:
                     err_msg = f"Error processing alerts for {city.name}: {exc}"
                     logger.error(err_msg)
+                    errors.append(err_msg)
+                except Exception as exc:
+                    # City-level alert evaluation isolation boundary preventing one failure
+                    # from halting all cities
+                    err_msg = f"Unexpected error processing alerts for {city.name}: {exc}"
+                    logger.exception(err_msg)
                     errors.append(err_msg)
 
             AlertService._last_processed_at = now_utc
@@ -596,4 +625,3 @@ class AlertService:
             db.add(sub)
         db.commit()
         return True
-

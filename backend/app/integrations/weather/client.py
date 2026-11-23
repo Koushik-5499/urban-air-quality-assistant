@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class WeatherClient:
-    """Asynchronous client for fetching real-time meteorological data with caching and retry logic."""
+    """
+    Asynchronous client for fetching real-time meteorological data with caching and retry
+    logic.
+    """
 
     # Key: (round(lat, 2), round(lon, 2)), Value: (WeatherObservation, cache_time)
     _cache: dict[tuple[float, float], tuple[WeatherObservation, datetime]] = {}
@@ -68,7 +71,10 @@ class WeatherClient:
         params: dict[str, str | float] = {
             "latitude": latitude,
             "longitude": longitude,
-            "current": "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure",
+            "current": (
+                "temperature_2m,relative_humidity_2m,precipitation,"
+                "wind_speed_10m,wind_direction_10m,surface_pressure"
+            ),
             "timezone": "UTC",
         }
 
@@ -79,13 +85,19 @@ class WeatherClient:
 
         for attempt in range(1, 3):
             try:
-                async with httpx.AsyncClient(timeout=self.settings.WEATHER_REQUEST_TIMEOUT) as client:
+                async with httpx.AsyncClient(
+                    timeout=self.settings.WEATHER_REQUEST_TIMEOUT
+                ) as client:
                     resp = await client.get(url, params=params, headers=headers)
                     if resp.status_code == 200:
                         data = resp.json()
                         current_data = data.get("current", {})
                         time_str = current_data.get("time")
-                        obs_time = datetime.fromisoformat(time_str).replace(tzinfo=UTC) if time_str else now_utc
+                        obs_time = (
+                            datetime.fromisoformat(time_str).replace(tzinfo=UTC)
+                            if time_str
+                            else now_utc
+                        )
 
                         observation = WeatherObservation(
                             latitude=latitude,
@@ -116,7 +128,7 @@ class WeatherClient:
                     latitude,
                     longitude,
                 )
-            except Exception as exc:
+            except httpx.HTTPError as exc:
                 logger.warning(
                     "Error contacting weather provider (attempt %d/2): %s",
                     attempt,
@@ -126,11 +138,14 @@ class WeatherClient:
             if attempt < 2:
                 await asyncio.sleep(0.5)
 
-        logger.info("Proceeding without weather telemetry for coordinates (%s, %s)", latitude, longitude)
+        logger.info(
+            "Proceeding without weather telemetry for coordinates (%s, %s)",
+            latitude,
+            longitude,
+        )
         return None
 
     @classmethod
     def clear_cache(cls) -> None:
         """Clear weather observation in-memory cache."""
         cls._cache.clear()
-
