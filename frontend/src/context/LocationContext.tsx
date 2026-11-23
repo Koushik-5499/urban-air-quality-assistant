@@ -29,9 +29,9 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_SELECTED);
       if (stored && DASHBOARD_DATA[stored]) return stored;
-      return 'coimbatore';
+      return 'delhi';
     } catch {
-      return 'coimbatore';
+      return 'delhi';
     }
   });
 
@@ -43,17 +43,17 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         const parsed: string[] = JSON.parse(stored);
         return parsed.filter((id) => Boolean(DASHBOARD_DATA[id]));
       }
-      return ['coimbatore', 'chennai', 'bengaluru'];
+      return ['delhi', 'mumbai', 'bengaluru'];
     } catch {
-      return ['coimbatore', 'chennai', 'bengaluru'];
+      return ['delhi', 'mumbai', 'bengaluru'];
     }
   });
 
   // 3. Comparison City IDs (up to 4 cities)
   const [comparisonCityIds, setComparisonCityIds] = useState<string[]>([
-    'coimbatore',
-    'bengaluru',
     'delhi',
+    'mumbai',
+    'bengaluru',
   ]);
 
   // 4. Live Backend State
@@ -158,7 +158,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     setIsLoadingLive(true);
     setLiveError(null);
 
-    const baseData = DASHBOARD_DATA[cityId] || DASHBOARD_DATA['coimbatore'];
+    const baseData = DASHBOARD_DATA[cityId] || DASHBOARD_DATA['delhi'];
     const cityName = baseData.location.city;
 
     try {
@@ -227,7 +227,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   // Merge live backend data into selected city data
   const selectedCityData = useMemo<CityDashboardData>(() => {
-    const base = DASHBOARD_DATA[selectedCityId] || DASHBOARD_DATA['coimbatore'];
+    const base = DASHBOARD_DATA[selectedCityId] || DASHBOARD_DATA['delhi'];
 
     if (!isLiveBackend || (!backendAqiData && !backendCityData)) {
       return base;
@@ -283,7 +283,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   // List of all 10 cities
   const allCities = useMemo(() => {
-    return DEMO_LOCATIONS.map((loc) => DASHBOARD_DATA[loc.id] || DASHBOARD_DATA['coimbatore']);
+    return DEMO_LOCATIONS.map((loc) => DASHBOARD_DATA[loc.id] || DASHBOARD_DATA['delhi']);
   }, []);
 
   const value = useMemo(

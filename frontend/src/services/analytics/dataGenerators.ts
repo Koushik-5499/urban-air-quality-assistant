@@ -30,7 +30,7 @@ export function generateHistoricalData(
   cityId: string,
   timeRange: AnalyticsTimeRange
 ): HistoricalDataPoint[] {
-  const city = DASHBOARD_DATA[cityId] || DASHBOARD_DATA['coimbatore'];
+  const city = DASHBOARD_DATA[cityId] || DASHBOARD_DATA['delhi'];
   const baseAQI = city.aqi;
 
   const pm25Base = city.pollutants.find((p) => p.id === 'pm25')?.value ?? 28;
@@ -133,7 +133,7 @@ export function generateSimulatedForecast(
   cityId: string,
   horizon: ForecastHorizon
 ): ForecastReport {
-  const city = DASHBOARD_DATA[cityId] || DASHBOARD_DATA['coimbatore'];
+  const city = DASHBOARD_DATA[cityId] || DASHBOARD_DATA['delhi'];
   const baseAQI = city.aqi;
 
   let intervals: { time: string; label: string; trendCurve: number; uncertainty: number }[] = [];

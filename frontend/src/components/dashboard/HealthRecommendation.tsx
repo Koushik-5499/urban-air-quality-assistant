@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ShieldCheck,
   Heart,
@@ -10,6 +11,8 @@ import {
   Home,
   Leaf,
   TrendingDown,
+  HelpCircle,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -22,6 +25,7 @@ export interface HealthRecommendationProps {
 }
 
 export function HealthRecommendation({ aqi, category }: HealthRecommendationProps) {
+  const [whyAdviceOpen, setWhyAdviceOpen] = useState(false);
   const recommendations = getHealthRecommendations(category, aqi);
 
   return (
@@ -172,6 +176,67 @@ export function HealthRecommendation({ aqi, category }: HealthRecommendationProp
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Explainability Accordion: Why this advice? */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setWhyAdviceOpen(!whyAdviceOpen)}
+            aria-expanded={whyAdviceOpen}
+            aria-controls="dashboard-why-advice"
+            className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 transition-colors cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Why this advice?</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                whyAdviceOpen ? 'rotate-180' : ''
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+
+          {whyAdviceOpen && (
+            <div
+              id="dashboard-why-advice"
+              className="mt-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-850/80 border border-slate-200/70 dark:border-slate-800 space-y-2 text-xs animate-in fade-in duration-200"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Priority Level:</span>
+                <Badge
+                  variant={aqi > 200 ? 'danger' : aqi > 100 ? 'warning' : 'success'}
+                  size="sm"
+                >
+                  {aqi > 200
+                    ? 'Critical / Health Alert'
+                    : aqi > 100
+                    ? 'Elevated Precaution'
+                    : 'Satisfactory / Baseline'}
+                </Badge>
+              </div>
+              <div>
+                <span className="font-bold text-slate-700 dark:text-slate-300">Target Group:</span>{' '}
+                <span className="text-slate-600 dark:text-slate-400">
+                  All age cohorts, with heightened sensitivity for infants, pregnant women, asthmatics, and older adults.
+                </span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-700 dark:text-slate-300">
+                  Epidemiological Reason:
+                </span>{' '}
+                <span className="text-slate-600 dark:text-slate-400">
+                  {aqi > 150
+                    ? 'Elevated fine particulates (PM2.5) bypass upper respiratory filtration to penetrate deep alveolar tissue, increasing cardiac workload and triggering bronchospasms.'
+                    : 'Ambient concentrations remain within tolerable human physiologic ranges; low-emission behaviors preserve urban air quality.'}
+                </span>
+              </div>
+              <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span className="font-semibold">Supporting Standards:</span>
+                <span>CPCB NAQI Guidelines (India) & WHO Global Air Quality Guidelines (2021)</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mandatory Medical Disclaimer Notice */}

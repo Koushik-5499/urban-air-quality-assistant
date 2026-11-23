@@ -6,7 +6,7 @@ export const MAP_DEFAULT_CENTER: [number, number] = [20.5937, 78.9629];
 export const MAP_DEFAULT_ZOOM = 5;
 
 export const MAP_CITIES: MapCityData[] = DEMO_LOCATIONS.map((loc) => {
-  const dash = DASHBOARD_DATA[loc.id] || DASHBOARD_DATA['coimbatore'];
+  const dash = DASHBOARD_DATA[loc.id] || DASHBOARD_DATA['delhi'];
   const pm25 = dash.pollutants.find((p) => p.id === 'pm25')?.value ?? 25;
   const pm10 = dash.pollutants.find((p) => p.id === 'pm10')?.value ?? 55;
   const lat = loc.coordinates?.lat ?? 11.0168;

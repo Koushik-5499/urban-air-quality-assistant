@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![CI](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml)
-[![Tests: 209 Passing](https://img.shields.io/badge/Tests-209%20Passing-brightgreen.svg)](./docs/TESTING.md)
+[![Tests: 230 Passing](https://img.shields.io/badge/Tests-230%20Passing-brightgreen.svg)](./docs/TESTING.md)
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-blue.svg)](./docs/ACCESSIBILITY.md)
 [![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%20Principles-purple.svg)](./ARCHITECTURE.md)
 
@@ -39,6 +39,20 @@ Urban Air Quality Assistant addresses this directly across **five foundational p
    Actionable substitutions: radiant electric/ceramic heating instead of biomass/wood burning, non-motorized micro-mobility for short errands, and community-level open waste burning reporting.
 5. **Direct Impact Analysis with Quantified Metrics:**
    Every recommendation quantifies citizen benefit and environmental return: e.g., *"Reduces fine particulate lung deposition by 45–70%"*, *"Prevents ~1.2 kg CO₂ and 4.8 g PM2.5 emissions per commute"*.
+
+### Challenge 6 Requirement Traceability Matrix
+
+| Challenge 6 Requirement | Implementation Feature | Frontend Source | Backend API Endpoint |
+|:---|:---|:---|:---|
+| **Winter Smog & Inversion Layers** | Thermal inversion protocol, diurnal peak trapping windows (05:00–08:30 IST) | `src/components/dashboard/HealthRecommendation.tsx`, `src/services/assistant/ruleEngine.ts` | `GET /api/v1/health/guidelines`, `POST /api/v1/health/ask` |
+| **Low-Emission Routines** | Off-peak transit rescheduling, micro-mobility, electric metro commute routing | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
+| **Practical Indoor Hacks** | Diurnal ventilation window (12:30–15:30), Corsi-Rosenthal DIY box filter, damp mopping | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
+| **Sustainable Alternatives** | Electric radiant heating over wood braziers, RWA leaf composting, community EVs | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
+| **Direct Quantified Impact** | Measurable emission and inhalation metrics (kg CO₂, g NOx, % PM deposition avoided) | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
+| **Vulnerable Cohort Guidance** | Tailored precautions for children, seniors, asthmatics, COPD, and pregnant women | `src/services/assistant/queryParser.ts`, `src/components/assistant/AssistantContextPanel.tsx` | `POST /api/v1/health/ask`, `GET /api/v1/health/recommendations` |
+| **Data Honesty & Provenance** | Clear 'Live CPCB data' vs 'Demo data (live CPCB unavailable)' badges across all 6 views | `src/components/common/DataProvenanceBadge.tsx`, `src/context/LocationContext.tsx` | `GET /api/v1/air-quality/source-status` |
+| **Explainability ("Why this advice?")** | Collapsible accordion disclosing Priority, Target Group, Inversion Reason, CPCB/WHO sources | `src/components/dashboard/HealthRecommendation.tsx`, `src/components/assistant/ChatMessageBubble.tsx` | `POST /api/v1/health/ask`, `GET /api/v1/health/guidelines` |
+| **Smog Epicenter Default** | Delhi NCR set as default city across location state, telemetry, and showcase flows | `src/context/LocationContext.tsx`, `src/hooks/useLocation.ts` | `GET /api/v1/air-quality/cities/Delhi` |
 
 ---
 
@@ -85,7 +99,7 @@ flowchart TD
 ### Request Flows
 
 **Dashboard Load:**
-1. `GET /api/v1/aqi/current?city=Delhi` → cache check → CPCB fetch → NAQI compute → response
+1. `GET /api/v1/aqi/latest?city=Delhi` → cache check → CPCB fetch → NAQI compute → response
 2. Frontend renders AQI gauge, pollutant cards, weather card, and health recommendations
 
 **AI Assistant:**
@@ -164,11 +178,11 @@ App available at: http://localhost:5173
 
 Comprehensive automated test suites validate all components across backend algorithms, AI integrations, and frontend interactions. See [docs/TESTING.md](./docs/TESTING.md) for full coverage metrics and breakdown.
 
-### Backend (154 Tests Passed, 0 Warnings)
+### Backend (175 Tests Passed, 0 Warnings)
 ```bash
 cd backend
 .venv/bin/pytest -q
-# 154 passed in 5.91s
+# 175 passed in 5.21s
 ```
 
 ### Frontend (55 Tests Passed, 9 Test Suites)

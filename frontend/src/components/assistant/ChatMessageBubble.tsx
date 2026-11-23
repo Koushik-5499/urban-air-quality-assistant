@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Bot, User, Copy, Check, Sparkles } from 'lucide-react';
+import { Bot, User, Copy, Check, Sparkles, HelpCircle, ChevronDown, Cpu, BookOpen } from 'lucide-react';
 import type { ChatMessage } from '../../types/assistant';
+import { Badge } from '../ui/Badge';
 
 export interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -8,6 +9,7 @@ export interface ChatMessageBubbleProps {
 
 export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
   const isUser = message.sender === 'user';
   const isSystem = message.sender === 'system';
 
@@ -110,7 +112,82 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
         }`}
       >
         {/* Message Content */}
+        {message.sender === 'assistant' && (
+          <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+            {message.provenance === 'offline_rules' ? (
+              <Badge variant="neutral" size="sm" className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                <BookOpen className="w-3 h-3 text-amber-500" aria-hidden="true" />
+                <span>Offline guidance (built-in rules)</span>
+              </Badge>
+            ) : (
+              <Badge variant="info" size="sm" className="flex items-center gap-1 font-medium">
+                <Cpu className="w-3 h-3 text-sky-500" aria-hidden="true" />
+                <span>Gemini AI (Google)</span>
+              </Badge>
+            )}
+          </div>
+        )}
         <div className="space-y-1">{renderFormattedText(message.text)}</div>
+
+        {/* Explainability Accordion: Why this advice? */}
+        {message.sender === 'assistant' && (
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowExplanation(!showExplanation)}
+              aria-expanded={showExplanation}
+              aria-controls={`explain-${message.id}`}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 transition-colors cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Why this advice?</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  showExplanation ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {showExplanation && (
+              <div
+                id={`explain-${message.id}`}
+                className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 space-y-1.5 text-[11px] animate-in fade-in duration-150"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-700 dark:text-slate-300">Priority:</span>
+                  <Badge variant="warning" size="sm">
+                    {message.explainability?.priority ??
+                      (message.cityContext && message.cityContext.aqi > 150
+                        ? 'High Priority Alert'
+                        : 'Standard Precaution')}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-700 dark:text-slate-300">Target Group:</span>{' '}
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {message.explainability?.targetGroup ??
+                      'Children, elderly, asthmatics, pregnant women, and outdoor commuters'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-700 dark:text-slate-300">Reason:</span>{' '}
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {message.explainability?.reason ??
+                      'Particulate matter (PM2.5/PM10) triggers respiratory tract inflammation, oxidative stress, and alveolar penetration.'}
+                  </span>
+                </div>
+                <div className="pt-1 border-t border-slate-200/50 dark:border-slate-700/50 text-[10px] text-slate-500 dark:text-slate-400">
+                  <span className="font-bold">Supporting Source:</span>{' '}
+                  <span>
+                    {message.explainability?.supportingSource ??
+                      'CPCB National Air Quality Index (NAQI) Standards & WHO Global Air Quality Guidelines (2021)'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer: Timestamp & Copy Button */}
         <div

@@ -69,7 +69,7 @@ export function MonitoredCities({
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {DEMO_LOCATIONS.map((loc) => {
-              const dash = DASHBOARD_DATA[loc.id] || DASHBOARD_DATA['coimbatore'];
+              const dash = DASHBOARD_DATA[loc.id] || DASHBOARD_DATA['delhi'];
               const isWatching = monitored.includes(loc.id);
               const isActive = loc.id === activeDashboardCityId;
               const alertSnippet = latestAlerts[loc.id] || 'No active warnings';

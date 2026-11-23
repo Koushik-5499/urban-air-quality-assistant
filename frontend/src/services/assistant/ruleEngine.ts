@@ -249,6 +249,19 @@ export function generateAssistantResponse(
         `• Seek prompt medical evaluation if you experience unusual chest discomfort, palpitations, or lightheadedness.\n\n` +
         `*Educational disclaimer: Educational information only, not clinical medical advice.*`;
 
+    case 'pregnant':
+      return `### 🤰 Precautionary Guidelines for Pregnant Women & Expecting Mothers in ${location.city}\n\n` +
+        `Prenatal particulate exposure requires rigorous mitigation during elevated AQI periods (current AQI: **${aqi} — ${category}**):\n\n` +
+        `**Key Vulnerability Factors:**\n` +
+        `• **Maternal Oxygen Transport:** Inhaled PM2.5 and carbon monoxide (CO) reduce trans-placental oxygen delivery to the fetus.\n` +
+        `• **Systemic Inflammation:** Ultra-fine particulates trigger systemic cytokine release, which epidemiological studies link to low birth weight and gestational complications.\n\n` +
+        `**Actionable Safeguards:**\n` +
+        `• Stay indoors in HEPA-filtered rooms during morning and evening rush hour pollution spikes.\n` +
+        `• Strictly wear a certified N95 respirator if outdoor transit is essential during AQI > 150.\n` +
+        `• Avoid direct exposure to incense, mosquito coils, or unvented cooking smoke indoors.\n` +
+        `• Maintain optimal hydration and consult obstetricians if experiencing any shortness of breath or dizziness.\n\n` +
+        `*Educational disclaimer: Precautionary guidance synthesized from WHO and CPCB maternal-child environmental health standards.*`;
+
     case 'asthma':
       return `For individuals with **asthma, COPD, or chronic respiratory conditions** in **${location.city}** (AQI **${aqi} — ${category}**):\n\n` +
         `**Current Atmospheric Triggers:**\n` +

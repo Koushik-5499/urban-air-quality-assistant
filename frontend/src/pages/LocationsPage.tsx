@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from '../hooks/useLocation';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { DataProvenanceBadge } from '../components/common/DataProvenanceBadge';
 import { LocationSearchBar } from '../components/locations/LocationSearchBar';
 import { RecentLocations } from '../components/locations/RecentLocations';
 import { LocationGrid } from '../components/locations/LocationGrid';
@@ -105,13 +106,14 @@ function Locations() {
       {/* 1. Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
               <MapPin className="w-5 h-5" aria-hidden="true" />
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Explore Air Quality by Location
             </h1>
+            <DataProvenanceBadge />
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
             Discover and compare air quality conditions across cities. Inspect microclimate telemetry, ambient pollutant levels, and historical health thresholds.

@@ -37,6 +37,11 @@ export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
     category: 'Direct Impact',
   },
   {
+    id: 'sq-pregnant',
+    question: 'What specific precautions should pregnant women, infants, and seniors follow today?',
+    category: 'Vulnerable Groups',
+  },
+  {
     id: 'sq-5',
     question: 'What indoor precautions should I take during Very Unhealthy air quality?',
     category: 'Protection',
@@ -61,6 +66,7 @@ export type AssistantTopic =
   | 'protection'
   | 'children'
   | 'elderly'
+  | 'pregnant'
   | 'asthma'
   | 'general_fallback';
 
@@ -206,6 +212,15 @@ export function detectQueryTopic(query: string): AssistantTopic {
     q.includes('babies')
   ) {
     return 'children';
+  }
+
+  if (
+    q.includes('pregnant') ||
+    q.includes('pregnancy') ||
+    q.includes('expecting') ||
+    q.includes('maternal')
+  ) {
+    return 'pregnant';
   }
 
   if (

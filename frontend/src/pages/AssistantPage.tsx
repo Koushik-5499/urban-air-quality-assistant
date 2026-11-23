@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, MessageSquare, ShieldCheck } from 'lucide-react';
 import { useLocation } from '../hooks/useLocation';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { DataProvenanceBadge } from '../components/common/DataProvenanceBadge';
 import { AssistantProfileHeader } from '../components/assistant/AssistantProfileHeader';
 import { ChatMessageBubble } from '../components/assistant/ChatMessageBubble';
 import { ChatInput } from '../components/assistant/ChatInput';
@@ -53,6 +54,13 @@ function Assistant() {
         city: selectedCityData.location.city,
         aqi: selectedCityData.aqi,
         category: selectedCityData.category,
+      },
+      provenance: 'offline_rules',
+      explainability: {
+        priority: 'Baseline Advisory',
+        targetGroup: 'General public & sensitive cohorts',
+        reason: 'Initial atmospheric baseline telemetry loaded for active metropolitan area.',
+        supportingSource: 'CPCB National Air Quality Index (NAQI) Standards',
       },
     }),
     [selectedCityData]
@@ -165,6 +173,20 @@ function Assistant() {
             aqi: selectedCityData.aqi,
             category: selectedCityData.category,
           },
+          provenance: 'gemini',
+          explainability: {
+            priority:
+              selectedCityData.aqi > 200
+                ? 'Critical Health Alert'
+                : selectedCityData.aqi > 100
+                ? 'Elevated Precaution'
+                : 'Standard Health Advisory',
+            targetGroup:
+              'Families, pediatric cohorts, elderly, asthmatics, and active outdoor commuters',
+            reason:
+              'Assessed using generative AI grounded in CPCB NAQI guidelines and real-time station metrics.',
+            supportingSource: 'Google Gemini AI + CPCB National Standards + WHO Guidelines (2021)',
+          },
         };
 
         setMessages((prev) => [...prev, assistantMsg]);
@@ -180,6 +202,16 @@ function Assistant() {
             city: selectedCityData.location.city,
             aqi: selectedCityData.aqi,
             category: selectedCityData.category,
+          },
+          provenance: 'offline_rules',
+          explainability: {
+            priority:
+              selectedCityData.aqi > 150 ? 'High Priority Alert' : 'Standard Precaution',
+            targetGroup:
+              'Local residents, sensitive individuals (asthma/COPD), and children',
+            reason:
+              'Generated via local deterministic rule engine using simulated and local atmospheric telemetry.',
+            supportingSource: 'CPCB National Air Quality Index Breakpoints & WHO Ambient Standards',
           },
         };
 
@@ -207,13 +239,14 @@ function Assistant() {
       {/* 1. Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="p-2 rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60">
               <Bot className="w-5 h-5" aria-hidden="true" />
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               AI Environmental Health Assistant
             </h1>
+            <DataProvenanceBadge />
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
             Context-aware environmental health consultation powered by Google Gemini and CPCB guidelines. Receive immediate guidance on outdoor exertion, particulate exposure thresholds, protective measures, and sensitive group precautions tailored to your active city.

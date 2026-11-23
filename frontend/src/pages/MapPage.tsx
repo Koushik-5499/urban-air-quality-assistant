@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from '../hooks/useLocation';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { DataProvenanceBadge } from '../components/common/DataProvenanceBadge';
 import { PollutionMap } from '../components/maps/PollutionMap';
 import { MapFilters } from '../components/maps/MapFilters';
 import { MapCityDrawer } from '../components/maps/MapCityDrawer';
@@ -128,13 +129,14 @@ export function MapPage() {
       {/* 1. Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="p-2 rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60">
               <MapIcon className="w-5 h-5" aria-hidden="true" />
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Interactive Pollution Map
             </h1>
+            <DataProvenanceBadge />
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
             Geospatial air quality monitoring across Indian metropolitan corridors. Track regional atmospheric dispersion zones, localized AQI hotspots, and sensor telemetry.

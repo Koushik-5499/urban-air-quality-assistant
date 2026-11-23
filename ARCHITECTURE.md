@@ -35,6 +35,8 @@ The Urban Air Quality Assistant is an enterprise-grade, public environmental mon
 │  │  - /api/v1/forecast   │  - ForecastService    │  - HealthSafetyValidator         │  │
 │  │  - /api/v1/alerts     │  - AlertService       │  - CPCB / Mock Data Ingestion    │  │
 │  │  - /api/v1/history    │  - HistoryService     │  - WebPushChannel (VAPID)        │  │
+│  │  - /api/v1/air-quality│  - WeatherClient      │  - CPCB Rest API Client          │  │
+│  │  - /api/v1/stations   │  - ComparisonService  │  - Mock Fallback Providers       │  │
 │  └───────────────────────┴───────────────────────┴──────────────────────────────────┘  │
 └───────────────────────────────────────────┬────────────────────────────────────────────┘
                                             │

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { BarChart3, Info, MapPin, CheckCircle2 } from 'lucide-react';
 import { useLocation } from '../hooks/useLocation';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { DataProvenanceBadge } from '../components/common/DataProvenanceBadge';
 import { Badge } from '../components/ui/Badge';
 import { forecastApi } from '../services/api/forecastApi';
 import {
@@ -109,9 +110,12 @@ function Analytics() {
               <BarChart3 className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Historical Analytics & Forecasting
-              </h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  Historical Analytics & Forecasting
+                </h1>
+                <DataProvenanceBadge />
+              </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Empirical telemetry trajectories, particulate dynamics, and deterministic predictive modeling
               </p>

@@ -1,5 +1,12 @@
 export type MessageSender = 'user' | 'assistant' | 'system';
 
+export interface AdviceExplanation {
+  priority: string;
+  targetGroup: string;
+  reason: string;
+  supportingSource: string;
+}
+
 export interface ChatMessage {
   id: string;
   sender: MessageSender;
@@ -10,6 +17,8 @@ export interface ChatMessage {
     aqi: number;
     category: string;
   };
+  provenance?: 'gemini' | 'offline_rules';
+  explainability?: AdviceExplanation;
 }
 
 export type HealthSeverity = 'low' | 'moderate' | 'high' | 'severe';
