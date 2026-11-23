@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![CI](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml)
-[![Tests: 230 Passing](https://img.shields.io/badge/Tests-230%20Passing-brightgreen.svg)](./docs/TESTING.md)
+[![Tests: 241 Passing](https://img.shields.io/badge/Tests-241%20Passing-brightgreen.svg)](./docs/TESTING.md)
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-blue.svg)](./docs/ACCESSIBILITY.md)
 [![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%20Principles-purple.svg)](./ARCHITECTURE.md)
 
@@ -178,19 +178,19 @@ App available at: http://localhost:5173
 
 Comprehensive automated test suites validate all components across backend algorithms, AI integrations, and frontend interactions. See [docs/TESTING.md](./docs/TESTING.md) for full coverage metrics and breakdown.
 
-### Backend (175 Tests Passed, 0 Warnings)
+### Backend (182 Tests Passed, 0 Warnings)
 ```bash
 cd backend
 .venv/bin/pytest -q
-# 175 passed in 5.21s
+# 182 passed in 6.83s
 ```
 
-### Frontend (55 Tests Passed, 9 Test Suites)
+### Frontend (59 Tests Passed, 10 Test Suites)
 ```bash
 cd frontend
 npm test
-# Test Files  9 passed (9)
-# Tests       55 passed (55)
+# Test Files  10 passed (10)
+# Tests       59 passed (59)
 
 npm run lint
 # (exit 0, 0 errors, 0 warnings)
@@ -201,7 +201,7 @@ npx tsc -b --noEmit
 npm run build
 # ✓ built in 5.36s
 ```
-**Total Verified Tests: 230 automated unit, integration, and E2E tests (175 Backend + 55 Frontend).**
+**Total Verified Tests: 241 automated unit, integration, and E2E tests (182 Backend + 59 Frontend).**
 
 ---
 

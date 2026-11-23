@@ -5,6 +5,7 @@ from collections import Counter
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from app.models.aqi_reading import AQIReading
@@ -95,7 +96,12 @@ class ComparisonService:
         include_simulated: bool,
     ) -> LocationComparisonItem | None:
         """Fetch and evaluate comparison metrics for a single monitoring station."""
-        st_entity = db.get(MonitoringStation, station_id)
+        try:
+            st_entity = db.scalars(
+                select(MonitoringStation).where(MonitoringStation.id == station_id)
+            ).first()
+        except NoResultFound:
+            st_entity = None
         if not st_entity:
             return None
 

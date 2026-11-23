@@ -28,3 +28,4 @@ export function DataProvenanceBadge({ className = '', forceProvenance }: DataPro
     </div>
   );
 }
+

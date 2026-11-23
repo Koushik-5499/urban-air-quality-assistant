@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from app.models.city import City
@@ -149,7 +150,12 @@ class HistoryValidator:
         """Find MonitoringStation entity, raising 404 if station_id provided but not found."""
         if station_id is None:
             return None
-        station = db.get(MonitoringStation, station_id)
+        try:
+            station = db.scalars(
+                select(MonitoringStation).where(MonitoringStation.id == station_id)
+            ).first()
+        except NoResultFound:
+            station = None
         if not station:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

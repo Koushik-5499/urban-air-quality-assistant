@@ -717,3 +717,154 @@ async def test_api_push_subscription(client: AsyncClient):
     )
     assert resp.status_code == 410
     assert "retired" in resp.json()["detail"].lower()
+
+
+def test_alert_service_mark_read_and_unread_count(db_session, alert_seed_data):
+    """Test AlertService mark_alert_read and get_unread_count."""
+    from sqlalchemy import select
+    from app.models.alert import Alert
+    from app.services.alerts.alert_service import AlertService
+
+    alert = db_session.execute(select(Alert).limit(1)).scalar_one_or_none()
+    if alert:
+        unread_before = AlertService.get_unread_count(db_session)
+        assert unread_before.unread_count >= 1
+
+        updated = AlertService.mark_alert_read(db_session, alert.id)
+        assert updated.id == alert.id
+        assert alert.is_read is True
+
+
+def test_alert_service_mark_read_not_found(db_session):
+    """Test AlertService mark_alert_read raises 404 for missing alert ID."""
+    from fastapi import HTTPException
+    from app.services.alerts.alert_service import AlertService
+
+    with pytest.raises(HTTPException) as exc_info:
+        AlertService.mark_alert_read(db_session, 999999)
+    assert exc_info.value.status_code == 404
+
+
+def test_alert_service_preferences_crud(db_session, alert_seed_data):
+    """Test AlertService get_preferences and set_preferences."""
+    from app.schemas.alert import AlertPreferenceCreate
+    from app.services.alerts.alert_service import AlertService
+
+    pref = AlertService.get_preferences(db_session, user_id="test_user_coverage")
+    assert pref.user_id == "test_user_coverage"
+    assert pref.is_enabled is True
+
+    update_payload = AlertPreferenceCreate(
+        city="Delhi",
+        min_aqi_threshold=150,
+        min_severity="Poor",
+        is_enabled=False,
+        channels=["in_app"],
+        quiet_hours_start="23:00",
+        quiet_hours_end="06:00",
+        timezone="Asia/Kolkata",
+    )
+    updated = AlertService.upsert_preferences(
+        db_session,
+        pref_in=update_payload,
+        user_id="test_user_coverage",
+    )
+    assert updated.min_aqi_threshold == 150
+    assert updated.is_enabled is False
+
+    # Second update tests the existing preference branch
+    update_payload.is_enabled = True
+    re_updated = AlertService.upsert_preferences(
+        db_session,
+        pref_in=update_payload,
+        user_id="test_user_coverage",
+    )
+    assert re_updated.is_enabled is True
+
+
+def test_alert_service_preferences_invalid_inputs(db_session, alert_seed_data):
+    """Test AlertService set_preferences validation for quiet hours, channels, and city."""
+    from fastapi import HTTPException
+    from app.schemas.alert import AlertPreferenceCreate
+    from app.services.alerts.alert_service import AlertService
+
+    # 1. Invalid city
+    with pytest.raises(HTTPException) as exc:
+        AlertService.upsert_preferences(
+            db_session,
+            pref_in=AlertPreferenceCreate(city="NonExistentCity123"),
+            user_id="u1",
+        )
+    assert exc.value.status_code == 404
+
+    # 2. Invalid quiet hours format
+    from pydantic import ValidationError
+    with pytest.raises((HTTPException, ValidationError)):
+        AlertService.upsert_preferences(
+            db_session,
+            pref_in=AlertPreferenceCreate(city="Delhi", quiet_hours_start="25:00", quiet_hours_end="07:00"),
+            user_id="u1",
+        )
+
+    # 3. Invalid channel
+    with pytest.raises((HTTPException, ValidationError)):
+        AlertService.upsert_preferences(
+            db_session,
+            pref_in=AlertPreferenceCreate(city="Delhi", channels=["sms"]),
+            user_id="u1",
+        )
+
+
+def test_alert_service_push_subscription_lifecycle(db_session):
+    """Test AlertService register_push_subscription creation and update."""
+    from app.schemas.alert import PushSubscriptionCreate
+    from app.services.alerts.alert_service import AlertService
+
+    sub_in = PushSubscriptionCreate(
+        endpoint="https://push.example.com/unique_cov_endpoint_1",
+        p256dh="key123",
+        auth="auth123",
+    )
+    # 1. Create
+    res1 = AlertService.register_push_subscription(db_session, sub_in, user_id="u_cov_1")
+    assert res1 is True
+
+    # 2. Update existing endpoint
+    sub_in.p256dh = "key456"
+    res2 = AlertService.register_push_subscription(db_session, sub_in, user_id="u_cov_1")
+    assert res2 is True
+
+
+@pytest.mark.anyio
+async def test_alert_service_status_and_test_notification_push(db_session, alert_seed_data):
+    """Test AlertService get_status and send_test_notification with push channel."""
+    from unittest.mock import AsyncMock, patch
+    from app.schemas.alert import AlertTestNotificationRequest
+    from app.services.alerts.alert_service import AlertService
+
+    service = AlertService()
+    status_resp = service.get_status()
+    assert status_resp.alerts_enabled is True
+    assert "in_app" in status_resp.enabled_channels
+
+    # Test send_test_notification with mocked push
+    with patch.object(service.notification_service, "dispatch_web_push", new_callable=AsyncMock) as mock_dispatch:
+        mock_dispatch.return_value = 1
+        req = AlertTestNotificationRequest(channel="push", city="Delhi", aqi=250)
+        res = await service.send_test_notification(db_session, req)
+        assert res.success is True
+        assert "Dispatched push" in res.message
+
+
+@pytest.mark.anyio
+async def test_alert_service_process_alerts_error_branch(db_session, alert_seed_data):
+    """Test process_all_alerts error isolation branch."""
+    from unittest.mock import patch
+    from app.services.alerts.alert_service import AlertService
+
+    service = AlertService()
+    with patch.object(service, "evaluate_and_generate_alerts", side_effect=ValueError("Simulated evaluation error")):
+        process_res = await service.process_all_alerts(db_session)
+        assert len(process_res.errors) > 0
+        assert process_res.success is False
+
