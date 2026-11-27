@@ -33,7 +33,7 @@ from app.services.alerts.alert_generator import AlertGenerator
 from app.services.alerts.deduplication import AlertDeduplicator
 from app.services.alerts.delivery_tracker import DeliveryTracker
 from app.services.alerts.notification_service import NotificationService
-from app.services.alerts.threshold_engine import ThresholdEngine
+from app.services.alerts.threshold_engine import AlertCondition, ThresholdEngine
 from app.services.history.validators import HistoryValidator
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,63 @@ class AlertService:
     # -----------------------------------------------------------------------
 
     @classmethod
+    def _build_alert_filters(
+        cls,
+        city_entity: City | None,
+        station_entity: MonitoringStation | None,
+        severity: str | None,
+        is_read: bool | None,
+        is_simulated: bool | None,
+        start_utc: datetime | None,
+        end_utc: datetime | None,
+    ) -> list:
+        """Build SQLAlchemy filter expressions for alert queries."""
+        filters = []
+        if city_entity:
+            filters.append(Alert.city_id == city_entity.id)
+        if station_entity:
+            filters.append(Alert.station_id == station_entity.id)
+        if severity:
+            filters.append(Alert.severity.ilike(severity.strip()))
+        if is_read is not None:
+            filters.append(Alert.is_read.is_(is_read))
+        if is_simulated is not None:
+            filters.append(Alert.is_simulated.is_(is_simulated))
+        if start_utc:
+            filters.append(Alert.created_at >= start_utc)
+        if end_utc:
+            filters.append(Alert.created_at <= end_utc)
+        return filters
+
+    @staticmethod
+    def _map_alert_to_response(a: Alert) -> AlertResponse:
+        """Map a single Alert ORM entity to its API response schema."""
+        return AlertResponse(
+            id=a.id,
+            city_id=a.city_id,
+            city_name=a.city.name if a.city else None,
+            station_id=a.station_id,
+            station_name=a.station.station_name if a.station else None,
+            aqi_reading_id=a.aqi_reading_id,
+            title=a.title,
+            description=a.description,
+            severity=a.severity,
+            alert_type=a.alert_type,
+            current_aqi=a.current_aqi,
+            previous_aqi=a.previous_aqi,
+            threshold_value=a.threshold_value,
+            aqi_category=a.aqi_category,
+            dominant_pollutant=a.dominant_pollutant,
+            source=a.source,
+            dedup_key=a.dedup_key,
+            delivery_status=a.delivery_status,
+            is_read=a.is_read,
+            is_simulated=a.is_simulated,
+            created_at=a.created_at,
+            expires_at=a.expires_at,
+        )
+
+    @classmethod
     def list_alerts(
         cls,
         db: Session,
@@ -84,21 +141,9 @@ class AlertService:
         city_entity = HistoryValidator.resolve_city(db, city) if city else None
         station_entity = HistoryValidator.resolve_station(db, station_id) if station_id else None
 
-        filters = []
-        if city_entity:
-            filters.append(Alert.city_id == city_entity.id)
-        if station_entity:
-            filters.append(Alert.station_id == station_entity.id)
-        if severity:
-            filters.append(Alert.severity.ilike(severity.strip()))
-        if is_read is not None:
-            filters.append(Alert.is_read.is_(is_read))
-        if is_simulated is not None:
-            filters.append(Alert.is_simulated.is_(is_simulated))
-        if start_utc:
-            filters.append(Alert.created_at >= start_utc)
-        if end_utc:
-            filters.append(Alert.created_at <= end_utc)
+        filters = cls._build_alert_filters(
+            city_entity, station_entity, severity, is_read, is_simulated, start_utc, end_utc
+        )
 
         # Count total matching alerts
         count_stmt = select(func.count(Alert.id))
@@ -125,34 +170,7 @@ class AlertService:
         )
 
         alert_entities = list(db.execute(data_stmt).scalars().all())
-
-        alert_responses = [
-            AlertResponse(
-                id=a.id,
-                city_id=a.city_id,
-                city_name=a.city.name if a.city else None,
-                station_id=a.station_id,
-                station_name=a.station.station_name if a.station else None,
-                aqi_reading_id=a.aqi_reading_id,
-                title=a.title,
-                description=a.description,
-                severity=a.severity,
-                alert_type=a.alert_type,
-                current_aqi=a.current_aqi,
-                previous_aqi=a.previous_aqi,
-                threshold_value=a.threshold_value,
-                aqi_category=a.aqi_category,
-                dominant_pollutant=a.dominant_pollutant,
-                source=a.source,
-                dedup_key=a.dedup_key,
-                delivery_status=a.delivery_status,
-                is_read=a.is_read,
-                is_simulated=a.is_simulated,
-                created_at=a.created_at,
-                expires_at=a.expires_at,
-            )
-            for a in alert_entities
-        ]
+        alert_responses = [cls._map_alert_to_response(a) for a in alert_entities]
 
         return AlertPaginatedResponse(
             page=page,
@@ -300,6 +318,34 @@ class AlertService:
             updated_at=pref.updated_at,
         )
 
+    @staticmethod
+    def _validate_quiet_hours(start: str | None, end: str | None) -> None:
+        """Raise HTTPException if quiet hours format is invalid."""
+        if not start or not end:
+            return
+        for val in [start, end]:
+            parts = val.split(":")
+            try:
+                h, m = int(parts[0]), int(parts[1])
+            except (ValueError, IndexError):
+                h, m = -1, -1
+            if len(parts) != 2 or not (0 <= h <= 23 and 0 <= m <= 59):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Quiet hours must be in valid HH:MM format (00:00 to 23:59).",
+                )
+
+    @staticmethod
+    def _validate_channels(channels: list[str]) -> None:
+        """Raise HTTPException if any channel name is unsupported."""
+        valid_channels = {"in_app", "push"}
+        for ch in channels:
+            if ch not in valid_channels:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid channel '{ch}'. Supported: {sorted(list(valid_channels))}.",
+                )
+
     @classmethod
     def upsert_preferences(
         cls,
@@ -319,24 +365,8 @@ class AlertService:
             HistoryValidator.resolve_station(db, pref_in.station_id) if pref_in.station_id else None
         )
 
-        # Validate quiet hours
-        if pref_in.quiet_hours_start and pref_in.quiet_hours_end:
-            for val in [pref_in.quiet_hours_start, pref_in.quiet_hours_end]:
-                parts = val.split(":")
-                if len(parts) != 2 or not (0 <= int(parts[0]) <= 23 and 0 <= int(parts[1]) <= 59):
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Quiet hours must be in valid HH:MM format (00:00 to 23:59).",
-                    )
-
-        # Validate channels
-        valid_channels = {"in_app", "push"}
-        for ch in pref_in.channels:
-            if ch not in valid_channels:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid channel '{ch}'. Supported: {sorted(list(valid_channels))}.",
-                )
+        cls._validate_quiet_hours(pref_in.quiet_hours_start, pref_in.quiet_hours_end)
+        cls._validate_channels(pref_in.channels)
 
         channels_str = ",".join(pref_in.channels)
 
@@ -395,6 +425,48 @@ class AlertService:
     # Alert Evaluation & Processing
     # -----------------------------------------------------------------------
 
+    async def _process_condition(
+        self,
+        db: Session,
+        city_id: int,
+        station_id: int | None,
+        current_reading: AQIReading,
+        cond: AlertCondition,
+        user_pref: AlertPreference | None,
+    ) -> Alert | None:
+        """Deduplicate, check quiet hours, and persist a single alert condition."""
+        dedup_key = AlertDeduplicator.generate_dedup_key(
+            city_id=city_id,
+            station_id=station_id,
+            alert_type=cond.alert_type,
+            current_aqi=cond.current_aqi,
+            measurement_timestamp=cond.measurement_timestamp,
+        )
+        if AlertDeduplicator.is_duplicate(
+            db=db, dedup_key=dedup_key, city_id=city_id,
+            alert_type=cond.alert_type, station_id=station_id,
+        ):
+            return None
+
+        _, delivery_status = DeliveryTracker.should_deliver(
+            severity=cond.severity,
+            quiet_hours_start=user_pref.quiet_hours_start if user_pref else None,
+            quiet_hours_end=user_pref.quiet_hours_end if user_pref else None,
+            tz_name=user_pref.timezone if user_pref else "Asia/Kolkata",
+        )
+        alert = AlertGenerator.create_alert_from_condition(
+            db=db,
+            city_id=city_id,
+            condition=cond,
+            station_id=station_id,
+            aqi_reading_id=current_reading.id,
+            expiration_hours=self.settings.ALERT_EXPIRATION_HOURS,
+        )
+        alert.delivery_status = delivery_status
+        db.commit()
+        db.refresh(alert)
+        return alert
+
     async def evaluate_and_generate_alerts(
         self,
         db: Session,
@@ -403,7 +475,6 @@ class AlertService:
         user_pref: AlertPreference | None = None,
     ) -> list[Alert]:
         """Evaluate chronological readings for a location and generate deduplicated alerts."""
-        # Query last 2 readings
         query = select(AQIReading).where(AQIReading.city_id == city_id)
         if station_id:
             query = query.where(AQIReading.station_id == station_id)
@@ -421,62 +492,24 @@ class AlertService:
         station_entity = db.get(MonitoringStation, station_id) if station_id else None
         station_name = station_entity.station_name if station_entity else None
 
-        min_threshold = user_pref.min_aqi_threshold if user_pref else 100
-
         conditions = ThresholdEngine.evaluate_readings(
             current_reading=current_reading,
             previous_reading=previous_reading,
             city_name=city_name,
             station_name=station_name,
-            min_threshold=min_threshold,
+            min_threshold=user_pref.min_aqi_threshold if user_pref else 100,
             deterioration_threshold=self.settings.ALERT_DETERIORATION_THRESHOLD,
             improvement_threshold=self.settings.ALERT_IMPROVEMENT_THRESHOLD,
         )
 
         generated_alerts: list[Alert] = []
-
         for cond in conditions:
-            # Deduplication check
-            dedup_key = AlertDeduplicator.generate_dedup_key(
-                city_id=city_id,
-                station_id=station_id,
-                alert_type=cond.alert_type,
-                current_aqi=cond.current_aqi,
-                measurement_timestamp=cond.measurement_timestamp,
+            alert = await self._process_condition(
+                db, city_id, station_id, current_reading, cond, user_pref
             )
-
-            if AlertDeduplicator.is_duplicate(
-                db=db,
-                dedup_key=dedup_key,
-                city_id=city_id,
-                alert_type=cond.alert_type,
-                station_id=station_id,
-            ):
-                continue
-
-            # Check quiet hours & delivery status
-            should_deliver, delivery_status = DeliveryTracker.should_deliver(
-                severity=cond.severity,
-                quiet_hours_start=user_pref.quiet_hours_start if user_pref else None,
-                quiet_hours_end=user_pref.quiet_hours_end if user_pref else None,
-                tz_name=user_pref.timezone if user_pref else "Asia/Kolkata",
-            )
-
-            alert = AlertGenerator.create_alert_from_condition(
-                db=db,
-                city_id=city_id,
-                condition=cond,
-                station_id=station_id,
-                aqi_reading_id=current_reading.id,
-                expiration_hours=self.settings.ALERT_EXPIRATION_HOURS,
-            )
-            alert.delivery_status = delivery_status
-            db.commit()
-            db.refresh(alert)
-            generated_alerts.append(alert)
-
-            # In public-only architecture, personal email and push dispatches are disabled.
-            # Environmental alerts remain available in the public alert feed.
+            if alert:
+                generated_alerts.append(alert)
+            # In public-only architecture, personal email/push dispatches are disabled.
 
         return generated_alerts
 

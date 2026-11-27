@@ -163,6 +163,32 @@ class HistoryValidator:
             )
         return station
 
+    @staticmethod
+    def _parse_city_list(cities: list[str] | None) -> list[str]:
+        """Flatten and deduplicate comma-separated city entries."""
+        result: list[str] = []
+        if not cities:
+            return result
+        for item in cities:
+            if "," in item:
+                result.extend(c.strip() for c in item.split(",") if c.strip())
+            elif item.strip():
+                result.append(item.strip())
+        return result
+
+    @staticmethod
+    def _parse_station_list(stations: list[int] | None) -> list[int]:
+        """Flatten and deduplicate comma-separated station ID entries."""
+        result: list[int] = []
+        if not stations:
+            return result
+        for s in stations:
+            if isinstance(s, str) and "," in s:
+                result.extend(int(sub.strip()) for sub in s.split(",") if sub.strip().isdigit())
+            elif isinstance(s, int):
+                result.append(s)
+        return result
+
     @classmethod
     def validate_comparison_targets(
         cls,
@@ -170,23 +196,8 @@ class HistoryValidator:
         stations: list[int] | None,
     ) -> tuple[list[str], list[int]]:
         """Validate that comparison request contains between 2 and 10 distinct targets."""
-        parsed_cities: list[str] = []
-        if cities:
-            for item in cities:
-                if "," in item:
-                    parsed_cities.extend([c.strip() for c in item.split(",") if c.strip()])
-                elif item.strip():
-                    parsed_cities.append(item.strip())
-
-        parsed_stations: list[int] = []
-        if stations:
-            for s in stations:
-                if isinstance(s, str) and "," in s:
-                    for sub in s.split(","):
-                        if sub.strip().isdigit():
-                            parsed_stations.append(int(sub.strip()))
-                elif isinstance(s, int):
-                    parsed_stations.append(s)
+        parsed_cities = cls._parse_city_list(cities)
+        parsed_stations = cls._parse_station_list(stations)
 
         total_targets = len(parsed_cities) + len(parsed_stations)
         if total_targets < 2:

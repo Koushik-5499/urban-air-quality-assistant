@@ -336,6 +336,86 @@ class ForecastService:
                 message=f"Forecast generation completed successfully using {model.name}.",
             )
 
+    def _apply_horizon_filter(
+        self,
+        query: Any,
+        parsed_horizon: int | None,
+    ) -> Any:
+        """Apply horizon filtering: specific or all standard horizons."""
+        if parsed_horizon is not None:
+            return query.where(AQIForecast.horizon_hours == parsed_horizon)
+        return query.where(AQIForecast.horizon_hours.in_(SUPPORTED_HORIZONS))
+
+    async def _get_or_generate_run(
+        self,
+        db: Session,
+        city: Any,
+        station: Any,
+        run_stmt: Any,
+    ) -> Any:
+        """Fetch latest completed run, triggering a new one if none exists."""
+        run = db.execute(run_stmt).scalar_one_or_none()
+        if not run:
+            await self.generate_forecast_run(
+                db=db,
+                city_name=city.name,
+                station_id=station.id if station else None,
+            )
+            run = db.execute(run_stmt).scalar_one_or_none()
+        return run
+
+    def _build_forecast_item(
+        self,
+        p: AQIForecast,
+        run: ForecastRun,
+        city_name: str,
+        station: MonitoringStation | None,
+        include_uncertainty: bool,
+    ) -> AQIForecastItem:
+        """Map a single AQIForecast DB row + run metadata to the response schema."""
+        return AQIForecastItem(
+            city=city_name,
+            station_id=p.station_id,
+            station_name=station.station_name if station else None,
+            forecast_timestamp=p.forecast_timestamp,
+            generated_at=run.generated_at,
+            predicted_aqi=p.predicted_aqi,
+            predicted_category=p.predicted_category,
+            dominant_pollutant=p.dominant_pollutant,
+            horizon_hours=p.horizon_hours,
+            horizon_label=f"{p.horizon_hours}h",
+            lower_bound=p.lower_bound if include_uncertainty else None,
+            upper_bound=p.upper_bound if include_uncertainty else None,
+            uncertainty_status=p.uncertainty_status if include_uncertainty else "unavailable",
+            model_name=p.model_name,
+            model_version=p.model_version,
+            training_data_start=run.training_data_start,
+            training_data_end=run.training_data_end,
+            training_samples=run.training_samples,
+            data_quality="simulated" if p.is_simulated else "verified_cpcb",
+            source="Simulated Engine" if p.is_simulated else "CPCB Historical Observations",
+            is_simulated=p.is_simulated,
+            is_forecast=True,
+            forecast_status="valid",
+        )
+
+    def _latest_completed_run_stmt(
+        self,
+        city_id: int,
+        station_id: int | None,
+    ) -> Any:
+        """Build a SQLAlchemy select for the latest completed ForecastRun for a city/station."""
+        return (
+            select(ForecastRun)
+            .where(
+                ForecastRun.city_id == city_id,
+                ForecastRun.station_id == station_id,
+                ForecastRun.status == "completed",
+            )
+            .order_by(desc(ForecastRun.generated_at))
+            .limit(1)
+        )
+
     async def get_forecasts(
         self,
         db: Session,
@@ -348,27 +428,8 @@ class ForecastService:
         city, station = ForecastValidator.resolve_city_and_station(db, city_name, station_id)
         parsed_horizon = ForecastValidator.parse_horizon(horizon)
 
-        # Retrieve the latest completed run
-        run_stmt = (
-            select(ForecastRun)
-            .where(
-                ForecastRun.city_id == city.id,
-                ForecastRun.station_id == (station.id if station else None),
-                ForecastRun.status == "completed",
-            )
-            .order_by(desc(ForecastRun.generated_at))
-            .limit(1)
-        )
-        run = db.execute(run_stmt).scalar_one_or_none()
-
-        # If no completed run exists, trigger an automatic run
-        if not run:
-            await self.generate_forecast_run(
-                db=db,
-                city_name=city.name,
-                station_id=station.id if station else None,
-            )
-            run = db.execute(run_stmt).scalar_one_or_none()
+        run_stmt = self._latest_completed_run_stmt(city.id, station.id if station else None)
+        run = await self._get_or_generate_run(db, city, station, run_stmt)
 
         if not run:
             raise HTTPException(
@@ -376,43 +437,14 @@ class ForecastService:
                 detail=f"No forecast records found for {city.name}.",
             )
 
-        # Query forecast points
-        query = select(AQIForecast).where(AQIForecast.forecast_run_id == run.id)
-        if parsed_horizon is not None:
-            query = query.where(AQIForecast.horizon_hours == parsed_horizon)
-        else:
-            # By default return the standard supported horizons: 1, 6, 12, 24, 48, 72
-            query = query.where(AQIForecast.horizon_hours.in_(SUPPORTED_HORIZONS))
-
-        query = query.order_by(AQIForecast.horizon_hours.asc())
+        query = self._apply_horizon_filter(
+            select(AQIForecast).where(AQIForecast.forecast_run_id == run.id),
+            parsed_horizon,
+        ).order_by(AQIForecast.horizon_hours.asc())
         points = list(db.execute(query).scalars().all())
 
         items = [
-            AQIForecastItem(
-                city=city.name,
-                station_id=p.station_id,
-                station_name=station.station_name if station else None,
-                forecast_timestamp=p.forecast_timestamp,
-                generated_at=run.generated_at,
-                predicted_aqi=p.predicted_aqi,
-                predicted_category=p.predicted_category,
-                dominant_pollutant=p.dominant_pollutant,
-                horizon_hours=p.horizon_hours,
-                horizon_label=f"{p.horizon_hours}h",
-                lower_bound=p.lower_bound if include_uncertainty else None,
-                upper_bound=p.upper_bound if include_uncertainty else None,
-                uncertainty_status=p.uncertainty_status if include_uncertainty else "unavailable",
-                model_name=p.model_name,
-                model_version=p.model_version,
-                training_data_start=run.training_data_start,
-                training_data_end=run.training_data_end,
-                training_samples=run.training_samples,
-                data_quality="simulated" if p.is_simulated else "verified_cpcb",
-                source="Simulated Engine" if p.is_simulated else "CPCB Historical Observations",
-                is_simulated=p.is_simulated,
-                is_forecast=True,
-                forecast_status="valid",
-            )
+            self._build_forecast_item(p, run, city.name, station, include_uncertainty)
             for p in points
         ]
 
@@ -451,15 +483,7 @@ class ForecastService:
             .order_by(desc(ForecastRun.generated_at))
             .limit(1)
         )
-        run = db.execute(run_stmt).scalar_one_or_none()
-
-        if not run:
-            await self.generate_forecast_run(
-                db=db,
-                city_name=city.name,
-                station_id=station.id if station else None,
-            )
-            run = db.execute(run_stmt).scalar_one_or_none()
+        run = await self._get_or_generate_run(db, city, station, run_stmt)
 
         if not run:
             raise HTTPException(
@@ -630,6 +654,34 @@ class ForecastService:
             runs=summaries,
         )
 
+    def _query_eval_metrics(
+        self, db: Session, run: ForecastRun
+    ) -> list[ModelEvaluationMetric]:
+        """Query ForecastEvaluation rows for a completed run and map to response schema."""
+        evals_stmt = (
+            select(ForecastEvaluation)
+            .where(ForecastEvaluation.forecast_run_id == run.id)
+            .order_by(ForecastEvaluation.horizon_hours.asc())
+        )
+        return [
+            ModelEvaluationMetric(
+                horizon_hours=er.horizon_hours,
+                sample_count=er.sample_count,
+                mae=er.mae,
+                rmse=er.rmse,
+                mape=er.mape,
+            )
+            for er in db.execute(evals_stmt).scalars().all()
+        ]
+
+    def _coverage_hours(self, run: ForecastRun) -> float | None:
+        """Return training data coverage in hours, or None if timestamps unavailable."""
+        if run.training_data_start and run.training_data_end:
+            return round(
+                (run.training_data_end - run.training_data_start).total_seconds() / 3600.0, 1
+            )
+        return None
+
     def get_model_status(
         self,
         db: Session,
@@ -650,33 +702,8 @@ class ForecastService:
         )
         latest_run = db.execute(latest_run_stmt).scalar_one_or_none()
 
-        eval_metrics: list[ModelEvaluationMetric] = []
-        if latest_run:
-            evals_stmt = (
-                select(ForecastEvaluation)
-                .where(ForecastEvaluation.forecast_run_id == latest_run.id)
-                .order_by(ForecastEvaluation.horizon_hours.asc())
-            )
-            eval_records = list(db.execute(evals_stmt).scalars().all())
-            eval_metrics = [
-                ModelEvaluationMetric(
-                    horizon_hours=er.horizon_hours,
-                    sample_count=er.sample_count,
-                    mae=er.mae,
-                    rmse=er.rmse,
-                    mape=er.mape,
-                )
-                for er in eval_records
-            ]
-
-        # Calculate coverage hours
-        coverage = None
-        if latest_run and latest_run.training_data_start and latest_run.training_data_end:
-            coverage = round(
-                (latest_run.training_data_end - latest_run.training_data_start).total_seconds()
-                / 3600.0,
-                1,
-            )
+        eval_metrics = self._query_eval_metrics(db, latest_run) if latest_run else []
+        coverage = self._coverage_hours(latest_run) if latest_run else None
 
         return ModelStatusResponse(
             model_name="ExponentialSmoothingForecaster",

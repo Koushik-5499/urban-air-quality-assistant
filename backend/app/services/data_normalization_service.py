@@ -29,6 +29,13 @@ CORE_POLLUTANTS: set[str] = {"PM2.5", "PM10", "CO", "NO2", "SO2", "O3"}
 class DataNormalizationService:
     """Provides canonical matching and standardization rules for environmental data."""
 
+    @staticmethod
+    def _state_matches(canonical_state: str, state_name: str) -> bool:
+        """Check if the user-provided state name aligns with a canonical state."""
+        clean = state_name.strip().lower()
+        canon = canonical_state.lower()
+        return clean in canon or canon in clean
+
     @classmethod
     def match_canonical_city(
         cls,
@@ -48,24 +55,17 @@ class DataNormalizationService:
         # Direct alias match
         if clean_city in CANONICAL_CITIES:
             canonical_name, canonical_state = CANONICAL_CITIES[clean_city]
-            if state_name:
-                clean_state = state_name.strip().lower()
-                # Verify state roughly matches
-                if (
-                    clean_state not in canonical_state.lower()
-                    and canonical_state.lower() not in clean_state
-                ):
-                    return None
+            if state_name and not cls._state_matches(canonical_state, state_name):
+                return None
             return canonical_name, canonical_state
 
         # Partial token match (e.g. "Delhi (ITO)" -> "Delhi")
         for alias, (c_name, c_state) in CANONICAL_CITIES.items():
-            if alias in clean_city:
-                if state_name:
-                    clean_state = state_name.strip().lower()
-                    if clean_state not in c_state.lower() and c_state.lower() not in clean_state:
-                        continue
-                return c_name, c_state
+            if alias not in clean_city:
+                continue
+            if state_name and not cls._state_matches(c_state, state_name):
+                continue
+            return c_name, c_state
 
         return None
 

@@ -41,6 +41,42 @@ class ExponentialSmoothingModel(BaseForecastModel):
     def version(self) -> str:
         return "1.2.0"
 
+    def _init_seasonal_factors(self, series: list[float], m: int) -> list[float]:
+        """Compute normalized additive seasonal factors from the full series."""
+        n = len(series)
+        num_periods = n // m
+        averages = [sum(series[i * m: (i + 1) * m]) / float(m) for i in range(num_periods)]
+        seasonals = [0.0] * m
+        for i in range(m):
+            total = sum(series[j * m + i] - averages[j] for j in range(num_periods))
+            seasonals[i] = total / float(num_periods)
+        # Normalize seasonal factors to sum to zero
+        mean_seasonal = sum(seasonals) / float(m)
+        return [s - mean_seasonal for s in seasonals]
+
+    def _run_holt_winters(
+        self,
+        series: list[float],
+        level: float,
+        trend: float,
+        seasonals: list[float],
+        m: int,
+    ) -> tuple[float, float, list[float]]:
+        """Run the recursive Holt-Winters equations over the entire history."""
+        for t in range(len(series)):
+            y_t = series[t]
+            s_idx = t % m if self._has_seasonality else 0
+            s_val = seasonals[s_idx] if self._has_seasonality else 0.0
+            prev_level = level
+            level = (
+                self.alpha * (y_t - s_val)
+                + (1.0 - self.alpha) * (prev_level + self.phi * trend)
+            )
+            trend = self.beta * (level - prev_level) + (1.0 - self.beta) * self.phi * trend
+            if self._has_seasonality:
+                seasonals[s_idx] = self.gamma * (y_t - level) + (1.0 - self.gamma) * s_val
+        return level, trend, seasonals
+
     def fit(self, series: list[float], timestamps: list[datetime]) -> None:
         """Fit level, trend, and diurnal seasonal components to the time-series."""
         n = len(series)
@@ -58,36 +94,10 @@ class ExponentialSmoothingModel(BaseForecastModel):
         trend = (series[min(n - 1, 12)] - series[0]) / float(min(n - 1, 12)) if n > 1 else 0.0
 
         # 2. Initialize seasonal factors if sufficient data exists
-        seasonals = [0.0] * m
-        if self._has_seasonality:
-            # Estimate additive seasonal factors across full periods
-            num_periods = n // m
-            averages = [sum(series[i * m : (i + 1) * m]) / float(m) for i in range(num_periods)]
-            for i in range(m):
-                sum_over_periods = 0.0
-                for j in range(num_periods):
-                    sum_over_periods += series[j * m + i] - averages[j]
-                seasonals[i] = sum_over_periods / float(num_periods)
-
-            # Normalize seasonal factors to sum to zero
-            mean_seasonal = sum(seasonals) / float(m)
-            seasonals = [s - mean_seasonal for s in seasonals]
+        seasonals = self._init_seasonal_factors(series, m) if self._has_seasonality else [0.0] * m
 
         # 3. Recursive Holt-Winters update equations over history
-        for t in range(n):
-            y_t = series[t]
-            s_idx = t % m if self._has_seasonality else 0
-            s_val = seasonals[s_idx] if self._has_seasonality else 0.0
-
-            # Deseasonalized observation
-            y_deseason = y_t - s_val
-
-            prev_level = level
-            level = self.alpha * y_deseason + (1.0 - self.alpha) * (prev_level + self.phi * trend)
-            trend = self.beta * (level - prev_level) + (1.0 - self.beta) * self.phi * trend
-
-            if self._has_seasonality:
-                seasonals[s_idx] = self.gamma * (y_t - level) + (1.0 - self.gamma) * s_val
+        level, trend, seasonals = self._run_holt_winters(series, level, trend, seasonals, m)
 
         self._level = level
         self._trend = trend

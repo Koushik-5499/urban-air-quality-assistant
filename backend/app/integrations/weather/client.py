@@ -64,7 +64,44 @@ class WeatherClient:
             self._cache[cache_key] = (mock_obs, now_utc)
             return mock_obs
 
-        # Live Open-Meteo API call
+        return await self._fetch_live_weather(latitude, longitude, cache_key, now_utc)
+
+    def _build_observation(
+        self,
+        current_data: dict[str, object],
+        latitude: float,
+        longitude: float,
+        now_utc: datetime,
+    ) -> WeatherObservation:
+        """Construct a WeatherObservation from an Open-Meteo current-data dict."""
+        time_str = current_data.get("time")
+        obs_time = (
+            datetime.fromisoformat(str(time_str)).replace(tzinfo=UTC)
+            if time_str
+            else now_utc
+        )
+        return WeatherObservation(
+            latitude=latitude,
+            longitude=longitude,
+            temperature_celsius=current_data.get("temperature_2m"),  # type: ignore[arg-type]
+            relative_humidity_percent=current_data.get("relative_humidity_2m"),  # type: ignore[arg-type]
+            wind_speed_kmh=current_data.get("wind_speed_10m"),  # type: ignore[arg-type]
+            wind_direction_degrees=current_data.get("wind_direction_10m"),  # type: ignore[arg-type]
+            precipitation_mm=current_data.get("precipitation"),  # type: ignore[arg-type]
+            surface_pressure_hpa=current_data.get("surface_pressure"),  # type: ignore[arg-type]
+            observed_at=obs_time,
+            provider=self.settings.WEATHER_PROVIDER,
+            is_cached=False,
+        )
+
+    async def _fetch_live_weather(
+        self,
+        latitude: float,
+        longitude: float,
+        cache_key: tuple[float, float],
+        now_utc: datetime,
+    ) -> WeatherObservation | None:
+        """Fetch and cache a live Open-Meteo observation with retry logic."""
         params: dict[str, str | float] = {
             "latitude": latitude,
             "longitude": longitude,
@@ -74,7 +111,6 @@ class WeatherClient:
             ),
             "timezone": "UTC",
         }
-
         url = f"{self.settings.WEATHER_API_BASE_URL.rstrip('/')}/forecast"
         headers = {"User-Agent": "UrbanAirQualityAssistant/1.0"}
         if self.settings.WEATHER_API_KEY:
@@ -87,58 +123,29 @@ class WeatherClient:
                 ) as client:
                     resp = await client.get(url, params=params, headers=headers)
                     if resp.status_code == 200:
-                        data = resp.json()
-                        current_data = data.get("current", {})
-                        time_str = current_data.get("time")
-                        obs_time = (
-                            datetime.fromisoformat(time_str).replace(tzinfo=UTC)
-                            if time_str
-                            else now_utc
-                        )
-
-                        observation = WeatherObservation(
-                            latitude=latitude,
-                            longitude=longitude,
-                            temperature_celsius=current_data.get("temperature_2m"),
-                            relative_humidity_percent=current_data.get("relative_humidity_2m"),
-                            wind_speed_kmh=current_data.get("wind_speed_10m"),
-                            wind_direction_degrees=current_data.get("wind_direction_10m"),
-                            precipitation_mm=current_data.get("precipitation"),
-                            surface_pressure_hpa=current_data.get("surface_pressure"),
-                            observed_at=obs_time,
-                            provider=self.settings.WEATHER_PROVIDER,
-                            is_cached=False,
+                        observation = self._build_observation(
+                            resp.json().get("current", {}), latitude, longitude, now_utc
                         )
                         self._cache[cache_key] = (observation, now_utc)
                         return observation
-                    else:
-                        logger.warning(
-                            "Open-Meteo returned HTTP %d for coordinates (%s, %s)",
-                            resp.status_code,
-                            latitude,
-                            longitude,
-                        )
+                    logger.warning(
+                        "Open-Meteo returned HTTP %d for coordinates (%s, %s)",
+                        resp.status_code, latitude, longitude,
+                    )
             except httpx.TimeoutException:
                 logger.warning(
                     "Timeout contacting weather provider (attempt %d/2) for (%s, %s)",
-                    attempt,
-                    latitude,
-                    longitude,
+                    attempt, latitude, longitude,
                 )
             except httpx.HTTPError as exc:
                 logger.warning(
-                    "Error contacting weather provider (attempt %d/2): %s",
-                    attempt,
-                    exc,
+                    "Error contacting weather provider (attempt %d/2): %s", attempt, exc,
                 )
-
             if attempt < 2:
                 await asyncio.sleep(0.5)
 
         logger.info(
-            "Proceeding without weather telemetry for coordinates (%s, %s)",
-            latitude,
-            longitude,
+            "Proceeding without weather telemetry for coordinates (%s, %s)", latitude, longitude,
         )
         return None
 

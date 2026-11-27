@@ -34,6 +34,35 @@ class FeatureEngineeringService:
         return round(sum(window) / float(len(window)), 2)
 
     @classmethod
+    def _build_lag_features(cls, history_values: list[float]) -> dict[str, float]:
+        """Build t-1..t-24 lag features from historical values."""
+        n = len(history_values)
+        features: dict[str, float] = {}
+        for lag in [1, 2, 3, 6, 12, 24]:
+            features[f"lag_{lag}"] = (
+                round(history_values[-lag], 2) if n >= lag
+                else (round(history_values[-1], 2) if n > 0 else 0.0)
+            )
+        return features
+
+    @classmethod
+    def _build_weather_features(
+        cls,
+        weather: WeatherObservation,
+    ) -> dict[str, float]:
+        """Add optional meteorological features when present."""
+        feats: dict[str, float] = {}
+        if weather.temperature_celsius is not None:
+            feats["weather_temp_c"] = weather.temperature_celsius
+        if weather.relative_humidity_percent is not None:
+            feats["weather_humidity_pct"] = weather.relative_humidity_percent
+        if weather.wind_speed_kmh is not None:
+            feats["weather_wind_speed_kmh"] = weather.wind_speed_kmh
+        if weather.surface_pressure_hpa is not None:
+            feats["weather_pressure_hpa"] = weather.surface_pressure_hpa
+        return feats
+
+    @classmethod
     def build_feature_vector(
         cls,
         history_values: list[float],
@@ -44,16 +73,10 @@ class FeatureEngineeringService:
         features: dict[str, float] = {}
 
         # 1. Cyclical time encodings
-        time_feats = cls.extract_time_features(target_timestamp)
-        features.update(time_feats)
+        features.update(cls.extract_time_features(target_timestamp))
 
         # 2. Lag features (t-1, t-2, t-3, t-6, t-12, t-24)
-        n = len(history_values)
-        for lag in [1, 2, 3, 6, 12, 24]:
-            if n >= lag:
-                features[f"lag_{lag}"] = round(history_values[-lag], 2)
-            else:
-                features[f"lag_{lag}"] = round(history_values[-1], 2) if n > 0 else 0.0
+        features.update(cls._build_lag_features(history_values))
 
         # 3. Rolling window means (3h, 6h, 24h)
         for window in [3, 6, 24]:
@@ -64,13 +87,6 @@ class FeatureEngineeringService:
 
         # 4. Optional meteorological feature integration
         if weather:
-            if weather.temperature_celsius is not None:
-                features["weather_temp_c"] = weather.temperature_celsius
-            if weather.relative_humidity_percent is not None:
-                features["weather_humidity_pct"] = weather.relative_humidity_percent
-            if weather.wind_speed_kmh is not None:
-                features["weather_wind_speed_kmh"] = weather.wind_speed_kmh
-            if weather.surface_pressure_hpa is not None:
-                features["weather_pressure_hpa"] = weather.surface_pressure_hpa
+            features.update(cls._build_weather_features(weather))
 
         return features

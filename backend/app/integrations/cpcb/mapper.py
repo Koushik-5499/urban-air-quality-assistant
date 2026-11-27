@@ -84,31 +84,19 @@ class CPCBRecordMapper:
             return None
 
     @classmethod
-    def map_record(cls, record: dict[str, Any]) -> NormalizedObservation | None:
-        """Convert a single CPCB record dictionary into a NormalizedObservation."""
-        if not isinstance(record, dict):
-            return None
-
-        # Extract location fields
+    def _extract_location(cls, record: dict[str, Any]) -> tuple[str, str, str, str]:
+        """Extract city, state, country, station from a raw CPCB record."""
         city = (record.get("city") or record.get("City") or "").strip()
         state = (record.get("state") or record.get("State") or "").strip()
         country = (record.get("country") or record.get("Country") or "India").strip()
         station = (
             record.get("station") or record.get("Station") or f"{city} Monitoring Station"
         ).strip()
+        return city, state, country, station
 
-        if not city or not state:
-            return None
-
-        # Extract and normalize pollutant code
-        raw_pollutant = (
-            str(record.get("pollutant_id") or record.get("Pollutant") or "").strip().upper()
-        )
-        if not raw_pollutant:
-            return None
-        pollutant_code = POLLUTANT_MAP.get(raw_pollutant, raw_pollutant)
-
-        # Extract concentration (prefer avg, then max, then min)
+    @classmethod
+    def _extract_concentration(cls, record: dict[str, Any]) -> float | None:
+        """Extract pollutant concentration, preferring avg > max > min."""
         avg_val = cls.parse_float(
             record.get("pollutant_avg") or record.get("avg") or record.get("Avg")
         )
@@ -116,24 +104,56 @@ class CPCBRecordMapper:
             avg_val = cls.parse_float(record.get("pollutant_max"))
         if avg_val is None:
             avg_val = cls.parse_float(record.get("pollutant_min"))
+        return avg_val
 
-        # Skip records without valid non-negative concentration
+    @classmethod
+    def _extract_pollutant_code(cls, record: dict[str, Any]) -> str | None:
+        """Normalize pollutant code from raw record; returns None if absent."""
+        raw = str(record.get("pollutant_id") or record.get("Pollutant") or "").strip().upper()
+        if not raw:
+            return None
+        return POLLUTANT_MAP.get(raw, raw)
+
+    @classmethod
+    def _extract_coords_and_meta(
+        cls, record: dict[str, Any]
+    ) -> tuple[float | None, float | None, str | None]:
+        """Extract latitude, longitude and external station ID from a raw record."""
+        lat = cls.parse_float(record.get("latitude") or record.get("lat"))
+        lng = cls.parse_float(record.get("longitude") or record.get("lon") or record.get("lng"))
+        external_id = str(record.get("id")) if record.get("id") else None
+        return lat, lng, external_id
+
+    @classmethod
+    def _extract_unit_and_timestamp(
+        cls, record: dict[str, Any]
+    ) -> tuple[str, "datetime"]:
+        """Extract normalised unit string and parsed timestamp from a raw CPCB record."""
+        raw_unit = str(record.get("pollutant_unit") or record.get("unit") or "µg/m³").strip()
+        unit = UNIT_MAP.get(raw_unit.lower(), raw_unit)
+        last_update = record.get("last_update") or record.get("date") or record.get("timestamp")
+        return unit, cls.parse_datetime(last_update)
+
+    @classmethod
+    def map_record(cls, record: dict[str, Any]) -> NormalizedObservation | None:
+        """Convert a single CPCB record dictionary into a NormalizedObservation."""
+        if not isinstance(record, dict):
+            return None
+
+        city, state, country, station = cls._extract_location(record)
+        if not city or not state:
+            return None
+
+        pollutant_code = cls._extract_pollutant_code(record)
+        if not pollutant_code:
+            return None
+
+        avg_val = cls._extract_concentration(record)
         if avg_val is None or avg_val < 0.0:
             return None
 
-        # Extract and normalize unit
-        raw_unit = str(record.get("pollutant_unit") or record.get("unit") or "µg/m³").strip()
-        unit = UNIT_MAP.get(raw_unit.lower(), raw_unit)
-
-        # Parse timestamp
-        last_update = record.get("last_update") or record.get("date") or record.get("timestamp")
-        measured_at = cls.parse_datetime(last_update)
-
-        # Parse coordinates if present
-        lat = cls.parse_float(record.get("latitude") or record.get("lat"))
-        lng = cls.parse_float(record.get("longitude") or record.get("lon") or record.get("lng"))
-
-        external_id = str(record.get("id")) if record.get("id") else None
+        unit, measured_at = cls._extract_unit_and_timestamp(record)
+        lat, lng, external_id = cls._extract_coords_and_meta(record)
 
         return NormalizedObservation(
             country=country,

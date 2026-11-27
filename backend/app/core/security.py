@@ -70,13 +70,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    """Protects against Denial-of-Service memory exhaustion via oversized request payloads."""
+    """Protects against Denial-of-Service memory exhaustion via oversized request payloads.
+
+    Enforces the limit on the actual body stream so that chunked requests
+    (which omit Content-Length) are also caught.
+    """
 
     def __init__(self, app, max_bytes: int = MAX_REQUEST_SIZE_BYTES):
         super().__init__(app)
         self.max_bytes = max_bytes
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # 1. Fast path: reject on Content-Length header when present
         content_length = request.headers.get("content-length")
         if content_length:
             try:
@@ -88,17 +93,32 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                         length_val,
                         self.max_bytes,
                     )
-                    return JSONResponse(
-                        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                        content={
-                            "detail": "Request payload exceeds maximum permitted size of "
-                            "{self.max_bytes // (1024 * 1024)}MB."
-                        },
-                    )
+                    return self._too_large_response()
             except ValueError:
                 pass
 
+        # 2. Buffer the body so downstream can read it, while enforcing size limit.
+        # request.body() is cached by Starlette after first call, so call_next still works.
+        body = await request.body()
+        if len(body) > self.max_bytes:
+            logger.warning(
+                "Rejected oversized payload from %s: %d bytes (limit: %d)",
+                request.client.host if request.client else "unknown",
+                len(body),
+                self.max_bytes,
+            )
+            return self._too_large_response()
+
         return await call_next(request)
+
+    def _too_large_response(self) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            content={
+                "detail": f"Request payload exceeds maximum permitted size of "
+                f"{self.max_bytes // (1024 * 1024)}MB."
+            },
+        )
 
 
 class InMemoryRateLimiter:
@@ -209,6 +229,42 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
 
+def _extract_provided_secret(
+    x_admin_secret: str | None,
+    x_api_key: str | None,
+    authorization: str | None,
+) -> str | None:
+    """Extract the credential token from whichever supported header is present."""
+    if isinstance(x_admin_secret, str) and x_admin_secret.strip():
+        return x_admin_secret.strip()
+    if isinstance(x_api_key, str) and x_api_key.strip():
+        return x_api_key.strip()
+    if isinstance(authorization, str) and authorization.strip():
+        return _parse_authorization_token(authorization)
+    return None
+
+
+def _parse_authorization_token(authorization: str) -> str | None:
+    """Parse a raw secret from an Authorization header value."""
+    parts = authorization.strip().split()
+    if len(parts) == 2 and parts[0].lower() in ("bearer", "apikey", "secret"):
+        return parts[1]
+    if len(parts) == 1:
+        return parts[0]
+    return None
+
+
+def _verify_secret_match(provided_secret: str | None, secret: str) -> None:
+    """Raise 403 when the provided secret does not match the configured admin secret."""
+    if not provided_secret or not hmac.compare_digest(
+        provided_secret.encode(), secret.encode()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing X-Admin-Secret header.",
+        )
+
+
 def verify_admin_access(
     x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
     x_api_key: str | None = Header(None, alias="X-API-Key"),
@@ -226,32 +282,13 @@ def verify_admin_access(
     secret = (
         settings.ALERT_ADMIN_SECRET or settings.SYNC_ADMIN_SECRET or settings.FORECAST_ADMIN_SECRET
     )
-
-    # Extract token from any supported header, handling direct function calls where defaults
-    # are Header(...)
-    provided_secret: str | None = None
-    if isinstance(x_admin_secret, str) and x_admin_secret.strip():
-        provided_secret = x_admin_secret.strip()
-    elif isinstance(x_api_key, str) and x_api_key.strip():
-        provided_secret = x_api_key.strip()
-    elif isinstance(authorization, str) and authorization.strip():
-        parts = authorization.strip().split()
-        if len(parts) == 2 and parts[0].lower() in ("bearer", "apikey", "secret"):
-            provided_secret = parts[1]
-        elif len(parts) == 1:
-            provided_secret = parts[0]
+    # Extract token from any supported header
+    provided_secret = _extract_provided_secret(x_admin_secret, x_api_key, authorization)
 
     if secret:
-        if not provided_secret or not hmac.compare_digest(
-            provided_secret.encode(), secret.encode()
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid or missing X-Admin-Secret header.",
-            )
-    else:
-        if settings.APP_ENV != "development":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin secret must be configured in non-development environments.",
-            )
+        _verify_secret_match(provided_secret, secret)
+    elif settings.APP_ENV != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin secret must be configured in non-development environments.",
+        )

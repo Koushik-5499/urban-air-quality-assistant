@@ -101,6 +101,326 @@ class ThresholdEngine:
         return None
 
     @classmethod
+    def _make_condition(  # noqa: PLR0913
+        cls,
+        alert_type: str,
+        severity: str,
+        title: str,
+        description: str,
+        curr_aqi: int,
+        prev_aqi: int | None,
+        threshold_value: int | None,
+        curr_cat: str,
+        curr_dom: str,
+        curr_time: datetime,
+        source: str,
+        is_sim: bool,
+    ) -> AlertCondition:
+        """Build an AlertCondition with common fields populated."""
+        return AlertCondition(
+            alert_type=alert_type,
+            severity=severity,
+            title=title,
+            description=description,
+            current_aqi=curr_aqi,
+            previous_aqi=prev_aqi,
+            threshold_value=threshold_value,
+            aqi_category=curr_cat,
+            dominant_pollutant=curr_dom,
+            measurement_timestamp=curr_time,
+            source=source,
+            is_simulated=is_sim,
+        )
+
+    @classmethod
+    def _check_initial_threshold(
+        cls,
+        curr_aqi: int,
+        curr_cat: str,
+        curr_dom: str,
+        curr_time: datetime,
+        curr_severity: str,
+        source: str,
+        is_sim: bool,
+        sim_prefix: str,
+        location_label: str,
+        min_threshold: int,
+    ) -> AlertCondition | None:
+        """Scenario 1: First observation above minimum threshold."""
+        if curr_aqi < min_threshold:
+            return None
+        return cls._make_condition(
+            alert_type="THRESHOLD_CROSSING",
+            severity=curr_severity,
+            title=f"{sim_prefix}Air Quality Alert: {curr_cat} in {location_label}",
+            description=(
+                f"Current AQI is {curr_aqi} ({curr_cat}), "
+                f"driven primarily by {curr_dom}. "
+                "Air quality has reached elevated pollution levels."
+            ),
+            curr_aqi=curr_aqi,
+            prev_aqi=None,
+            threshold_value=min_threshold,
+            curr_cat=curr_cat,
+            curr_dom=curr_dom,
+            curr_time=curr_time,
+            source=source,
+            is_sim=is_sim,
+        )
+
+    @classmethod
+    def _check_category_worsening(
+        cls,
+        curr_aqi: int,
+        curr_cat: str,
+        curr_dom: str,
+        curr_time: datetime,
+        curr_severity: str,
+        prev_aqi: int,
+        source: str,
+        is_sim: bool,
+        sim_prefix: str,
+        location_label: str,
+        min_threshold: int,
+        prev_cat: str,
+    ) -> AlertCondition | None:
+        """Scenario 2a: Category worsening transition."""
+        if not (curr_aqi > prev_aqi and curr_aqi >= min_threshold):
+            return None
+        return cls._make_condition(
+            alert_type="CATEGORY_CHANGE",
+            severity=curr_severity,
+            title=f"{sim_prefix}Air Quality Worsened to {curr_cat} in {location_label}",
+            description=(
+                f"AQI transitioned from {prev_aqi} ({prev_cat}) "
+                f"to {curr_aqi} ({curr_cat}). "
+                f"Dominant pollutant is {curr_dom}. "
+                "Increased health precautions are advised."
+            ),
+            curr_aqi=curr_aqi,
+            prev_aqi=prev_aqi,
+            threshold_value=min_threshold,
+            curr_cat=curr_cat,
+            curr_dom=curr_dom,
+            curr_time=curr_time,
+            source=source,
+            is_sim=is_sim,
+        )
+
+    @classmethod
+    def _check_category_improvement(
+        cls,
+        curr_aqi: int,
+        curr_cat: str,
+        curr_dom: str,
+        curr_time: datetime,
+        curr_severity: str,
+        prev_aqi: int,
+        aqi_delta: int,
+        source: str,
+        is_sim: bool,
+        sim_prefix: str,
+        location_label: str,
+        min_threshold: int,
+        prev_cat: str,
+        improvement_threshold: int,
+    ) -> AlertCondition | None:
+        """Scenario 2b: Significant improvement transition."""
+        if not (curr_aqi < prev_aqi and abs(aqi_delta) >= improvement_threshold):
+            return None
+        return cls._make_condition(
+            alert_type="IMPROVEMENT",
+            severity="Low",
+            title=f"{sim_prefix}Air Quality Improved to {curr_cat} in {location_label}",
+            description=(
+                f"AQI improved significantly by {abs(aqi_delta)} points, "
+                f"dropping from {prev_aqi} ({prev_cat}) "
+                f"to {curr_aqi} ({curr_cat})."
+            ),
+            curr_aqi=curr_aqi,
+            prev_aqi=prev_aqi,
+            threshold_value=min_threshold,
+            curr_cat=curr_cat,
+            curr_dom=curr_dom,
+            curr_time=curr_time,
+            source=source,
+            is_sim=is_sim,
+        )
+
+    @classmethod
+    def _check_deterioration_spike(
+        cls,
+        curr_aqi: int,
+        curr_cat: str,
+        curr_dom: str,
+        curr_time: datetime,
+        curr_severity: str,
+        prev_aqi: int,
+        aqi_delta: int,
+        source: str,
+        is_sim: bool,
+        sim_prefix: str,
+        location_label: str,
+        min_threshold: int,
+        deterioration_threshold: int,
+    ) -> AlertCondition | None:
+        """Scenario 3: Same-category spike in AQI."""
+        if not (aqi_delta >= deterioration_threshold and curr_aqi >= min_threshold):
+            return None
+        return cls._make_condition(
+            alert_type="DETERIORATION",
+            severity=curr_severity,
+            title=f"{sim_prefix}Sudden Pollution Spike in {location_label}",
+            description=(
+                f"AQI spiked by +{aqi_delta} points (from {prev_aqi} to {curr_aqi}) "
+                "within the recent monitoring period. "
+                f"Category remains {curr_cat} with {curr_dom} as dominant pollutant."
+            ),
+            curr_aqi=curr_aqi,
+            prev_aqi=prev_aqi,
+            threshold_value=deterioration_threshold,
+            curr_cat=curr_cat,
+            curr_dom=curr_dom,
+            curr_time=curr_time,
+            source=source,
+            is_sim=is_sim,
+        )
+
+    @classmethod
+    def _check_threshold_crossing(
+        cls,
+        curr_aqi: int,
+        curr_cat: str,
+        curr_dom: str,
+        curr_time: datetime,
+        curr_severity: str,
+        prev_aqi: int,
+        source: str,
+        is_sim: bool,
+        sim_prefix: str,
+        location_label: str,
+        min_threshold: int,
+    ) -> AlertCondition | None:
+        """Scenario 4: User-defined threshold crossing."""
+        if not (prev_aqi < min_threshold <= curr_aqi):
+            return None
+        return cls._make_condition(
+            alert_type="THRESHOLD_CROSSING",
+            severity=curr_severity,
+            title=f"{sim_prefix}AQI Crossed Threshold ({min_threshold}) in {location_label}",
+            description=(
+                f"AQI has crossed your alert threshold of {min_threshold}. "
+                f"Current AQI is {curr_aqi} ({curr_cat}), "
+                f"up from {prev_aqi}."
+            ),
+            curr_aqi=curr_aqi,
+            prev_aqi=prev_aqi,
+            threshold_value=min_threshold,
+            curr_cat=curr_cat,
+            curr_dom=curr_dom,
+            curr_time=curr_time,
+            source=source,
+            is_sim=is_sim,
+        )
+
+    @classmethod
+    def _check_pollutant_shift(
+        cls,
+        curr_aqi: int,
+        curr_cat: str,
+        curr_dom: str,
+        curr_time: datetime,
+        curr_severity: str,
+        prev_aqi: int,
+        prev_dom: str | None,
+        source: str,
+        is_sim: bool,
+        sim_prefix: str,
+        location_label: str,
+    ) -> AlertCondition | None:
+        """Scenario 5: Dominant pollutant change at elevated levels."""
+        if not (prev_dom and curr_dom != prev_dom and curr_aqi >= 150):
+            return None
+        return cls._make_condition(
+            alert_type="POLLUTANT_CHANGE",
+            severity=curr_severity,
+            title=f"{sim_prefix}Dominant Pollutant Shift in {location_label}",
+            description=(
+                f"Primary pollution driver shifted from {prev_dom} to {curr_dom}. "
+                f"Current AQI is {curr_aqi} ({curr_cat})."
+            ),
+            curr_aqi=curr_aqi,
+            prev_aqi=prev_aqi,
+            threshold_value=None,
+            curr_cat=curr_cat,
+            curr_dom=curr_dom,
+            curr_time=curr_time,
+            source=source,
+            is_sim=is_sim,
+        )
+
+    @classmethod
+    def _evaluate_category_change(
+        cls,
+        curr_aqi: int, curr_cat: str, curr_dom: str, curr_time: "datetime",
+        curr_severity: str, prev_aqi: int, prev_cat: str, aqi_delta: int,
+        source: str, is_sim: bool, sim_prefix: str, location_label: str,
+        min_threshold: int, improvement_threshold: int,
+    ) -> "AlertCondition | None":
+        """Return alert condition for a category transition (worsening or improvement)."""
+        cond = cls._check_category_worsening(
+            curr_aqi=curr_aqi, curr_cat=curr_cat, curr_dom=curr_dom,
+            curr_time=curr_time, curr_severity=curr_severity,
+            prev_aqi=prev_aqi, source=source, is_sim=is_sim,
+            sim_prefix=sim_prefix, location_label=location_label,
+            min_threshold=min_threshold, prev_cat=prev_cat,
+        )
+        if cond is not None:
+            return cond
+        return cls._check_category_improvement(
+            curr_aqi=curr_aqi, curr_cat=curr_cat, curr_dom=curr_dom,
+            curr_time=curr_time, curr_severity=curr_severity,
+            prev_aqi=prev_aqi, aqi_delta=aqi_delta, source=source, is_sim=is_sim,
+            sim_prefix=sim_prefix, location_label=location_label,
+            min_threshold=min_threshold, prev_cat=prev_cat,
+            improvement_threshold=improvement_threshold,
+        )
+
+    @classmethod
+    def _dispatch_same_category_or_change(  # noqa: PLR0913
+        cls,
+        curr_aqi: int, curr_cat: str, curr_dom: str, curr_time: "datetime",
+        curr_severity: str, prev_aqi: int, prev_cat: str, aqi_delta: int,
+        source: str, is_sim: bool, sim_prefix: str, location_label: str,
+        min_threshold: int, deterioration_threshold: int, improvement_threshold: int,
+    ) -> "AlertCondition | None":
+        """Route to the correct condition check based on category change or same-category drift."""
+        if curr_cat != prev_cat:
+            return cls._evaluate_category_change(
+                curr_aqi=curr_aqi, curr_cat=curr_cat, curr_dom=curr_dom,
+                curr_time=curr_time, curr_severity=curr_severity,
+                prev_aqi=prev_aqi, prev_cat=prev_cat, aqi_delta=aqi_delta,
+                source=source, is_sim=is_sim, sim_prefix=sim_prefix,
+                location_label=location_label, min_threshold=min_threshold,
+                improvement_threshold=improvement_threshold,
+            )
+        if aqi_delta >= deterioration_threshold and curr_aqi >= min_threshold:
+            return cls._check_deterioration_spike(
+                curr_aqi=curr_aqi, curr_cat=curr_cat, curr_dom=curr_dom,
+                curr_time=curr_time, curr_severity=curr_severity,
+                prev_aqi=prev_aqi, aqi_delta=aqi_delta, source=source, is_sim=is_sim,
+                sim_prefix=sim_prefix, location_label=location_label,
+                min_threshold=min_threshold, deterioration_threshold=deterioration_threshold,
+            )
+        return cls._check_threshold_crossing(
+            curr_aqi=curr_aqi, curr_cat=curr_cat, curr_dom=curr_dom,
+            curr_time=curr_time, curr_severity=curr_severity,
+            prev_aqi=prev_aqi, source=source, is_sim=is_sim,
+            sim_prefix=sim_prefix, location_label=location_label,
+            min_threshold=min_threshold,
+        )
+
+    @classmethod
     def evaluate_readings(
         cls,
         current_reading: AQIReading,
@@ -127,154 +447,43 @@ class ThresholdEngine:
         is_sim = current_reading.is_simulated
         sim_prefix = "[SIMULATED DATA] " if is_sim else ""
 
-        # Scenario 1: Initial observation crossing minimum threshold (no previous reading)
+        # Scenario 1: First observation with no prior reading
         if not previous_reading:
-            if curr_aqi >= min_threshold:
-                conditions.append(
-                    AlertCondition(
-                        alert_type="THRESHOLD_CROSSING",
-                        severity=curr_severity,
-                        title=f"{sim_prefix}Air Quality Alert: {curr_cat} in {location_label}",
-                        description=(
-                            f"Current AQI is {curr_aqi} ({curr_cat}), "
-                            f"driven primarily by {curr_dom}. "
-                            f"Air quality has reached elevated pollution levels."
-                        ),
-                        current_aqi=curr_aqi,
-                        previous_aqi=None,
-                        threshold_value=min_threshold,
-                        aqi_category=curr_cat,
-                        dominant_pollutant=curr_dom,
-                        measurement_timestamp=curr_time,
-                        source=source,
-                        is_simulated=is_sim,
-                    )
-                )
+            cond = cls._check_initial_threshold(
+                curr_aqi, curr_cat, curr_dom, curr_time, curr_severity,
+                source, is_sim, sim_prefix, location_label, min_threshold,
+            )
+            if cond:
+                conditions.append(cond)
             return conditions
 
         prev_aqi = previous_reading.aqi_value
         prev_cat = previous_reading.aqi_category
         prev_dom = previous_reading.dominant_pollutant
-        cls.get_severity_for_category(prev_cat)  # side-effect: validates category enum
-
+        cls.get_severity_for_category(prev_cat)  # validates category enum
         aqi_delta = curr_aqi - prev_aqi
 
-        # Scenario 2: Category Transition (e.g. Moderate -> Poor, or Poor -> Very Poor)
-        if curr_cat != prev_cat:
-            # Worsening category change
-            if curr_aqi > prev_aqi and curr_aqi >= min_threshold:
-                conditions.append(
-                    AlertCondition(
-                        alert_type="CATEGORY_CHANGE",
-                        severity=curr_severity,
-                        title=f"{sim_prefix}Air Quality Worsened to {curr_cat} in {location_label}",
-                        description=(
-                            f"AQI transitioned from {prev_aqi} ({prev_cat}) "
-                            f"to {curr_aqi} ({curr_cat}). "
-                            f"Dominant pollutant is {curr_dom}. "
-                            f"Increased health precautions are advised."
-                        ),
-                        current_aqi=curr_aqi,
-                        previous_aqi=prev_aqi,
-                        threshold_value=min_threshold,
-                        aqi_category=curr_cat,
-                        dominant_pollutant=curr_dom,
-                        measurement_timestamp=curr_time,
-                        source=source,
-                        is_simulated=is_sim,
-                    )
-                )
-            # Significant improvement category change
-            elif curr_aqi < prev_aqi and abs(aqi_delta) >= improvement_threshold:
-                conditions.append(
-                    AlertCondition(
-                        alert_type="IMPROVEMENT",
-                        severity="Low",
-                        title=f"{sim_prefix}Air Quality Improved to {curr_cat} in {location_label}",
-                        description=(
-                            f"AQI improved significantly by {abs(aqi_delta)} points, "
-                            f"dropping from {prev_aqi} ({prev_cat}) "
-                            f"to {curr_aqi} ({curr_cat})."
-                        ),
-                        current_aqi=curr_aqi,
-                        previous_aqi=prev_aqi,
-                        threshold_value=min_threshold,
-                        aqi_category=curr_cat,
-                        dominant_pollutant=curr_dom,
-                        measurement_timestamp=curr_time,
-                        source=source,
-                        is_simulated=is_sim,
-                    )
-                )
+        cond = cls._dispatch_same_category_or_change(
+            curr_aqi=curr_aqi, curr_cat=curr_cat, curr_dom=curr_dom,
+            curr_time=curr_time, curr_severity=curr_severity,
+            prev_aqi=prev_aqi, prev_cat=prev_cat, aqi_delta=aqi_delta,
+            source=source, is_sim=is_sim, sim_prefix=sim_prefix,
+            location_label=location_label, min_threshold=min_threshold,
+            deterioration_threshold=deterioration_threshold,
+            improvement_threshold=improvement_threshold,
+        )
+        if cond:
+            conditions.append(cond)
 
-        # Scenario 3: Sudden Deterioration Spike (even if within same category)
-        elif aqi_delta >= deterioration_threshold and curr_aqi >= min_threshold:
-            conditions.append(
-                AlertCondition(
-                    alert_type="DETERIORATION",
-                    severity=curr_severity,
-                    title=f"{sim_prefix}Sudden Pollution Spike in {location_label}",
-                    description=(
-                        f"AQI spiked by +{aqi_delta} points (from {prev_aqi} to {curr_aqi}) "
-                        f"within the recent monitoring period. "
-                        f"Category remains {curr_cat} with {curr_dom} as dominant pollutant."
-                    ),
-                    current_aqi=curr_aqi,
-                    previous_aqi=prev_aqi,
-                    threshold_value=deterioration_threshold,
-                    aqi_category=curr_cat,
-                    dominant_pollutant=curr_dom,
-                    measurement_timestamp=curr_time,
-                    source=source,
-                    is_simulated=is_sim,
-                )
-            )
-
-        # Scenario 4: User-defined threshold crossing (prev was below, current is above)
-        elif prev_aqi < min_threshold <= curr_aqi:
-            conditions.append(
-                AlertCondition(
-                    alert_type="THRESHOLD_CROSSING",
-                    severity=curr_severity,
-                    title=(
-                        f"{sim_prefix}AQI Crossed Threshold ({min_threshold}) in {location_label}"
-                    ),
-                    description=(
-                        f"AQI has crossed your alert threshold of {min_threshold}. "
-                        f"Current AQI is {curr_aqi} ({curr_cat}), "
-                        f"up from {prev_aqi}."
-                    ),
-                    current_aqi=curr_aqi,
-                    previous_aqi=prev_aqi,
-                    threshold_value=min_threshold,
-                    aqi_category=curr_cat,
-                    dominant_pollutant=curr_dom,
-                    measurement_timestamp=curr_time,
-                    source=source,
-                    is_simulated=is_sim,
-                )
-            )
-
-        # Scenario 5: Dominant Pollutant Change (at elevated AQI levels)
-        if prev_dom and curr_dom != prev_dom and curr_aqi >= 150:
-            conditions.append(
-                AlertCondition(
-                    alert_type="POLLUTANT_CHANGE",
-                    severity=curr_severity,
-                    title=f"{sim_prefix}Dominant Pollutant Shift in {location_label}",
-                    description=(
-                        f"Primary pollution driver shifted from {prev_dom} to {curr_dom}. "
-                        f"Current AQI is {curr_aqi} ({curr_cat})."
-                    ),
-                    current_aqi=curr_aqi,
-                    previous_aqi=prev_aqi,
-                    threshold_value=None,
-                    aqi_category=curr_cat,
-                    dominant_pollutant=curr_dom,
-                    measurement_timestamp=curr_time,
-                    source=source,
-                    is_simulated=is_sim,
-                )
-            )
+        # Scenario 5: pollutant shift (independent of above)
+        shift = cls._check_pollutant_shift(
+            curr_aqi=curr_aqi, curr_cat=curr_cat, curr_dom=curr_dom,
+            curr_time=curr_time, curr_severity=curr_severity,
+            prev_aqi=prev_aqi, prev_dom=prev_dom,
+            source=source, is_sim=is_sim,
+            sim_prefix=sim_prefix, location_label=location_label,
+        )
+        if shift:
+            conditions.append(shift)
 
         return conditions

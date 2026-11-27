@@ -1,6 +1,5 @@
 """Centralized application configuration using Pydantic Settings."""
 
-import json
 import os
 from functools import lru_cache
 
@@ -222,18 +221,25 @@ class Settings(BaseSettings):
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         """Parse CORS origins from a JSON array string, comma-separated string, or list."""
         if isinstance(v, str):
-            stripped = v.strip()
-            if stripped.startswith("[") and stripped.endswith("]"):
-                try:
-                    parsed = json.loads(stripped)
-                    if isinstance(parsed, list):
-                        return [str(item).strip() for item in parsed if str(item).strip()]
-                except json.JSONDecodeError:
-                    pass
-            return [item.strip() for item in stripped.split(",") if item.strip()]
-        elif isinstance(v, (list, tuple)):
+            return cls._parse_cors_string(v)
+        if isinstance(v, (list, tuple)):
             return [str(item).strip() for item in v if str(item).strip()]
         return ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    @classmethod
+    def _parse_cors_string(cls, v: str) -> list[str]:
+        """Parse a string CORS_ORIGINS value as JSON array or comma-separated list."""
+        import json as _json
+
+        stripped = v.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = _json.loads(stripped)
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            except Exception:
+                pass
+        return [item.strip() for item in stripped.split(",") if item.strip()]
 
     @property
     def is_development(self) -> bool:

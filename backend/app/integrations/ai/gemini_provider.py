@@ -81,6 +81,39 @@ class GeminiProvider(BaseAIProvider):
         )
         return contents
 
+    def _classify_error(self, exc: Exception) -> Exception:
+        """Map a provider SDK exception to the appropriate internal AI error type."""
+        err_str = str(exc).lower()
+        if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str:
+            return AIRateLimitError("Gemini API rate limit or quota exceeded.")
+        if "401" in err_str or "403" in err_str or "api_key" in err_str:
+            return AIAuthError("Invalid or unauthorized Gemini API key.")
+        if "503" in err_str or "unavailable" in err_str:
+            return AIUnavailableError("Gemini AI service is temporarily unavailable.")
+        return AIProviderError(f"AI provider encountered an error: {type(exc).__name__}")
+
+    async def _attempt_generation(
+        self,
+        client: genai.Client,
+        contents: list[types.Content],
+        config: types.GenerateContentConfig,
+    ) -> AICompletionResponse:
+        """Execute a single generation call with timeout."""
+        response = await asyncio.wait_for(
+            client.aio.models.generate_content(
+                model=self.model,
+                contents=contents,
+                config=config,
+            ),
+            timeout=float(self.timeout),
+        )
+        return AICompletionResponse(
+            content=response.text or "",
+            model=self.model,
+            finish_reason="STOP",
+            usage_tokens=None,
+        )
+
     async def generate_response(self, request: AICompletionRequest) -> AICompletionResponse:
         """Generate response asynchronously with timeout and bounded retries."""
         if not self.is_configured():
@@ -90,7 +123,6 @@ class GeminiProvider(BaseAIProvider):
 
         client = self._get_client()
         contents = self._build_contents(request)
-
         config = types.GenerateContentConfig(
             system_instruction=request.system_instruction,
             temperature=request.temperature,
@@ -100,24 +132,7 @@ class GeminiProvider(BaseAIProvider):
         last_error: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
-                # Wrap asynchronous generation in strict timeout
-                response = await asyncio.wait_for(
-                    client.aio.models.generate_content(
-                        model=self.model,
-                        contents=contents,
-                        config=config,
-                    ),
-                    timeout=float(self.timeout),
-                )
-
-                text = response.text or ""
-                return AICompletionResponse(
-                    content=text,
-                    model=self.model,
-                    finish_reason="STOP",
-                    usage_tokens=None,
-                )
-
+                return await self._attempt_generation(client, contents, config)
             except TimeoutError:
                 logger.warning(
                     "Gemini API request timed out (attempt %d/%d) after %ds",
@@ -128,33 +143,21 @@ class GeminiProvider(BaseAIProvider):
                 last_error = AITimeoutError(
                     f"Gemini API request timed out after {self.timeout} seconds."
                 )
-                if attempt == self.max_retries:
-                    raise last_error
-
             except Exception as exc:
                 # SDK boundary translating provider-specific client errors to internal AI errors
-                err_str = str(exc).lower()
                 logger.warning(
                     "Gemini API invocation error (attempt %d/%d): %s",
                     attempt + 1,
                     self.max_retries + 1,
                     type(exc).__name__,
                 )
+                classified = self._classify_error(exc)
+                if isinstance(classified, AIAuthError):
+                    raise classified
+                last_error = classified
 
-                if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str:
-                    last_error = AIRateLimitError("Gemini API rate limit or quota exceeded.")
-                elif "401" in err_str or "403" in err_str or "api_key" in err_str:
-                    raise AIAuthError("Invalid or unauthorized Gemini API key.")
-                elif "503" in err_str or "unavailable" in err_str:
-                    last_error = AIUnavailableError("Gemini AI service is temporarily unavailable.")
-                else:
-                    last_error = AIProviderError(
-                        f"AI provider encountered an error: {type(exc).__name__}"
-                    )
-
-                if attempt == self.max_retries:
-                    raise last_error
-
+            if attempt == self.max_retries:
+                raise last_error or AIProviderError("Gemini generation failed after retries.")
             # Exponential backoff before retry: 0.5s, 1.0s...
             await asyncio.sleep(0.5 * (2**attempt))
 

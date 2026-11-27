@@ -46,6 +46,82 @@ class DataPreparationService:
     """Extracts, cleans, and splits historical AQI measurements for forecasting."""
 
     @classmethod
+    def _load_sorted_deduplicated(
+        cls, db: Session, city_id: int, station_id: int | None
+    ) -> list[AQIReading]:
+        """Query all readings for a location, deduplicated and sorted chronologically."""
+        filters = [AQIReading.city_id == city_id]
+        if station_id is not None:
+            filters.append(AQIReading.station_id == station_id)
+        stmt = select(AQIReading).where(*filters).order_by(AQIReading.measured_at.asc())
+        all_readings = list(db.execute(stmt).scalars().all())
+
+        deduped: dict[datetime, AQIReading] = {}
+        for r in all_readings:
+            ts = r.measured_at
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=UTC)
+            deduped[ts] = r
+        return [deduped[t] for t in sorted(deduped.keys())]
+
+    @staticmethod
+    def _select_working_readings(
+        sorted_readings: list[AQIReading], min_required_samples: int
+    ) -> tuple[list[AQIReading], bool, str] | PreparedDataset:
+        """Pick real or simulated readings meeting the minimum sample requirement.
+
+        Returns (working_readings, use_simulated, data_quality) or an insufficient PreparedDataset.
+        """
+        real_readings = [r for r in sorted_readings if not r.is_simulated]
+        if len(real_readings) >= min_required_samples:
+            return real_readings, False, "verified_cpcb"
+        if len(sorted_readings) >= min_required_samples:
+            use_sim = any(r.is_simulated for r in sorted_readings)
+            quality = "simulated" if use_sim else "verified_cpcb"
+            return sorted_readings, use_sim, quality
+        total = len(sorted_readings)
+        sorted_ts = [r.measured_at for r in sorted_readings]
+        return PreparedDataset(
+            sample_count=total,
+            start_time=sorted_ts[0] if sorted_ts else None,
+            end_time=sorted_ts[-1] if sorted_ts else None,
+            is_sufficient=False,
+            insufficiency_reason=(
+                f"Insufficient historical data: found {total} observations, "
+                f"minimum {min_required_samples} required for valid time-series forecasting."
+            ),
+        )
+
+    @staticmethod
+    def _build_time_series(
+        working_readings: list[AQIReading],
+    ) -> tuple[list[datetime], list[float], list[str], int]:
+        """Extract validated timestamps, AQI values, pollutants, and missing-interval count."""
+        timestamps: list[datetime] = []
+        aqi_values: list[float] = []
+        dominant_pollutants: list[str] = []
+        missing_intervals = 0
+        prev_time: datetime | None = None
+
+        for r in working_readings:
+            t = r.measured_at
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=UTC)
+            if prev_time is not None:
+                gap_hours = (t - prev_time).total_seconds() / 3600.0
+                if gap_hours > 3.0:
+                    missing_intervals += 1
+            prev_time = t
+
+            val = float(r.aqi_value)
+            if 0.0 <= val <= 500.0:
+                timestamps.append(t)
+                aqi_values.append(val)
+                dominant_pollutants.append(r.dominant_pollutant or "PM2.5")
+
+        return timestamps, aqi_values, dominant_pollutants, missing_intervals
+
+    @classmethod
     def load_and_prepare_dataset(
         cls,
         db: Session,
@@ -54,81 +130,22 @@ class DataPreparationService:
         min_required_samples: int = 24,
     ) -> PreparedDataset:
         """Query chronological AQI observations and clean data for modeling."""
-        filters = [AQIReading.city_id == city_id]
-        if station_id is not None:
-            filters.append(AQIReading.station_id == station_id)
+        sorted_readings = cls._load_sorted_deduplicated(db, city_id, station_id)
 
-        stmt = select(AQIReading).where(*filters).order_by(AQIReading.measured_at.asc())
-        all_readings = list(db.execute(stmt).scalars().all())
-
-        if not all_readings:
+        if not sorted_readings:
             return PreparedDataset(
                 is_sufficient=False,
                 insufficiency_reason="No historical AQI records found for this location.",
             )
 
-        # 1. Deduplicate by measurement timestamp (keeping latest entry)
-        deduped: dict[datetime, AQIReading] = {}
-        for r in all_readings:
-            ts = r.measured_at
-            if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=UTC)
-            deduped[ts] = r
+        selection = cls._select_working_readings(sorted_readings, min_required_samples)
+        if isinstance(selection, PreparedDataset):
+            return selection  # Insufficient data
 
-        sorted_timestamps = sorted(deduped.keys())
-        sorted_readings = [deduped[t] for t in sorted_timestamps]
-
-        # 2. Check real CPCB vs simulated data availability
-        real_readings = [r for r in sorted_readings if not r.is_simulated]
-        use_simulated = False
-
-        if len(real_readings) >= min_required_samples:
-            # Sufficient verified real CPCB observations available
-            working_readings = real_readings
-            data_quality = "verified_cpcb"
-        elif len(sorted_readings) >= min_required_samples:
-            # Fall back to simulated observations where real telemetry is sparse
-            working_readings = sorted_readings
-            use_simulated = any(r.is_simulated for r in working_readings)
-            data_quality = "simulated" if use_simulated else "verified_cpcb"
-        else:
-            total_count = len(sorted_readings)
-            return PreparedDataset(
-                sample_count=total_count,
-                start_time=sorted_timestamps[0] if sorted_timestamps else None,
-                end_time=sorted_timestamps[-1] if sorted_timestamps else None,
-                is_sufficient=False,
-                insufficiency_reason=(
-                    f"Insufficient historical data: found {total_count} observations, "
-                    f"minimum {min_required_samples} required for valid time-series forecasting."
-                ),
-            )
-
-        timestamps: list[datetime] = []
-        aqi_values: list[float] = []
-        dominant_pollutants: list[str] = []
-
-        # 3. Detect missing time intervals (> 3 hours gap between consecutive readings)
-        missing_intervals = 0
-        prev_time: datetime | None = None
-
-        for r in working_readings:
-            t = r.measured_at
-            if t.tzinfo is None:
-                t = t.replace(tzinfo=UTC)
-
-            if prev_time is not None:
-                gap_hours = (t - prev_time).total_seconds() / 3600.0
-                if gap_hours > 3.0:
-                    missing_intervals += 1
-            prev_time = t
-
-            # Discard invalid or out-of-range AQI values (< 0 or > 500)
-            val = float(r.aqi_value)
-            if 0.0 <= val <= 500.0:
-                timestamps.append(t)
-                aqi_values.append(val)
-                dominant_pollutants.append(r.dominant_pollutant or "PM2.5")
+        working_readings, use_simulated, data_quality = selection
+        timestamps, aqi_values, dominant_pollutants, missing_intervals = cls._build_time_series(
+            working_readings
+        )
 
         if len(aqi_values) < min_required_samples:
             return PreparedDataset(

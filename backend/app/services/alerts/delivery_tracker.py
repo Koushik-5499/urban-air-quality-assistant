@@ -7,6 +7,39 @@ from zoneinfo import ZoneInfo
 logger = logging.getLogger(__name__)
 
 
+def _resolve_quiet_params(
+    quiet_hours_start: str | None,
+    quiet_hours_end: str | None,
+    tz_name: str,
+    current_time_utc: datetime | None,
+    quiet_start: str | None,
+    quiet_end: str | None,
+    user_tz: str | None,
+    now_utc: datetime | None,
+) -> tuple[str | None, str | None, str, datetime | None]:
+    """Merge aliased parameter pairs into canonical quiet-hours arguments."""
+    return (
+        quiet_hours_start or quiet_start,
+        quiet_hours_end or quiet_end,
+        user_tz or tz_name,
+        current_time_utc or now_utc,
+    )
+
+
+def _parse_time_str(time_str: str) -> time:
+    """Parse 'HH:MM' string into a datetime.time object."""
+    parts = [int(p) for p in time_str.split(":")]
+    return time(hour=parts[0], minute=parts[1])
+
+
+def _is_time_in_window(current_t: time, start_t: time, end_t: time) -> bool:
+    """Return True if current_t falls within [start_t, end_t], handling midnight crossing."""
+    if start_t <= end_t:
+        return start_t <= current_t <= end_t
+    # Range crosses midnight (e.g. 22:00 to 07:00)
+    return current_t >= start_t or current_t <= end_t
+
+
 class DeliveryTracker:
     """Manages quiet hours policy and dispatch status resolution."""
 
@@ -23,10 +56,10 @@ class DeliveryTracker:
         now_utc: datetime | None = None,
     ) -> bool:
         """Check if current timestamp falls within the user's local quiet hours window."""
-        start_str = quiet_hours_start or quiet_start
-        end_str = quiet_hours_end or quiet_end
-        zone_str = user_tz or tz_name
-        ref_time = current_time_utc or now_utc
+        start_str, end_str, zone_str, ref_time = _resolve_quiet_params(
+            quiet_hours_start, quiet_hours_end, tz_name,
+            current_time_utc, quiet_start, quiet_end, user_tz, now_utc,
+        )
 
         if not start_str or not end_str:
             return False
@@ -36,25 +69,17 @@ class DeliveryTracker:
         except (KeyError, ValueError, TypeError):
             user_zone = ZoneInfo("Asia/Kolkata")
 
-        now = ref_time or datetime.now(UTC)
-        user_now = now.astimezone(user_zone)
+        user_now = (ref_time or datetime.now(UTC)).astimezone(user_zone)
         current_t = user_now.time()
 
         try:
-            start_parts = [int(p) for p in start_str.split(":")]
-            end_parts = [int(p) for p in end_str.split(":")]
-            start_t = time(hour=start_parts[0], minute=start_parts[1])
-            end_t = time(hour=end_parts[0], minute=end_parts[1])
+            start_t = _parse_time_str(start_str)
+            end_t = _parse_time_str(end_str)
         except (ValueError, IndexError) as exc:
             logger.warning("Failed parsing quiet hours '%s'-'%s': %s", start_str, end_str, exc)
             return False
 
-        # Range does not cross midnight (e.g. 13:00 to 15:00)
-        if start_t <= end_t:
-            return start_t <= current_t <= end_t
-        # Range crosses midnight (e.g. 22:00 to 07:00)
-        else:
-            return current_t >= start_t or current_t <= end_t
+        return _is_time_in_window(current_t, start_t, end_t)
 
     is_quiet_hours = is_in_quiet_hours
 
@@ -72,10 +97,10 @@ class DeliveryTracker:
         now_utc: datetime | None = None,
     ) -> tuple[bool, str]:
         """Determine whether an alert should be dispatched or suppressed for quiet hours."""
-        start_str = quiet_hours_start or quiet_start
-        end_str = quiet_hours_end or quiet_end
-        zone_str = user_tz or tz_name
-        ref_time = current_time_utc or now_utc
+        start_str, end_str, zone_str, ref_time = _resolve_quiet_params(
+            quiet_hours_start, quiet_hours_end, tz_name,
+            current_time_utc, quiet_start, quiet_end, user_tz, now_utc,
+        )
 
         if not start_str or not end_str:
             return True, "delivered"

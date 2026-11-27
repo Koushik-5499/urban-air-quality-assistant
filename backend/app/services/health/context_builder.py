@@ -104,6 +104,20 @@ class ContextBuilder:
             trend_direction=trend_dir,
         )
 
+    @staticmethod
+    def _freshness_indicator(snapshot: AQIContextSnapshot) -> str:
+        """Return human-readable data freshness label."""
+        if snapshot.is_stale:
+            return "STALE (measured over 5 hours ago - exercise caution)"
+        return "Fresh observation"
+
+    @staticmethod
+    def _simulated_indicator(snapshot: AQIContextSnapshot) -> str:
+        """Return human-readable measurement nature label."""
+        if snapshot.is_simulated:
+            return "Simulated demonstration telemetry"
+        return "Official provider observation"
+
     @classmethod
     def format_context_for_prompt(
         cls,
@@ -117,17 +131,6 @@ class ContextBuilder:
             if snapshot.measurement_timestamp
             else "Unavailable"
         )
-        stale_indicator = (
-            "STALE (measured over 5 hours ago - exercise caution)"
-            if snapshot.is_stale
-            else "Fresh observation"
-        )
-        sim_indicator = (
-            "Simulated demonstration telemetry"
-            if snapshot.is_simulated
-            else "Official provider observation"
-        )
-
         lifestyle_str = f"Target User Lifestyle Persona: {lifestyle}\n" if lifestyle else ""
         family_str = (
             f"Target Household & Community Context: {family_context}\n" if family_context else ""
@@ -142,8 +145,8 @@ class ContextBuilder:
             f"NAQI Category: {snapshot.category or 'Unknown'}\n"
             f"Dominant Pollutant: {snapshot.dominant_pollutant or 'Unspecified'}\n"
             f"Measurement Timestamp: {measured_str}\n"
-            f"Data Freshness Status: {stale_indicator}\n"
-            f"Measurement Nature: {sim_indicator}\n"
+            f"Data Freshness Status: {cls._freshness_indicator(snapshot)}\n"
+            f"Measurement Nature: {cls._simulated_indicator(snapshot)}\n"
             f"Recent Trend: {snapshot.trend_direction or 'insufficient_data'}\n"
             f"Source Authority: {snapshot.data_source}\n"
             f"{lifestyle_str}"
