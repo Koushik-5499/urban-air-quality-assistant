@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, MessageSquare, ShieldCheck } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Bot, MessageSquare, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useLocation } from '../hooks/useLocation';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { DataProvenanceBadge } from '../components/common/DataProvenanceBadge';
@@ -33,6 +33,15 @@ function Assistant() {
 
   const { selectedCityData, selectedCityId } = useLocation();
   const [selectedLifestyle, setSelectedLifestyle] = useState<string>('family_with_children');
+
+  // Thermal inversion window: 05:00–08:30 IST = 23:30–03:00 UTC
+  const isInversionWindow = useMemo(() => {
+    const now = new Date();
+    const utcH = now.getUTCHours();
+    const utcM = now.getUTCMinutes();
+    const mins = utcH * 60 + utcM;
+    return mins >= 23 * 60 + 30 || mins <= 3 * 60; // 23:30–03:00 UTC
+  }, []);
   const [isTyping, setIsTyping] = useState(false);
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'health'>('chat');
@@ -253,7 +262,22 @@ function Assistant() {
           </p>
         </div>
 
-        {/* Mobile View Switcher (Chat vs Health Context) */}
+        {/* Thermal Inversion Peak Window Banner — 05:00–08:30 IST */}
+      {isInversionWindow && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-300 dark:bg-amber-950/40 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-sm"
+        >
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+          <div>
+            <strong>Peak Thermal Inversion Window (05:00–08:30 IST)</strong>
+            <span className="ml-1">— Cold air traps pollutants near ground level during these hours. Avoid outdoor exertion; keep windows closed.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile View Switcher (Chat vs Health Context) */}
         <div className="inline-flex lg:hidden p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start">
           <button
             type="button"

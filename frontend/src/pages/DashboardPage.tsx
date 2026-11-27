@@ -12,6 +12,7 @@ import { RecentUpdates } from '../components/dashboard/RecentUpdates';
 import { DashboardSkeleton } from '../components/dashboard/DashboardSkeleton';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { DataProvenanceBadge } from '../components/common/DataProvenanceBadge';
 import type { LocationOption } from '../types/dashboard';
 
 function Dashboard() {
@@ -92,6 +93,7 @@ function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+          <DataProvenanceBadge />
           <span>Engine: CPCB NAQI Standard (2014)</span>
         </div>
       </div>

@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![CI](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml)
-[![Tests: 241 Passing](https://img.shields.io/badge/Tests-241%20Passing-brightgreen.svg)](./docs/TESTING.md)
+[![Tests: 256 Passing](https://img.shields.io/badge/Tests-256%20Passing-brightgreen.svg)](./docs/TESTING.md)
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-blue.svg)](./docs/ACCESSIBILITY.md)
 [![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%20Principles-purple.svg)](./ARCHITECTURE.md)
 
@@ -206,11 +206,11 @@ App available at: http://localhost:5173
 
 Comprehensive automated test suites validate all components across backend algorithms, AI integrations, and frontend interactions. See [docs/TESTING.md](./docs/TESTING.md) for full coverage metrics and breakdown.
 
-### Backend (182 Tests Passed, 0 Warnings)
+### Backend (197 Tests Passed, 1 Skipped, 0 Warnings)
 ```bash
 cd backend
 .venv/bin/pytest -q
-# 182 passed in 6.83s
+# 197 passed, 1 skipped in 31.46s
 ```
 
 ### Frontend (59 Tests Passed, 10 Test Suites)
@@ -229,7 +229,11 @@ npx tsc -b --noEmit
 npm run build
 # ✓ built in 5.36s
 ```
-**Total Verified Tests: 241 automated unit, integration, and E2E tests (182 Backend + 59 Frontend).**
+**Total Verified Tests: 256 automated unit, integration, alignment, and E2E tests (197 Backend + 59 Frontend).**
+
+The 15 new alignment acceptance tests in `backend/tests/test_alignment.py` cover all 8 Challenge 6 pillars:
+winter smog & thermal inversion, low-emission routines, indoor air hacks, sustainable alternatives,
+quantified impact, vulnerable groups, data honesty, and explainability.
 
 ---
 
