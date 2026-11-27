@@ -4,14 +4,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.monitoring_station import MonitoringStation
+from app.repositories.base import BaseRepository
 from app.schemas.monitoring_station import StationCreate
 
 
-class StationRepository:
+class StationRepository(BaseRepository):
     """Repository handling database operations for MonitoringStation entities."""
 
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
 
     def get_by_id(self, station_id: int) -> MonitoringStation | None:
         """Retrieve a station by its primary key."""
@@ -49,3 +50,7 @@ class StationRepository:
         self.db.commit()
         self.db.refresh(station)
         return station
+
+    def health_check(self) -> bool:
+        """Return True if the backing store is reachable."""
+        return self._probe_db()

@@ -165,9 +165,12 @@ function Locations() {
 
       {/* 3. View Switcher Tabs (All Cities vs Comparison) */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-        <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 self-start">
+        <div role="tablist" aria-label="Location view switcher" className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 self-start">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'grid'}
+            aria-controls="locations-grid-panel"
             onClick={() => setActiveTab('grid')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'grid'
@@ -181,6 +184,9 @@ function Locations() {
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'compare'}
+            aria-controls="locations-compare-panel"
             onClick={() => setActiveTab('compare')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'compare'
@@ -208,6 +214,7 @@ function Locations() {
 
       {/* 4. Tab Content */}
       {activeTab === 'grid' ? (
+        <div id="locations-grid-panel" role="tabpanel">
         <LocationGrid
           cities={searchedCities}
           selectedCityId={selectedCityId}
@@ -218,7 +225,9 @@ function Locations() {
           onResetSearch={handleResetSearch}
           isSearchActive={searchTerm.trim().length > 0}
         />
+        </div>
       ) : (
+        <div id="locations-compare-panel" role="tabpanel">
         <CityComparison
           comparisonCityIds={comparisonCityIds}
           allCities={allCities}
@@ -228,6 +237,7 @@ function Locations() {
           onSelectForDashboard={handleSelectForDashboard}
           activeDashboardCityId={selectedCityId}
         />
+        </div>
       )}
 
       {/* 5. City Details Drawer / Slide-Over Modal */}

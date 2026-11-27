@@ -2,8 +2,11 @@
 
 import hmac
 import time
+import uuid
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable
+from typing import Literal
 
 from fastapi import Depends, Header, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -16,6 +19,8 @@ logger = get_logger("app.core.security")
 
 # Maximum permitted payload size: 1 MB (1,048,576 bytes)
 MAX_REQUEST_SIZE_BYTES = 1024 * 1024
+
+AdminScope = Literal["alert", "sync", "forecast"]
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -39,8 +44,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # 4. Permissions Policy (disable unneeded browser APIs)
         response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()"
         )
+
+        # 4a. Cross-Origin isolation policies
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
 
         # 5. Content Security Policy (CSP)
         path = request.url.path
@@ -66,14 +75,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "max-age=31536000; includeSubDomains; preload"
             )
 
+        # 7. Request traceability ID
+        response.headers["X-Request-ID"] = request.headers.get("X-Request-ID") or str(
+            uuid.uuid4()
+        )
+
         return response
 
 
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     """Protects against Denial-of-Service memory exhaustion via oversized request payloads.
 
-    Enforces the limit on the actual body stream so that chunked requests
-    (which omit Content-Length) are also caught.
+    Enforces the limit both upfront via Content-Length and incrementally while reading
+    the request body stream so chunked requests cannot bypass the limit or exhaust RAM.
     """
 
     def __init__(self, app, max_bytes: int = MAX_REQUEST_SIZE_BYTES):
@@ -85,30 +99,34 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         content_length = request.headers.get("content-length")
         if content_length:
             try:
-                length_val = int(content_length)
-                if length_val > self.max_bytes:
+                if int(content_length) > self.max_bytes:
                     logger.warning(
-                        "Rejected oversized payload from %s: %d bytes (limit: %d)",
+                        "Rejected oversized Content-Length from %s: %s bytes (limit: %d)",
                         request.client.host if request.client else "unknown",
-                        length_val,
+                        content_length,
                         self.max_bytes,
                     )
                     return self._too_large_response()
             except ValueError:
                 pass
 
-        # 2. Buffer the body so downstream can read it, while enforcing size limit.
-        # request.body() is cached by Starlette after first call, so call_next still works.
-        body = await request.body()
-        if len(body) > self.max_bytes:
-            logger.warning(
-                "Rejected oversized payload from %s: %d bytes (limit: %d)",
-                request.client.host if request.client else "unknown",
-                len(body),
-                self.max_bytes,
-            )
-            return self._too_large_response()
+        # 2. Stream-bounded read so chunked / indeterminate streams abort before buffering > max
+        chunks: list[bytes] = []
+        total_bytes = 0
+        async for chunk in request.stream():
+            total_bytes += len(chunk)
+            if total_bytes > self.max_bytes:
+                logger.warning(
+                    "Rejected oversized streamed payload from %s: >%d bytes (limit: %d)",
+                    request.client.host if request.client else "unknown",
+                    self.max_bytes,
+                    self.max_bytes,
+                )
+                return self._too_large_response()
+            chunks.append(chunk)
 
+        # Cache body on Starlette Request so downstream handlers can read request.body() / json()
+        request._body = b"".join(chunks)
         return await call_next(request)
 
     def _too_large_response(self) -> JSONResponse:
@@ -121,8 +139,30 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         )
 
 
-class InMemoryRateLimiter:
-    """Sliding-window in-memory rate limiter per IP address."""
+class RateLimitStore(ABC):
+    """Abstract interface for sliding-window rate limit backends (DIP/OCP).
+
+    Swap InMemoryRateLimiter with a Redis/Upstash-backed implementation for shared
+    multi-instance rate limiting across distributed serverless workers.
+    """
+
+    @abstractmethod
+    def check_rate_limit(
+        self, client_ip: str, path: str, is_test_env: bool = False
+    ) -> tuple[bool, int, int]:
+        """Return (allowed, remaining, retry_after_seconds)."""
+
+    @abstractmethod
+    def clear(self) -> None:
+        """Reset stored counters."""
+
+
+class InMemoryRateLimiter(RateLimitStore):
+    """Sliding-window in-memory rate limiter per IP address.
+
+    Note: In-memory state applies per serverless worker instance; attach a Redis or
+    Upstash RateLimitStore implementation for globally coordinated limits.
+    """
 
     def __init__(self):
         # Maps (ip, route_key) -> list of timestamp floats
@@ -181,7 +221,7 @@ def get_client_ip(request: Request, settings: Settings) -> str:
     if getattr(settings, "TRUSTED_PROXY", False):
         forwarded_for = request.headers.get("X-Forwarded-For", "")
         if forwarded_for:
-            # Take the leftmost (original client) IP
+            # Take the leftmost client IP forwarded by trusted ingress
             client_ip = forwarded_for.split(",")[0].strip()
             if client_ip:
                 return client_ip
@@ -265,30 +305,53 @@ def _verify_secret_match(provided_secret: str | None, secret: str) -> None:
         )
 
 
+def _enforce_secret(
+    secret: str | None,
+    x_admin_secret: str | None,
+    x_api_key: str | None,
+    authorization: str | None,
+    settings: Settings,
+) -> None:
+    """Validate provided credentials against a scoped secret, failing closed outside dev/test."""
+    provided_secret = _extract_provided_secret(x_admin_secret, x_api_key, authorization)
+    if secret:
+        _verify_secret_match(provided_secret, secret)
+    elif settings.APP_ENV.lower() not in ("development", "test"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin secret must be configured in non-development environments.",
+        )
+
+
+def require_admin_scope(scope: AdminScope) -> Callable[..., None]:
+    """Dependency factory verifying the domain-scoped admin secret for an endpoint group."""
+
+    def _dependency(
+        x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+        x_api_key: str | None = Header(None, alias="X-API-Key"),
+        authorization: str | None = Header(None, alias="Authorization"),
+        settings: Settings = Depends(get_settings),
+    ) -> None:
+        scope_map: dict[AdminScope, str | None] = {
+            "alert": settings.ALERT_ADMIN_SECRET,
+            "sync": settings.SYNC_ADMIN_SECRET,
+            "forecast": settings.FORECAST_ADMIN_SECRET,
+        }
+        _enforce_secret(
+            scope_map[scope], x_admin_secret, x_api_key, authorization, settings
+        )
+
+    return _dependency
+
+
 def verify_admin_access(
     x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
     x_api_key: str | None = Header(None, alias="X-API-Key"),
     authorization: str | None = Header(None, alias="Authorization"),
     settings: Settings = Depends(get_settings),
 ) -> None:
-    """Verify administrator secret header for privileged operations.
-
-    Accepts credentials via X-Admin-Secret, X-API-Key, or Bearer token in Authorization header.
-    In development mode, if administrative secret is unset, access is permitted.
-    If secret is configured, provided credentials must match using constant-time
-    hmac.compare_digest.
-    In non-development environments, an admin secret is strictly mandatory.
-    """
+    """Verify general administrator secret header across any configured admin token."""
     secret = (
         settings.ALERT_ADMIN_SECRET or settings.SYNC_ADMIN_SECRET or settings.FORECAST_ADMIN_SECRET
     )
-    # Extract token from any supported header
-    provided_secret = _extract_provided_secret(x_admin_secret, x_api_key, authorization)
-
-    if secret:
-        _verify_secret_match(provided_secret, secret)
-    elif settings.APP_ENV != "development":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin secret must be configured in non-development environments.",
-        )
+    _enforce_secret(secret, x_admin_secret, x_api_key, authorization, settings)

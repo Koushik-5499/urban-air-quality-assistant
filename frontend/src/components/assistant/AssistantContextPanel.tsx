@@ -7,6 +7,7 @@ import {
   Info,
   MapPin,
   Clock,
+  Snowflake,
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -22,6 +23,7 @@ const iconMap: Record<string, typeof Activity> = {
   ShieldCheck: ShieldCheck,
   Wind: Wind,
   Heart: Heart,
+  Snowflake: Snowflake,
 };
 
 export function AssistantContextPanel({ cityData }: AssistantContextPanelProps) {
@@ -51,10 +53,10 @@ export function AssistantContextPanel({ cityData }: AssistantContextPanelProps) 
 
         <div className="flex items-start justify-between gap-2 pt-1">
           <div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Active City Context</span>
-            </div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <MapPin className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+            <span>Active City Context</span>
+          </div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mt-0.5">
               {location.city}, {location.state}
             </h3>
@@ -95,11 +97,11 @@ export function AssistantContextPanel({ cityData }: AssistantContextPanelProps) 
 
         <div className="flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1">
-            <Flame className="w-3 h-3 text-amber-500" />
+            <Flame className="w-3 h-3 text-amber-500" aria-hidden="true" />
             Dominant: {dominantPollutant}
           </span>
           <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
+            <Clock className="w-3 h-3" aria-hidden="true" />
             {lastUpdated}
           </span>
         </div>
@@ -139,7 +141,7 @@ export function AssistantContextPanel({ cityData }: AssistantContextPanelProps) 
                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-3.5 h-3.5" aria-hidden="true" />
                   </span>
                   <span className="font-bold text-slate-900 dark:text-white leading-tight">
                     {rec.title}
@@ -155,6 +157,12 @@ export function AssistantContextPanel({ cityData }: AssistantContextPanelProps) 
                     <li key={bIdx}>{b}</li>
                   ))}
                 </ul>
+
+                {rec.impactExplanation && (
+                  <div className="mt-1 px-2 py-1 rounded-md bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40 text-[10px] font-medium text-emerald-800 dark:text-emerald-300">
+                    Impact: {rec.impactExplanation}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -163,7 +171,7 @@ export function AssistantContextPanel({ cityData }: AssistantContextPanelProps) 
 
       {/* 3. Medical Disclaimer */}
       <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850/60 border border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+        <Info className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" aria-hidden="true" />
         <p className="leading-relaxed">
           <strong>Educational Notice:</strong> The Urban Air Quality Health Assistant provides general environmental awareness and synthesized precautionary exposure advice based on public ambient guidelines. It does not provide clinical diagnosis or medical treatment. Consult licensed healthcare physicians for acute respiratory or cardiac symptoms.
         </p>

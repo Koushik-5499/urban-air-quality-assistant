@@ -20,19 +20,35 @@ PRESCRIPTION_PATTERNS = [
     ),
 ]
 
+# Regex patterns detecting OWASP LLM01 prompt-injection / system-override attempts
+PROMPT_INJECTION_PATTERNS = [
+    re.compile(
+        r"\b(ignore|disregard|forget|override)\s+(all\s+|the\s+|any\s+)?"
+        r"(previous|prior|above|system)\s+(instructions?|prompts?|rules?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(reveal|print|dump|leak|output)\s+(the\s+|your\s+)?"
+        r"(system\s+prompt|api[_\s]?key|admin[_\s]?secret)\b",
+        re.IGNORECASE,
+    ),
+]
+
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
 
 class HealthSafetyValidator:
     """Enforces safety guardrails, prompt containment, and response validation."""
 
     @staticmethod
     def validate_question(question: str | None) -> str:
-        """Validate and sanitize user query."""
+        """Validate and sanitize user query against length, control chars, and prompt injection."""
         if not question or not question.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Question cannot be empty.",
             )
-        clean_q = question.strip()
+        clean_q = _CONTROL_CHARS_RE.sub("", question).strip()
         if len(clean_q) < MIN_QUESTION_LENGTH:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -46,6 +62,12 @@ class HealthSafetyValidator:
                     f"{MAX_QUESTION_LENGTH} characters (provided {len(clean_q)})."
                 ),
             )
+        for pattern in PROMPT_INJECTION_PATTERNS:
+            if pattern.search(clean_q):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Question contains disallowed instruction-override patterns.",
+                )
         return clean_q
 
     @staticmethod

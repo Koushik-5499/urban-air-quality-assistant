@@ -18,6 +18,7 @@ from app.integrations.ai.schemas import (
     HealthGuidelinesResponse,
     HealthRecommendationsResponse,
     HealthStatusResponse,
+    ImpactMetricsResponse,
     PollutantExplanationResponse,
 )
 from app.services.health.context_builder import ContextBuilder
@@ -70,6 +71,10 @@ class HealthAdvisorService:
     def get_community_solutions(self) -> CommunitySolutionsResponse:
         """Retrieve structured community solutions: winter smog, low-emission routines, hacks."""
         return HealthKnowledgeBase.get_community_solutions()
+
+    def get_impact_metrics(self) -> ImpactMetricsResponse:
+        """Retrieve CPCB/WHO-sourced quantified health impact metrics for Challenge 6 pillars."""
+        return HealthKnowledgeBase.get_impact_metrics()
 
     def get_pollutant_explanation(self, pollutant_code: str) -> PollutantExplanationResponse:
         """Retrieve comprehensive educational and health information for a criteria pollutant."""

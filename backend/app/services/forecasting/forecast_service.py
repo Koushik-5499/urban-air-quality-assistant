@@ -17,15 +17,14 @@ from app.models.monitoring_station import MonitoringStation
 from app.schemas.forecast import (
     AQIForecastItem,
     DailyForecastResponse,
-    DailyForecastSummary,
     ForecastGenerateResponse,
     ForecastHistoryResponse,
     ForecastListResponse,
-    ForecastRunSummary,
     HourlyForecastResponse,
     ModelEvaluationMetric,
     ModelStatusResponse,
 )
+from app.services.forecasting import forecast_mapper
 from app.services.forecasting.confidence import UncertaintyEstimator
 from app.services.forecasting.data_preparation import DataPreparationService, PreparedDataset
 from app.services.forecasting.evaluation import ForecastEvaluator
@@ -373,30 +372,12 @@ class ForecastService:
         include_uncertainty: bool,
     ) -> AQIForecastItem:
         """Map a single AQIForecast DB row + run metadata to the response schema."""
-        return AQIForecastItem(
-            city=city_name,
-            station_id=p.station_id,
-            station_name=station.station_name if station else None,
-            forecast_timestamp=p.forecast_timestamp,
-            generated_at=run.generated_at,
-            predicted_aqi=p.predicted_aqi,
-            predicted_category=p.predicted_category,
-            dominant_pollutant=p.dominant_pollutant,
-            horizon_hours=p.horizon_hours,
-            horizon_label=f"{p.horizon_hours}h",
-            lower_bound=p.lower_bound if include_uncertainty else None,
-            upper_bound=p.upper_bound if include_uncertainty else None,
-            uncertainty_status=p.uncertainty_status if include_uncertainty else "unavailable",
-            model_name=p.model_name,
-            model_version=p.model_version,
-            training_data_start=run.training_data_start,
-            training_data_end=run.training_data_end,
-            training_samples=run.training_samples,
-            data_quality="simulated" if p.is_simulated else "verified_cpcb",
-            source="Simulated Engine" if p.is_simulated else "CPCB Historical Observations",
-            is_simulated=p.is_simulated,
-            is_forecast=True,
-            forecast_status="valid",
+        return forecast_mapper.build_forecast_item(
+            p=p,
+            run=run,
+            city_name=city_name,
+            station=station,
+            include_uncertainty=include_uncertainty,
         )
 
     def _latest_completed_run_stmt(
@@ -557,37 +538,7 @@ class ForecastService:
             hours=max_hours,
         )
 
-        # Group hourly forecasts by UTC calendar date
-        grouped: dict[str, list[AQIForecastItem]] = {}
-        for item in hourly_resp.forecasts:
-            date_key = item.forecast_timestamp.strftime("%Y-%m-%d")
-            grouped.setdefault(date_key, []).append(item)
-
-        summaries: list[DailyForecastSummary] = []
-        for d_key in sorted(grouped.keys())[:days]:
-            day_items = grouped[d_key]
-            aqis = [it.predicted_aqi for it in day_items]
-            min_aqi = min(aqis)
-            max_aqi = max(aqis)
-            avg_aqi = round(sum(aqis) / float(len(aqis)), 1)
-            predom_cat = self.get_category_for_aqi(int(round(avg_aqi)))
-
-            lowers = [it.lower_bound for it in day_items if it.lower_bound is not None]
-            uppers = [it.upper_bound for it in day_items if it.upper_bound is not None]
-
-            summaries.append(
-                DailyForecastSummary(
-                    date=d_key,
-                    min_predicted_aqi=min_aqi,
-                    max_predicted_aqi=max_aqi,
-                    average_predicted_aqi=avg_aqi,
-                    predominant_category=predom_cat,
-                    dominant_pollutant=day_items[0].dominant_pollutant,
-                    forecast_points_count=len(day_items),
-                    lower_bound=min(lowers) if lowers else None,
-                    upper_bound=max(uppers) if uppers else None,
-                )
-            )
+        summaries = forecast_mapper.aggregate_daily_summaries(hourly_resp.forecasts, days)
 
         return DailyForecastResponse(
             city=hourly_resp.city,
@@ -628,24 +579,7 @@ class ForecastService:
                 AQIForecast.forecast_run_id == r.id
             )
             f_count = db.execute(f_count_stmt).scalar() or 0
-
-            summaries.append(
-                ForecastRunSummary(
-                    id=r.id,
-                    city_name=r.city.name if r.city else city.name,
-                    station_name=r.station.station_name if r.station else None,
-                    model_name=r.model_name,
-                    model_version=r.model_version,
-                    generated_at=r.generated_at,
-                    training_samples=r.training_samples,
-                    evaluation_mae=r.evaluation_mae,
-                    evaluation_rmse=r.evaluation_rmse,
-                    evaluation_mape=r.evaluation_mape,
-                    is_simulated=r.is_simulated,
-                    status=r.status,
-                    forecast_count=f_count,
-                )
-            )
+            summaries.append(forecast_mapper.build_forecast_run_summary(r, city.name, f_count))
 
         return ForecastHistoryResponse(
             city=city.name,
@@ -676,11 +610,7 @@ class ForecastService:
 
     def _coverage_hours(self, run: ForecastRun) -> float | None:
         """Return training data coverage in hours, or None if timestamps unavailable."""
-        if run.training_data_start and run.training_data_end:
-            return round(
-                (run.training_data_end - run.training_data_start).total_seconds() / 3600.0, 1
-            )
-        return None
+        return forecast_mapper.compute_coverage_hours(run)
 
     def get_model_status(
         self,
@@ -705,25 +635,9 @@ class ForecastService:
         eval_metrics = self._query_eval_metrics(db, latest_run) if latest_run else []
         coverage = self._coverage_hours(latest_run) if latest_run else None
 
-        return ModelStatusResponse(
-            model_name="ExponentialSmoothingForecaster",
-            model_version="1.2.0",
-            is_ready=latest_run is not None,
-            active_provider="statistical_exponential_smoothing",
-            training_data_coverage_hours=coverage,
-            training_sample_count=latest_run.training_samples if latest_run else 0,
-            latest_training_timestamp=latest_run.generated_at if latest_run else None,
-            supported_horizons=["1h", "6h", "12h", "24h", "48h", "72h"],
-            baseline_comparison={
-                "baseline_model": "PersistenceBaseline",
-                "evaluation_metric": "Mean Absolute Error (MAE)",
-                "latest_run_mae": latest_run.evaluation_mae if latest_run else None,
-                "latest_run_rmse": latest_run.evaluation_rmse if latest_run else None,
-            },
-            evaluation_metrics=eval_metrics,
-            weather_integration_status={
-                "enabled": self.settings.WEATHER_ENABLED,
-                "provider": self.settings.WEATHER_PROVIDER,
-                "base_url": self.settings.WEATHER_API_BASE_URL,
-            },
+        return forecast_mapper.build_model_status_response(
+            latest_run=latest_run,
+            eval_metrics=eval_metrics,
+            coverage=coverage,
+            settings=self.settings,
         )

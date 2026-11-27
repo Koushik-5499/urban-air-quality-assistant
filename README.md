@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![CI](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml)
-[![Tests: 256 Passing](https://img.shields.io/badge/Tests-256%20Passing-brightgreen.svg)](./docs/TESTING.md)
+[![Tests: 434 Passing](https://img.shields.io/badge/Tests-434%20Passing-brightgreen.svg)](./docs/TESTING.md)
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-blue.svg)](./docs/ACCESSIBILITY.md)
 [![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%20Principles-purple.svg)](./ARCHITECTURE.md)
 
@@ -90,9 +90,18 @@ The system is engineered according to strict **SOLID principles** and enterprise
 
 - **Single Responsibility Principle (SRP):** Distinct layers for CPCB telemetry ingestion, NAQI mathematical calculation, Holt-Winters exponential smoothing, Gemini AI generation, and safety validation.
 - **Open/Closed Principle (OCP):** Pluggable provider architectures (`BaseAIProvider`, `BaseForecastModel`, `BaseNotificationChannel`) extensible without modifying core services.
-- **Liskov Substitution Principle (LSP):** `GeminiProvider` and `MockAIProvider` can be substituted interchangeably without altering caller contracts.
-- **Interface Segregation Principle (ISP):** Granular interfaces for telemetry reading, alert dispatching, and health synthesis.
+- **Liskov Substitution Principle (LSP):** `GeminiProvider` and `MockAIProvider` can be substituted interchangeably without altering caller contracts. `BaseRepository` ensures all data-access implementations are swappable.
+- **Interface Segregation Principle (ISP):** Granular interfaces for telemetry reading, alert dispatching, health synthesis, and data access (`BaseRepository`, `BaseAIProvider`, `BaseNotificationChannel`, `BaseForecastModel`).
 - **Dependency Inversion Principle (DIP):** High-level endpoints depend on abstract provider protocols injected via FastAPI dependency injection.
+
+### Abstract Interfaces Summary
+| Interface | File | Implementations |
+|:---|:---|:---|
+| `BaseAIProvider` | `integrations/ai/base.py` | `GeminiProvider`, `MockAIProvider` |
+| `BaseAQIProvider` | `integrations/base.py` | `CPCBProvider`, `MockProvider` |
+| `BaseNotificationChannel` | `services/alerts/notification_service.py` | `WebPushNotificationChannel`, `InAppNotificationChannel` |
+| `BaseForecastModel` | `services/forecasting/models/base.py` | `ExponentialSmoothingModel` |
+| `BaseRepository` | `repositories/base.py` | `ReadingRepository`, `CityRepository`, `StationRepository` |
 
 ---
 
@@ -132,13 +141,56 @@ flowchart TD
 
 **AI Assistant:**
 1. User submits question → `POST /api/v1/health/ask` with city + question + history
-2. Context builder assembles AQI + weather data
-3. Gemini generates response → Safety validator screens it → Response returned
-4. Frontend renders in `aria-live="polite"` chat region
+2. Prompt-injection validator screens input (rejects `ignore previous instructions`, jailbreak patterns)
+3. Context builder assembles AQI + weather + vulnerability profile + inversion state
+4. Gemini generates structured JSON response → Safety validator screens it → Response returned
+5. Frontend renders in `aria-live="polite"` chat region with priority/reason/source explainability
 
 **Alerts:**
 1. Background evaluator runs every 5 min → compares current AQI to thresholds
 2. Deduplication check → Alert record saved → `GET /api/v1/alerts?city=Delhi` returns public list
+
+---
+
+## 4.5 GenAI Integration Details
+
+The application uses Google Gemini as its primary AI backbone, fully aligned with the Challenge 6 requirement for a GenAI-powered urban air quality assistant.
+
+### Model & SDK
+| Property | Value |
+|:---|:---|
+| Model | `gemini-2.5-flash` (via `google-genai` Python SDK) |
+| Implementation | `backend/app/integrations/ai/gemini_provider.py` |
+| Base class | `BaseAIProvider` (ABC) in `backend/app/integrations/ai/base.py` |
+| Mock substitute | `MockAIProvider` in `backend/app/integrations/mock/provider.py` |
+
+### Request Pipeline
+```
+User question
+  → PromptInjectionValidator (rejects jailbreak patterns)
+  → ContextBuilder (AQI + weather + inversion state + vulnerability profile)
+  → GeminiProvider.generate_response()
+  → SafetyValidator (screens medical advice, checks response completeness)
+  → Fallback: HealthKnowledgeBase (deterministic, zero-downtime)
+  → Response with: priority, target_group, reason, source, impact_metrics
+```
+
+### Structured Response Schema
+The Gemini prompt is engineered to return structured health advice with:
+- **priority**: `critical` / `high` / `medium` / `low`
+- **target_group**: specific vulnerable group(s) addressed
+- **reason**: "Why this advice?" explanation referencing CPCB/WHO standards
+- **source**: citation (`CPCB NAQI 2014`, `WHO AQG 2021`, etc.)
+- **impact**: quantified metric (e.g., "Reduces PM2.5 inhalation by 52%")
+
+### Safety & Security
+- **Prompt injection guard**: Pydantic field validator rejects questions containing injection patterns
+- **Medical disclaimer**: All AI responses include a standard medical disclaimer
+- **API key**: Stored in `backend/.env` (gitignored), never logged (SecretRedactionFilter)
+- **Fallback resilience**: If Gemini is unavailable/rate-limited, `_generate_knowledge_base_fallback()` activates immediately
+
+### Quantified Impact Endpoint
+`GET /api/v1/health/impact-metrics` — Returns CPCB/WHO-sourced impact metrics for all 5 Challenge 6 pillars (winter smog, low-emission routines, indoor hacks, sustainable alternatives, vulnerable groups).
 
 ---
 
@@ -206,19 +258,19 @@ App available at: http://localhost:5173
 
 Comprehensive automated test suites validate all components across backend algorithms, AI integrations, and frontend interactions. See [docs/TESTING.md](./docs/TESTING.md) for full coverage metrics and breakdown.
 
-### Backend (197 Tests Passed, 1 Skipped, 0 Warnings)
+### Backend (346 Tests Passed, 0 Skipped, 92% Coverage)
 ```bash
 cd backend
-.venv/bin/pytest -q
-# 197 passed, 1 skipped in 31.46s
+.venv/bin/pytest -q --cov=app
+# 346 passed in 34.58s (92% statement coverage across 4,692 statements)
 ```
 
-### Frontend (59 Tests Passed, 10 Test Suites)
+### Frontend (88 Tests Passed, 14 Test Suites, 86.4% Line Coverage)
 ```bash
 cd frontend
-npm test
-# Test Files  10 passed (10)
-# Tests       59 passed (59)
+npx vitest run --coverage
+# Test Files  14 passed (14)
+# Tests       88 passed (88) — Stmts 86.43% | Branches 78.77% | Funcs 62.42% | Lines 86.43%
 
 npm run lint
 # (exit 0, 0 errors, 0 warnings)
@@ -227,9 +279,9 @@ npx tsc -b --noEmit
 # (exit 0, 0 type errors)
 
 npm run build
-# ✓ built in 5.36s
+# ✓ built in 6.99s
 ```
-**Total Verified Tests: 256 automated unit, integration, alignment, and E2E tests (197 Backend + 59 Frontend).**
+**Total Verified Tests: 434 automated unit, integration, security, accessibility, alignment, and E2E tests (346 Backend + 88 Frontend).**
 
 The 15 new alignment acceptance tests in `backend/tests/test_alignment.py` cover all 8 Challenge 6 pillars:
 winter smog & thermal inversion, low-emission routines, indoor air hacks, sustainable alternatives,
@@ -251,7 +303,7 @@ For complete penetration testing, threat models, and vulnerability audits, see [
 Full compliance report and testing methodology: [docs/ACCESSIBILITY.md](./docs/ACCESSIBILITY.md).
 - **Skip-to-Content:** Native keyboard shortcut to jump past navigation on every page (`frontend/src/layouts/RootLayout.tsx`).
 - **Contrast & Visibility:** WCAG AA 4.5:1 minimum text contrast; high-visibility 3px focus rings (`:focus-visible`).
-- **Screen Reader Support:** Screen reader announcements via `aria-live="polite"` for dynamic AQI updates and AI responses (`frontend/src/pages/Assistant.tsx`).
+- **Screen Reader Support:** Screen reader announcements via `aria-live="polite"` for dynamic AQI updates and AI responses (`frontend/src/pages/AssistantPage.tsx`).
 - **Dual Visual Indicators:** AQI levels convey severity using both distinct colors AND textual category labels.
 
 ### Efficiency & Performance

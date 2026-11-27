@@ -1,8 +1,9 @@
 """Schemas for AI completion requests, chat context, recommendations, and responses."""
 
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatMessage(BaseModel):
@@ -93,6 +94,14 @@ class AQIContextSnapshot(BaseModel):
     )
 
 
+
+INJECTION_PATTERNS = re.compile(
+    r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?"
+    r"|system\s*prompt|jailbreak|DAN\s+mode|\bforget\s+everything\b",
+    re.IGNORECASE,
+)
+
+
 class HealthAskRequest(BaseModel):
     """Request payload for POST /api/v1/health/ask."""
 
@@ -124,6 +133,23 @@ class HealthAskRequest(BaseModel):
         max_length=10,
         description="Bounded conversation history (up to 10 turns)",
     )
+
+    @field_validator("question")
+    @classmethod
+    def reject_prompt_injection(cls, v: str) -> str:
+        """Guard against prompt-injection attempts that try to hijack the AI system prompt."""
+        _INJECTION = re.compile(
+            r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions?"
+            r"|system\s*prompt|jailbreak|DAN\s+mode|\bforget\s+everything\b"
+            r"|act\s+as\s+(?:an?\s+)?(?:unrestricted|evil|DAN)\b"
+            r"|pretend\s+(?:you\s+are|to\s+be)\s+(?:an?\s+)?(?:AI\s+without|unrestricted)",
+            re.IGNORECASE,
+        )
+        if _INJECTION.search(v):
+            raise ValueError(
+                "Question contains disallowed content. Please ask a genuine air quality question."
+            )
+        return v
 
 
 class HealthAskResponse(BaseModel):
@@ -272,3 +298,23 @@ class CommunitySolutionsResponse(BaseModel):
         default_factory=list, description="Authoritative environmental and clinical references"
     )
     disclaimer: str = Field(..., description="Standard medical disclaimer")
+
+
+class ImpactMetricPillar(BaseModel):
+    """Quantified health or emissions impact entry for a Challenge 6 pillar."""
+
+    pillar: str = Field(..., description="Pillar identifier slug")
+    recommendation: str = Field(..., description="Recommended behavioral or protective action")
+    quantified_impact: str = Field(..., description="Measured exposure or emissions reduction")
+    source: str = Field(..., description="Authoritative citation or empirical study")
+    target_groups: list[str] = Field(
+        default_factory=list, description="Benefiting citizen and vulnerable cohorts"
+    )
+
+
+class ImpactMetricsResponse(BaseModel):
+    """Typed response payload for GET /api/v1/health/impact-metrics."""
+
+    pillars: list[ImpactMetricPillar] = Field(..., description="Quantified pillar metrics")
+    data_as_of: str = Field(..., description="Reference benchmark year")
+    disclaimer: str = Field(..., description="Evidence scope and clinical boundary notice")

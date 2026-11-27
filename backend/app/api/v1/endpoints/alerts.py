@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.core.security import verify_admin_access
+from app.core.security import require_admin_scope
 from app.db.session import get_db
 from app.schemas.alert import (
     AlertPaginatedResponse,
@@ -178,7 +178,7 @@ def update_user_preferences() -> dict[str, str]:
     ),
 )
 async def process_alerts(
-    _admin: None = Depends(verify_admin_access),
+    _admin: None = Depends(require_admin_scope("alert")),
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
 ) -> AlertProcessResponse:
@@ -213,7 +213,7 @@ def get_alert_status(
 )
 async def test_notification(
     request: AlertTestNotificationRequest,
-    _admin: None = Depends(verify_admin_access),
+    _admin: None = Depends(require_admin_scope("alert")),
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
 ) -> AlertTestNotificationResponse:

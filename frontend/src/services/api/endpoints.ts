@@ -38,6 +38,8 @@ export const API_ENDPOINTS = {
     ask: '/api/v1/health/ask',
     recommendations: '/api/v1/health/recommendations',
     guidelines: '/api/v1/health/guidelines',
+    communitySolutions: '/api/v1/health/community-solutions',
+    impactMetrics: '/api/v1/health/impact-metrics',
     pollutantExplanation: (code: string) => `/api/v1/health/pollutants/${encodeURIComponent(code)}`,
     status: '/api/v1/health/status',
   },

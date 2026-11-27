@@ -3,6 +3,8 @@
 from app.integrations.ai.schemas import (
     CategoryGuideline,
     CommunitySolutionsResponse,
+    ImpactMetricPillar,
+    ImpactMetricsResponse,
     PollutantExplanationResponse,
     RecommendationItem,
 )
@@ -708,4 +710,53 @@ class HealthKnowledgeBase:
             direct_impact_analysis=cls.DIRECT_IMPACT_METRICS,
             sources=AUTHORITATIVE_SOURCES,
             disclaimer=MEDICAL_DISCLAIMER,
+        )
+
+    @classmethod
+    def get_impact_metrics(cls) -> ImpactMetricsResponse:
+        """Return typed quantified impact metrics for all five Challenge 6 pillars."""
+        pillars = [
+            ImpactMetricPillar(
+                pillar="winter_smog_inversion",
+                recommendation="Avoid outdoor activity during 05:00–08:30 IST inversion window",
+                quantified_impact="Reduces peak particulate inhalation by up to 52%",
+                source="CPCB Inversion Research 2023",
+                target_groups=["general_public", "children", "elderly", "asthma_copd"],
+            ),
+            ImpactMetricPillar(
+                pillar="low_emission_routines",
+                recommendation="Metro/electric bus vs private car commute",
+                quantified_impact="Saves ~3.2 kg CO₂ and 45% lower in-cabin toxic gas exposure",
+                source="Delhi Transport Corp EV LCA Study",
+                target_groups=["daily_commuters", "outdoor_workers"],
+            ),
+            ImpactMetricPillar(
+                pillar="indoor_air_hacks",
+                recommendation="Corsi-Rosenthal DIY HEPA box fan filter",
+                quantified_impact="Reduces indoor PM2.5 by 75–85%",
+                source="EPA Clean Air Guidance",
+                target_groups=["families", "children", "elderly"],
+            ),
+            ImpactMetricPillar(
+                pillar="sustainable_alternatives",
+                recommendation="Electric radiant heater vs open biomass burning",
+                quantified_impact="Eliminates localized PM2.5 spikes above 800 µg/m³",
+                source="CPCB Open Burning Survey",
+                target_groups=["general_public", "low_income_households"],
+            ),
+            ImpactMetricPillar(
+                pillar="vulnerable_groups",
+                recommendation="N95/FFP2 mask during outdoor exposure for sensitive groups",
+                quantified_impact="Reduces inhaled PM2.5 by 95%",
+                source="CPCB Protective Equipment Standards",
+                target_groups=["asthma_copd", "children", "elderly", "pregnant_women"],
+            ),
+        ]
+        return ImpactMetricsResponse(
+            pillars=pillars,
+            data_as_of="2024",
+            disclaimer=(
+                "Impact estimates are derived from peer-reviewed studies and regulatory guidance. "
+                "Individual outcomes may vary. Consult a medical professional for personal advice."
+            ),
         )

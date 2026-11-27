@@ -46,7 +46,7 @@ class Settings(BaseSettings):
         description="Optional Gemini AI API key",
     )
     GEMINI_MODEL: str = Field(
-        default="gemini-3.5-flash-lite",
+        default="gemini-2.5-flash",
         description="Configured Gemini model identifier",
     )
     AI_PROVIDER: str = Field(
@@ -237,7 +237,7 @@ class Settings(BaseSettings):
                 parsed = _json.loads(stripped)
                 if isinstance(parsed, list):
                     return [str(item).strip() for item in parsed if str(item).strip()]
-            except Exception:
+            except _json.JSONDecodeError:
                 pass
         return [item.strip() for item in stripped.split(",") if item.strip()]
 

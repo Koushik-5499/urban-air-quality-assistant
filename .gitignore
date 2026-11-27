@@ -42,6 +42,8 @@ npm-debug.log*
 yarn-debug.log*
 .pytest_cache/
 .coverage
+coverage/
+frontend/coverage/
 htmlcov/
 .DS_Store
 Thumbs.db

@@ -29,6 +29,19 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
+      exclude: [
+        'public/**',
+        'src/__tests__/**',
+        'src/types/**',
+        'src/constants/**',
+        '**/*.d.ts',
+        'src/test-setup.ts',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        'coverage/**',
+        'dist/**',
+        '**/*.config.*',
+      ],
       thresholds: {
         lines: 60,
         branches: 60,

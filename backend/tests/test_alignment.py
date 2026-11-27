@@ -12,7 +12,6 @@ Each test covers one pillar of the problem statement:
   8. Explainability (priority, reason, source on recommendations)
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -24,9 +23,13 @@ client = TestClient(app)
 # Pillar 1: Winter smog & thermal inversion
 # ---------------------------------------------------------------------------
 
+
 def test_health_ask_winter_smog_response():
     """Assistant endpoint handles winter-smog question and returns a response."""
-    resp = client.post("/api/v1/health/ask", json={"question": "winter smog advice Delhi", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={"question": "winter smog advice Delhi", "city": "Delhi"},
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "response" in data or "answer" in data or "content" in data or isinstance(data, str)
@@ -44,9 +47,13 @@ def test_guidelines_contain_inversion_or_smog_content():
 # Pillar 2: Low-emission daily routines
 # ---------------------------------------------------------------------------
 
+
 def test_health_ask_low_emission_routines():
     """Assistant returns something for low-emission daily routine questions."""
-    resp = client.post("/api/v1/health/ask", json={"question": "low-emission daily routines to reduce air pollution", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={"question": "low-emission daily routines to reduce air pollution", "city": "Delhi"},
+    )
     assert resp.status_code == 200
 
 
@@ -55,16 +62,21 @@ def test_guidelines_contain_commute_or_routine_content():
     resp = client.get("/api/v1/health/guidelines")
     assert resp.status_code == 200
     text = str(resp.json()).lower()
-    assert any(keyword in text for keyword in ["commut", "routine", "transport", "walk", "cycle", "public transit"])
+    keywords = ["commut", "routine", "transport", "walk", "cycle", "public transit"]
+    assert any(keyword in text for keyword in keywords)
 
 
 # ---------------------------------------------------------------------------
 # Pillar 3: Indoor air hacks
 # ---------------------------------------------------------------------------
 
+
 def test_health_ask_indoor_air_hacks():
     """Assistant handles indoor air quality questions."""
-    resp = client.post("/api/v1/health/ask", json={"question": "indoor air quality hacks", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={"question": "indoor air quality hacks", "city": "Delhi"},
+    )
     assert resp.status_code == 200
 
 
@@ -73,16 +85,21 @@ def test_guidelines_mention_indoor_measures():
     resp = client.get("/api/v1/health/guidelines")
     assert resp.status_code == 200
     text = str(resp.json()).lower()
-    assert any(keyword in text for keyword in ["indoor", "purifier", "ventilation", "window", "filter"])
+    keywords = ["indoor", "purifier", "ventilation", "window", "filter"]
+    assert any(keyword in text for keyword in keywords)
 
 
 # ---------------------------------------------------------------------------
 # Pillar 4: Sustainable alternatives
 # ---------------------------------------------------------------------------
 
+
 def test_health_ask_sustainable_alternatives():
     """Assistant handles sustainable alternatives questions."""
-    resp = client.post("/api/v1/health/ask", json={"question": "sustainable alternatives to reduce air pollution", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={"question": "sustainable alternatives to reduce air pollution", "city": "Delhi"},
+    )
     assert resp.status_code == 200
 
 
@@ -91,38 +108,73 @@ def test_guidelines_mention_sustainable_practices():
     resp = client.get("/api/v1/health/guidelines")
     assert resp.status_code == 200
     text = str(resp.json()).lower()
-    assert any(keyword in text for keyword in ["sustainable", "eco", "electric", "renew", "green", "plant"])
+    keywords = ["sustainable", "eco", "electric", "renew", "green", "plant"]
+    assert any(keyword in text for keyword in keywords)
 
 
 # ---------------------------------------------------------------------------
 # Pillar 5: Quantified impact
 # ---------------------------------------------------------------------------
 
+
 def test_health_ask_quantified_impact():
     """Assistant handles quantified-impact questions."""
-    resp = client.post("/api/v1/health/ask", json={"question": "quantified impact of air pollution on health", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={"question": "quantified impact of air pollution on health", "city": "Delhi"},
+    )
     assert resp.status_code == 200
+
+
+def test_impact_metrics_covers_all_pillars():
+    """GET /api/v1/health/impact-metrics returns all 5 Challenge 6 pillars."""
+    resp = client.get("/api/v1/health/impact-metrics")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["pillars"]) >= 5
+    for pillar in data["pillars"]:
+        assert "quantified_impact" in pillar
+        assert "source" in pillar
+        assert "target_groups" in pillar
+
+
+def test_community_solutions_covers_all_challenge6_pillars():
+    """GET /api/v1/health/community-solutions returns all Challenge 6 structured categories."""
+    resp = client.get("/api/v1/health/community-solutions")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["winter_smog_guidance"]) >= 1
+    assert len(data["low_emission_routines"]) >= 1
+    assert len(data["indoor_air_hacks"]) >= 1
+    assert len(data["sustainable_alternatives"]) >= 1
+    assert len(data["direct_impact_analysis"]) >= 3
 
 
 def test_recommendations_have_structured_fields():
-    """Health recommendations include at minimum title and description."""
-    resp = client.get("/api/v1/health/recommendations?city=Delhi&aqi=200")
-    if resp.status_code == 404:
-        pytest.skip("recommendations endpoint not wired to this path")
+    """Health recommendations include at minimum title, description, and impact context."""
+    resp = client.get("/api/v1/health/recommendations?city=Delhi")
     assert resp.status_code == 200
-    items = resp.json()
-    if isinstance(items, list) and len(items) > 0:
-        item = items[0]
-        assert "title" in item or "description" in item or "text" in item
+    data = resp.json()
+    items = data.get("recommendations", [])
+    assert isinstance(items, list) and len(items) > 0
+    item = items[0]
+    assert "title" in item and "description" in item and "supporting_source" in item
 
 
 # ---------------------------------------------------------------------------
 # Pillar 6: Vulnerable groups
 # ---------------------------------------------------------------------------
 
+
 def test_health_ask_vulnerable_groups_children_elderly():
     """Assistant returns a response for vulnerable-group queries."""
-    resp = client.post("/api/v1/health/ask", json={"question": "advice for children and elderly with asthma during smog", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={
+            "question": "advice for children and elderly with asthma during smog",
+            "city": "Delhi",
+        },
+    )
     assert resp.status_code == 200
 
 
@@ -131,30 +183,43 @@ def test_guidelines_mention_vulnerable_groups():
     resp = client.get("/api/v1/health/guidelines")
     assert resp.status_code == 200
     text = str(resp.json()).lower()
-    assert any(keyword in text for keyword in [
-        "child", "elderly", "asthma", "copd", "pregnant", "outdoor worker", "sensitive", "vulnerable"
-    ])
+    keywords = [
+        "child",
+        "elderly",
+        "asthma",
+        "copd",
+        "pregnant",
+        "outdoor worker",
+        "sensitive",
+        "vulnerable",
+    ]
+    assert any(keyword in text for keyword in keywords)
 
 
 # ---------------------------------------------------------------------------
 # Pillar 7: Data honesty
 # ---------------------------------------------------------------------------
 
+
 def test_air_quality_endpoint_returns_is_simulated_field():
-    """AQI reading responses include an is_simulated field for data provenance."""
-    resp = client.get("/api/v1/air-quality/current?city=Delhi")
-    if resp.status_code in (404, 503):
-        pytest.skip("live endpoint unavailable in test env")
+    """AQI source-status and city endpoints disclose data provenance explicitly."""
+    resp = client.get("/api/v1/air-quality/source-status")
     assert resp.status_code == 200
-    data = resp.json()
-    # Accept nested or flat
-    text = str(data).lower()
-    assert "simulated" in text or "is_simulated" in text or "source" in text
+    text = str(resp.json()).lower()
+    assert any(tok in text for tok in ("simulated", "is_simulated", "provider", "source"))
+
+    city_resp = client.get("/api/v1/air-quality/cities/Delhi")
+    assert city_resp.status_code == 200
+    city_text = str(city_resp.json()).lower()
+    assert "is_simulated" in city_text or "source" in city_text
 
 
 def test_health_ask_does_not_fabricate_response():
     """Health ask endpoint does not return a 5xx error for a valid question."""
-    resp = client.post("/api/v1/health/ask", json={"question": "is the data real or simulated?", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={"question": "is the data real or simulated?", "city": "Delhi"},
+    )
     assert resp.status_code < 500
 
 
@@ -162,9 +227,13 @@ def test_health_ask_does_not_fabricate_response():
 # Pillar 8: Explainability
 # ---------------------------------------------------------------------------
 
+
 def test_health_ask_returns_explainable_response():
     """Health ask endpoint returns a structured or textual response (not empty)."""
-    resp = client.post("/api/v1/health/ask", json={"question": "why is PM2.5 dangerous?", "city": "Delhi"})
+    resp = client.post(
+        "/api/v1/health/ask",
+        json={"question": "why is PM2.5 dangerous?", "city": "Delhi"},
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data  # non-empty

@@ -15,6 +15,7 @@ from app.integrations.ai.schemas import (
     HealthGuidelinesResponse,
     HealthRecommendationsResponse,
     HealthStatusResponse,
+    ImpactMetricsResponse,
     PollutantExplanationResponse,
 )
 from app.schemas.health import HealthResponse
@@ -156,3 +157,22 @@ def get_ai_status(
 ) -> HealthStatusResponse:
     """Return AI model identifier, provider status, and availability."""
     return advisor.get_status()
+
+
+@router.get(
+    "/impact-metrics",
+    response_model=ImpactMetricsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Quantified Health Impact Metrics for Challenge 6 Pillars",
+    description=(
+        "Retrieve CPCB/WHO-sourced quantified health impact metrics for each of the five "
+        "Challenge 6 pillars: winter smog, low-emission routines, indoor air hacks, sustainable "
+        "alternatives, and vulnerable group protection."
+    ),
+    tags=["Health & Guidance"],
+)
+def get_impact_metrics(
+    advisor: HealthAdvisorService = Depends(get_health_advisor),
+) -> ImpactMetricsResponse:
+    """Return typed quantified impact metrics for all Challenge 6 recommendation pillars."""
+    return advisor.get_impact_metrics()

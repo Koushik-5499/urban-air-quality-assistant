@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.security import verify_admin_access
+from app.core.security import require_admin_scope
 from app.db.session import get_db
 from app.repositories.reading_repository import ReadingRepository
 from app.schemas.air_quality import (
@@ -136,7 +136,7 @@ async def get_source_status(
 )
 async def trigger_sync(
     city: str | None = Query(None, description="Optional city filter for targeted synchronization"),
-    _admin: None = Depends(verify_admin_access),
+    _admin: None = Depends(require_admin_scope("sync")),
     db: Session = Depends(get_db),
     aqi_service: AQIDataService = Depends(get_aqi_data_service),
 ) -> SyncResponse:

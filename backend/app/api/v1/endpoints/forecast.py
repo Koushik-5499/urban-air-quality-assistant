@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
-from app.core.security import verify_admin_access
+from app.core.security import require_admin_scope
 from app.db.session import get_db
 from app.schemas.forecast import (
     DailyForecastResponse,
@@ -171,7 +171,7 @@ def get_model_status(
 )
 async def generate_forecast(
     request: ForecastGenerateRequest,
-    _admin: None = Depends(verify_admin_access),
+    _admin: None = Depends(require_admin_scope("forecast")),
     db: Session = Depends(get_db),
     forecast_service: ForecastService = Depends(get_forecast_service),
 ) -> ForecastGenerateResponse:

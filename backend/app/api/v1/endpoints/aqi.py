@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.security import verify_admin_access
+from app.core.security import require_admin_scope
 from app.db.session import get_db
 from app.schemas.aqi_processing import (
     AQICalculationResponse,
@@ -134,7 +134,7 @@ async def get_aqi_history(
 )
 async def process_aqi_readings(
     city_id: int | None = Query(None, description="Optional city ID to scope processing"),
-    _admin: None = Depends(verify_admin_access),
+    _admin: None = Depends(require_admin_scope("sync")),
     db: Session = Depends(get_db),
 ) -> AQIProcessResponse:
     """Process current pollutant measurements and persist new AQI readings with deduplication."""

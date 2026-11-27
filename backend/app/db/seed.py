@@ -6,9 +6,12 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.db.session import SessionLocal
 from app.repositories.city_repository import CityRepository
 from app.schemas.city import CityCreate
+
+logger = get_logger("app.db.seed")
 
 # The 10 officially supported Indian cities with approximate coordinates
 SUPPORTED_CITIES: list[dict[str, Any]] = [
@@ -125,16 +128,18 @@ def main() -> None:
     db = SessionLocal()
     try:
         results = seed_cities(db)
-        print(
-            f"City seeding completed: {results['inserted']} inserted, "
-            f"{results['existing']} already existed (Total: {results['total']})."
+        logger.info(
+            "City seeding completed: %s inserted, %s already existed (Total: %s).",
+            results["inserted"],
+            results["existing"],
+            results["total"],
         )
     except SQLAlchemyError as exc:
-        print(f"Database error seeding cities: {exc}", file=sys.stderr)
+        logger.error("Database error seeding cities: %s", exc)
         sys.exit(1)
     except Exception as exc:
         # Top-level CLI boundary catch for unexpected runtime crashes
-        print(f"Unexpected error seeding cities: {exc}", file=sys.stderr)
+        logger.exception("Unexpected error seeding cities: %s", exc)
         sys.exit(1)
     finally:
         db.close()

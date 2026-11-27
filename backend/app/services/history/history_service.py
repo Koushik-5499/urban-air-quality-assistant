@@ -1,8 +1,6 @@
 """High-level Historical Data Service orchestrating queries, pagination, and service delegation."""
 
 import math
-import statistics
-from collections import Counter
 from datetime import datetime
 
 from sqlalchemy import desc, func, select
@@ -23,6 +21,7 @@ from app.schemas.history import (
 )
 from app.services.aqi.calculator import AQICalculator
 from app.services.aqi.categories import get_aqi_category
+from app.services.history import summary_service
 from app.services.history.aggregation_service import AggregationService
 from app.services.history.comparison_service import ComparisonService
 from app.services.history.trend_service import TrendService
@@ -41,18 +40,9 @@ class HistoryService:
         end_utc: datetime | None,
     ) -> list:
         """Construct SQL filter clauses for AQI readings."""
-        filters = []
-        if city_entity:
-            filters.append(AQIReading.city_id == city_entity.id)
-        if station_entity:
-            filters.append(AQIReading.station_id == station_entity.id)
-        if not include_simulated:
-            filters.append(AQIReading.is_simulated.is_(False))
-        if start_utc:
-            filters.append(AQIReading.measured_at >= start_utc)
-        if end_utc:
-            filters.append(AQIReading.measured_at <= end_utc)
-        return filters
+        return summary_service.build_aqi_filters(
+            city_entity, station_entity, include_simulated, start_utc, end_utc
+        )
 
     @staticmethod
     def _build_pollutant_filters(
@@ -64,20 +54,14 @@ class HistoryService:
         end_utc: datetime | None,
     ) -> list:
         """Construct SQL filter clauses for pollutant readings."""
-        filters = []
-        if city_entity:
-            filters.append(PollutantReading.city_id == city_entity.id)
-        if station_entity:
-            filters.append(PollutantReading.station_id == station_entity.id)
-        if pollutant_norm:
-            filters.append(PollutantReading.pollutant_code == pollutant_norm)
-        if not include_simulated:
-            filters.append(PollutantReading.is_simulated.is_(False))
-        if start_utc:
-            filters.append(PollutantReading.measured_at >= start_utc)
-        if end_utc:
-            filters.append(PollutantReading.measured_at <= end_utc)
-        return filters
+        return summary_service.build_pollutant_filters(
+            city_entity,
+            station_entity,
+            pollutant_norm,
+            include_simulated,
+            start_utc,
+            end_utc,
+        )
 
     @classmethod
     def _get_aggregated_aqi_history(
@@ -444,20 +428,8 @@ class HistoryService:
         end_utc: datetime | None,
     ) -> AQISummaryResponse:
         """Return zero-record default summary response."""
-        return AQISummaryResponse(
-            city=city_name,
-            station_id=station_id,
-            station_name=station_name,
-            period_start=start_utc,
-            period_end=end_utc,
-            min_aqi=None,
-            max_aqi=None,
-            average_aqi=None,
-            median_aqi=None,
-            record_count=0,
-            category_distribution={},
-            dominant_pollutant_distribution={},
-            data_quality="no_data",
+        return summary_service.empty_summary_response(
+            city_name, station_id, station_name, start_utc, end_utc
         )
 
     @staticmethod
@@ -465,11 +437,7 @@ class HistoryService:
         valid_readings: list[AQIReading],
     ) -> tuple[dict[str, int], dict[str, int]]:
         """Calculate categorical and dominant pollutant distributions."""
-        cat_counts = Counter(r.aqi_category for r in valid_readings if r.aqi_category)
-        dominant_counts = Counter(
-            r.dominant_pollutant for r in valid_readings if r.dominant_pollutant
-        )
-        return dict(cat_counts), dict(dominant_counts)
+        return summary_service.calc_summary_distributions(valid_readings)
 
     @classmethod
     def _compute_summary_stats(
@@ -482,35 +450,8 @@ class HistoryService:
         end_utc: datetime | None,
     ) -> AQISummaryResponse:
         """Calculate statistical summaries for non-empty set of valid AQI readings."""
-        count = len(valid_readings)
-        if count == 0:
-            return cls._empty_summary_response(
-                city_name, station_id, station_name, start_utc, end_utc
-            )
-
-        values = [r.aqi_value for r in valid_readings if r.aqi_value is not None]
-        avg_aqi = round(statistics.mean(values), 1)
-        min_aqi = min(values)
-        max_aqi = max(values)
-        median_aqi = round(float(statistics.median(values)), 1)
-
-        cat_dist, dom_dist = cls._calc_summary_distributions(valid_readings)
-        quality = "sufficient" if count >= 3 else "insufficient_data"
-
-        return AQISummaryResponse(
-            city=city_name,
-            station_id=station_id,
-            station_name=station_name,
-            period_start=start_utc or valid_readings[0].measured_at,
-            period_end=end_utc or valid_readings[-1].measured_at,
-            min_aqi=min_aqi,
-            max_aqi=max_aqi,
-            average_aqi=avg_aqi,
-            median_aqi=median_aqi,
-            record_count=count,
-            category_distribution=cat_dist,
-            dominant_pollutant_distribution=dom_dist,
-            data_quality=quality,
+        return summary_service.compute_summary_stats(
+            valid_readings, city_name, station_id, station_name, start_utc, end_utc
         )
 
     @classmethod

@@ -14,24 +14,8 @@
 
     <title>Urban Air Quality Assistant</title>
 
-    <!-- Synchronous Theme Initialization: Default Light Theme -->
-    <script>
-      (function() {
-        try {
-          var storedTheme = localStorage.getItem('uaqa_theme');
-          // Light theme is the default per design system specifications
-          if (storedTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-            var meta = document.getElementById('theme-meta');
-            if (meta) meta.setAttribute('content', '#0B0F19');
-          } else {
-            document.documentElement.classList.remove('dark');
-            var metaLight = document.getElementById('theme-meta');
-            if (metaLight) metaLight.setAttribute('content', '#F8FAFC');
-          }
-        } catch (e) {}
-      })();
-    </script>
+    <!-- Synchronous Theme Initialization: Default Light Theme (external for strict CSP) -->
+    <script src="/theme-init.js"></script>
   </head>
   <body class="bg-surface-main text-content-primary min-h-screen antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-200">
     <div id="root"></div>

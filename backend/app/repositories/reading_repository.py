@@ -8,16 +8,17 @@ from sqlalchemy.orm import Session
 from app.models.alert import Alert
 from app.models.aqi_reading import AQIReading
 from app.models.pollutant_reading import PollutantReading
+from app.repositories.base import BaseRepository
 from app.schemas.alert import AlertCreate
 from app.schemas.aqi import AQIReadingCreate
 from app.schemas.pollutant import PollutantReadingCreate
 
 
-class ReadingRepository:
+class ReadingRepository(BaseRepository):
     """Repository handling pollutant readings, composite AQI readings, and alerts."""
 
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
 
     # Pollutant Readings
     def create_pollutant_reading(self, reading_in: PollutantReadingCreate) -> PollutantReading:
@@ -153,3 +154,7 @@ class ReadingRepository:
             self.db.commit()
             self.db.refresh(alert)
         return alert
+
+    def health_check(self) -> bool:
+        """Return True if the backing store is reachable."""
+        return self._probe_db()

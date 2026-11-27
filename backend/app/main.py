@@ -70,16 +70,17 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # 1. Security Headers Middleware (CSP, HSTS, X-Content-Type-Options, X-Frame-Options)
-    app.add_middleware(SecurityHeadersMiddleware, is_production=settings.is_production)
-
-    # 2. Request Body Size Limit Middleware (1MB maximum payload)
+    # Middleware stack (Starlette wraps in LIFO order: last added runs outermost):
+    # 1. Request Body Size Limit (innermost security check, bounded streaming <= 1MB)
     app.add_middleware(RequestSizeLimitMiddleware)
 
-    # 3. Rate Limiting Middleware (abuse & resource exhaustion mitigation)
+    # 2. Rate Limiting (mitigates brute-force & resource exhaustion; emits 429 + Retry-After)
     app.add_middleware(RateLimitMiddleware, settings=settings)
 
-    # 4. Configure explicit CORS middleware (strict in production, no credentials)
+    # 3. Security Headers (outermost before CORS so 413/429 responses also carry headers)
+    app.add_middleware(SecurityHeadersMiddleware, is_production=settings.is_production)
+
+    # 4. Explicit CORS policy (least-privilege allowlists, no credentials)
     cors_origins = (
         [o for o in settings.CORS_ORIGINS if o != "*"]
         if settings.is_production
@@ -93,8 +94,15 @@ def create_application() -> FastAPI:
         allow_origins=cors_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-        expose_headers=["*"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "X-API-Key",
+            "X-Admin-Secret",
+            "X-User-Id",
+            "X-Request-ID",
+        ],
+        expose_headers=["X-Request-ID", "X-RateLimit-Remaining", "Retry-After"],
         max_age=600,
     )
 
@@ -113,13 +121,27 @@ def create_application() -> FastAPI:
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        """Handle Pydantic request validation errors."""
-        logger.warning("Validation error on %s: %s", request.url.path, exc.errors())
+        """Handle Pydantic request validation errors.
+
+        Pydantic v2 includes the original exception object in ``ctx['error']``
+        when a field_validator raises ValueError.  That object is not JSON-
+        serializable, so we convert every ctx value to a string here.
+        """
+        sanitized: list[dict] = []
+        for err in exc.errors():
+            err_copy = dict(err)
+            if "ctx" in err_copy:
+                err_copy["ctx"] = {
+                    k: str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v
+                    for k, v in err_copy["ctx"].items()
+                }
+            sanitized.append(err_copy)
+        logger.warning("Validation error on %s: %s", request.url.path, sanitized)
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "detail": "Request validation failed",
-                "errors": exc.errors(),
+                "errors": sanitized,
             },
         )
 

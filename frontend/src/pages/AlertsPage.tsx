@@ -292,9 +292,11 @@ function Alerts() {
 
       {/* 3. Sub-Navigation Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-2">
-        <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start">
+        <div role="tablist" aria-label="Alerts view switcher" className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'feed'}
             onClick={() => setActiveTab('feed')}
             className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'feed'
@@ -302,7 +304,7 @@ function Alerts() {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Bell className="w-3.5 h-3.5" />
+            <Bell className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Alert Feed</span>
             {unreadCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
@@ -312,6 +314,8 @@ function Alerts() {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'preferences'}
             onClick={() => setActiveTab('preferences')}
             className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'preferences'
@@ -319,11 +323,13 @@ function Alerts() {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5" />
+            <Sliders className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Threshold Preferences</span>
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'cities'}
             onClick={() => setActiveTab('cities')}
             className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'cities'
@@ -331,7 +337,7 @@ function Alerts() {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Building2 className="w-3.5 h-3.5" />
+            <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Monitored Cities ({monitoredCityIds.length}/{DEMO_LOCATIONS.length})</span>
           </button>
         </div>

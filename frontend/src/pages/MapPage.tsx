@@ -159,9 +159,11 @@ export function MapPage() {
             </span>
           </div>
 
-          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+          <div role="tablist" aria-label="Map view switcher" className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
             <button
               type="button"
+              role="tab"
+              aria-selected={viewMode === 'map'}
               onClick={() => setViewMode('map')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'map'
@@ -169,11 +171,13 @@ export function MapPage() {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <MapIcon className="w-3.5 h-3.5" />
+              <MapIcon className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Map View</span>
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={viewMode === 'list'}
               onClick={() => setViewMode('list')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewMode === 'list'
@@ -181,7 +185,7 @@ export function MapPage() {
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <ListFilter className="w-3.5 h-3.5" />
+              <ListFilter className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Accessible Table</span>
             </button>
           </div>

@@ -152,6 +152,7 @@ function Pollutants() {
                 </p>
                 <button
                   type="button"
+                  aria-label="Clear search filter"
                   onClick={handleClearFilters}
                   className="mt-2 text-xs text-emerald-600 hover:underline cursor-pointer"
                 >

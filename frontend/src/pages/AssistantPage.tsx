@@ -278,9 +278,11 @@ function Assistant() {
       )}
 
       {/* Mobile View Switcher (Chat vs Health Context) */}
-        <div className="inline-flex lg:hidden p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start">
+        <div role="tablist" aria-label="Assistant view switcher" className="inline-flex lg:hidden p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeMobileTab === 'chat'}
             onClick={() => setActiveMobileTab('chat')}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               activeMobileTab === 'chat'
@@ -288,11 +290,13 @@ function Assistant() {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <MessageSquare className="w-3.5 h-3.5" />
+            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Chat Session</span>
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeMobileTab === 'health'}
             onClick={() => setActiveMobileTab('health')}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               activeMobileTab === 'health'
@@ -300,7 +304,7 @@ function Assistant() {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
+            <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Health Insights</span>
           </button>
         </div>

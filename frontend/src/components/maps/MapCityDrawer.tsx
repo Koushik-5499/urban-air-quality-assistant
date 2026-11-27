@@ -81,7 +81,7 @@ export function MapCityDrawer({
             Station: {city.station}
           </p>
           <p className="text-[11px] text-slate-400 font-mono">
-            Coordinates: {city.lat.toFixed(4)}° N, {city.lng.toFixed(4)}° E
+            Coordinates: {city.lat != null ? city.lat.toFixed(4) : '—'}° N, {city.lng != null ? city.lng.toFixed(4) : '—'}° E
           </p>
         </div>
 

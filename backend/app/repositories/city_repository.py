@@ -4,14 +4,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.city import City
+from app.repositories.base import BaseRepository
 from app.schemas.city import CityCreate, CityUpdate
 
 
-class CityRepository:
+class CityRepository(BaseRepository):
     """Repository handling database operations for City entities."""
 
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, db: Session) -> None:
+        super().__init__(db)
 
     def get_by_id(self, city_id: int) -> City | None:
         """Retrieve a city by its primary key ID."""
@@ -49,3 +50,7 @@ class CityRepository:
         self.db.commit()
         self.db.refresh(city)
         return city
+
+    def health_check(self) -> bool:
+        """Return True if the backing store is reachable."""
+        return self._probe_db()
