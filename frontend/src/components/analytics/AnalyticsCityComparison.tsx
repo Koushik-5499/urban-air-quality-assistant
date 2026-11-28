@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { ChartDataTable } from '../common/ChartDataTable';
 import {
   ResponsiveContainer,
   BarChart,
@@ -137,7 +138,7 @@ export function AnalyticsCityComparison({
         <div>
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-            <CardTitle className="text-lg">Comparative Multi-City Analysis</CardTitle>
+            <CardTitle as="h2" className="text-lg">Comparative Multi-City Analysis</CardTitle>
             <Badge variant="neutral" size="sm">
               {comparedCities.length} / 4 Cities
             </Badge>
@@ -201,9 +202,9 @@ export function AnalyticsCityComparison({
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Comparative Bar Visualization
-              </h4>
+              </h3>
               <p className="text-xs text-slate-600 dark:text-slate-300">
                 {metricMode === 'aqi'
                   ? 'Normalized Air Quality Index values across compared stations'
@@ -295,6 +296,16 @@ export function AnalyticsCityComparison({
                 )}
               </BarChart>
             </ResponsiveContainer>
+            <ChartDataTable
+              caption="City air quality comparison benchmark"
+              columns={[
+                { key: 'name', label: 'City' },
+                { key: 'aqi', label: 'AQI' },
+                { key: 'pm25', label: 'PM2.5 (µg/m³)' },
+                { key: 'pm10', label: 'PM10 (µg/m³)' },
+              ]}
+              rows={chartData}
+            />
           </div>
 
           <div className="pt-2 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">

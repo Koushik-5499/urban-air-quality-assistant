@@ -36,8 +36,8 @@ textarea:focus-visible {
     --color-bg-hover: #f1f5f9;
 
     --color-text-primary: #111827;
-    --color-text-secondary: #64748b;
-    --color-text-muted: #94a388;
+    --color-text-secondary: #475569;
+    --color-text-muted: #4b5563;
 
     --color-border-default: #e2e8f0;
     --color-border-subtle: #f1f5f9;
@@ -68,7 +68,7 @@ textarea:focus-visible {
 
     --color-text-primary: #f8fafc;
     --color-text-secondary: #94a3b8;
-    --color-text-muted: #64748b;
+    --color-text-muted: #94a3b8;
 
     --color-border-default: #1e293b;
     --color-border-subtle: #2d3a54;

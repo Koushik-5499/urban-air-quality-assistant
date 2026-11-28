@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { ChartDataTable } from '../common/ChartDataTable';
 import {
   ResponsiveContainer,
   LineChart,
@@ -209,6 +210,14 @@ export function PollutantTrendChart({
               />
             </LineChart>
           </ResponsiveContainer>
+          <ChartDataTable
+            caption={`24-hour ${pollutantId.toUpperCase()} concentration trend`}
+            columns={[
+              { key: 'time', label: 'Time' },
+              { key: pollutantId, label: pollutantId.toUpperCase() },
+            ]}
+            rows={trendData}
+          />
         </div>
 
         {/* Disclaimer / Unit note */}

@@ -43,7 +43,7 @@ export function PollutantMetricCard({
   onSelect,
   onToggleCompare,
 }: PollutantMetricCardProps) {
-  const { id, name, formula, fullName, value, unit, status, changePercent, isIncrease, period } = pollutant;
+  const { id, formula, fullName, value, unit, status, changePercent, isIncrease, period } = pollutant;
   const details = POLLUTANT_DETAILS[id];
   const IconComponent = pollutantIcons[id] || Wind;
 
@@ -67,22 +67,12 @@ export function PollutantMetricCard({
 
   return (
     <Card
-      variant="interactive"
+      variant="standard"
       className={`p-5 flex flex-col justify-between transition-all relative group ${
         isSelected
           ? 'ring-2 ring-emerald-500 border-emerald-500/80 shadow-md'
           : 'hover:shadow-md'
       }`}
-      onClick={() => onSelect(id)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect(id);
-        }
-      }}
-      aria-label={`Inspect ${name} (${fullName}) air pollutant telemetry`}
     >
       {/* Top Accent Strip */}
       <div

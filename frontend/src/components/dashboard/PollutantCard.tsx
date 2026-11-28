@@ -96,7 +96,7 @@ export function PollutantCard({ pollutant }: PollutantCardProps) {
           )}
         </div>
 
-        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+        <span className="text-[10px] text-slate-600 dark:text-slate-300">
           {standardLimit}
         </span>
       </div>

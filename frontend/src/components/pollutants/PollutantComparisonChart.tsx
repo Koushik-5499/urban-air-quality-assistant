@@ -9,6 +9,7 @@ import {
   Legend,
 } from 'recharts';
 import { Layers, AlertCircle } from 'lucide-react';
+import { ChartDataTable } from '../common/ChartDataTable';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/Card';
 import { POLLUTANT_DETAILS } from '../../data/pollutantDetails';
 import type { PollutantId, ChartTimeRange } from '../../types/dashboard';
@@ -273,6 +274,14 @@ export function PollutantComparisonChart({
                 })}
               </LineChart>
             </ResponsiveContainer>
+            <ChartDataTable
+              caption="Multi-pollutant normalized hourly comparison"
+              columns={[
+                { key: 'time', label: 'Time' },
+                ...selectedPollutants.map((id) => ({ key: id, label: id.toUpperCase() })),
+              ]}
+              rows={chartData}
+            />
           </div>
         )}
       </CardContent>

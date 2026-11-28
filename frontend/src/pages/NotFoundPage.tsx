@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Home } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
+import { Card, CardContent, CardDescription, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -19,13 +19,15 @@ export function NotFoundPage() {
           <Badge variant="danger" size="sm" showDot className="mb-2">
             404 Error
           </Badge>
-          <CardTitle className="text-xl">Page Not Found</CardTitle>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Page Not Found
+          </h1>
           <CardDescription>
             The requested air quality route does not exist or has been relocated within the atmospheric telemetry system.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4 space-y-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
             Please check the URL or return to the main dashboard.
           </p>
           <Link to={ROUTES.DASHBOARD} className="inline-block">

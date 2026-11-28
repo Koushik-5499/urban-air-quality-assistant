@@ -31,7 +31,7 @@ export function AQIOverviewCard({ data }: AQIOverviewCardProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+          <span className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1">
             <Clock className="w-3 h-3" aria-hidden="true" />
             {lastUpdated}
           </span>
@@ -76,7 +76,7 @@ export function AQIOverviewCard({ data }: AQIOverviewCardProps) {
               <span>AQI Measurement Scale</span>
               <span>0 to 500 Index Range</span>
             </div>
-            <div className="grid grid-cols-6 gap-1 h-3 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 p-0.5" role="progressbar" aria-valuenow={aqi} aria-valuemin={0} aria-valuemax={500}>
+            <div className="grid grid-cols-6 gap-1 h-3 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 p-0.5" role="progressbar" aria-label="AQI measurement scale" aria-valuenow={aqi} aria-valuemin={0} aria-valuemax={500}>
               {scaleLevels.map((lvl) => (
                 <div
                   key={lvl.label}
@@ -87,7 +87,7 @@ export function AQIOverviewCard({ data }: AQIOverviewCardProps) {
                 />
               ))}
             </div>
-            <div className="grid grid-cols-6 gap-1 text-[10px] text-slate-400 dark:text-slate-500 text-center font-medium">
+            <div className="grid grid-cols-6 gap-1 text-[10px] text-slate-600 dark:text-slate-300 text-center font-medium">
               <span>0-50</span>
               <span>51-100</span>
               <span>101-150</span>

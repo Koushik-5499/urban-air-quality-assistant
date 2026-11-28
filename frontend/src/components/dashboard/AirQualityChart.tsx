@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { TrendingUp, Info } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/Card';
+import { ChartDataTable } from '../common/ChartDataTable';
 import type { ChartTimeRange, TrendDataPoint } from '../../types/dashboard';
 
 export interface AirQualityChartProps {
@@ -167,10 +168,20 @@ export function AirQualityChart({ trends }: AirQualityChartProps) {
               />
             </LineChart>
           </ResponsiveContainer>
+          <ChartDataTable
+            caption="Hourly AQI, PM2.5, and PM10 air quality telemetry"
+            columns={[
+              { key: 'time', label: 'Time' },
+              { key: 'aqi', label: 'AQI' },
+              { key: 'pm25', label: 'PM2.5 (µg/m³)' },
+              { key: 'pm10', label: 'PM10 (µg/m³)' },
+            ]}
+            rows={chartData}
+          />
         </div>
 
         {/* Chart Disclaimer Notice */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300">
           <span className="flex items-center gap-1">
             <Info className="w-3.5 h-3.5" aria-hidden="true" />
             Showing simulated trend curves for {selectedRange === '24h' ? 'past 24 hours' : selectedRange === '7d' ? 'past 7 days' : 'past 30 days'}

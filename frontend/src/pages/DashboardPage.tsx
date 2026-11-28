@@ -53,6 +53,9 @@ function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      <div aria-live="polite" className="sr-only">
+        {`Active monitoring city: ${selectedCityData.location.city}. Current AQI: ${selectedCityData.aqi} (${selectedCityData.category}).`}
+      </div>
       {/* 1. Header with Location Selector and Refresh */}
       <DashboardHeader
         selectedLocation={selectedCityData.location}

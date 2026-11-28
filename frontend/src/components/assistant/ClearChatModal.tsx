@@ -40,14 +40,14 @@ export function ClearChatModal({ isOpen, onClose, onConfirm }: ClearChatModalPro
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 rounded-lg cursor-pointer"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
           This will reset the conversation history. Current atmospheric telemetry and active city selection will be preserved.
         </p>
 

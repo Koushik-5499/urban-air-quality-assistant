@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChartDataTable } from '../common/ChartDataTable';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -119,7 +120,7 @@ export function PollutantTrendChart({
         <div>
           <div className="flex items-center gap-2">
             <Wind className="w-5 h-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-            <CardTitle className="text-lg">Individual Pollutant Historical Trajectory</CardTitle>
+            <CardTitle as="h2" className="text-lg">Individual Pollutant Historical Trajectory</CardTitle>
           </div>
           <CardDescription className="text-xs mt-0.5">
             Concentration trends across {timeRangeLabel} with WHO guidelines and National Ambient Air Quality Standards (NAAQS)
@@ -288,6 +289,14 @@ export function PollutantTrendChart({
               />
             </AreaChart>
           </ResponsiveContainer>
+          <ChartDataTable
+            caption={`Historical ${selectedPollutant.toUpperCase()} concentration trend`}
+            columns={[
+              { key: 'time', label: 'Time' },
+              { key: 'value', label: selectedPollutant.toUpperCase() },
+            ]}
+            rows={chartPoints}
+          />
         </div>
 
         {/* Informational Context Banner */}

@@ -40,7 +40,7 @@ export function Sidebar({
               type="button"
               onClick={onCloseMobile}
               aria-label="Close navigation menu"
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               <X className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -131,7 +131,7 @@ export function Sidebar({
             onClick={onToggleCollapse}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className={cn(
-              'w-full flex items-center rounded-lg py-2 text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer',
+              'w-full min-h-[44px] flex items-center rounded-lg py-2 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer',
               collapsed ? 'justify-center px-0' : 'justify-between px-3'
             )}
           >

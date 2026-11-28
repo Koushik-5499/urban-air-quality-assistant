@@ -64,7 +64,7 @@ export function AnalyticsInsights({
         <div>
           <div className="flex items-center gap-2">
             <Lightbulb className="w-5 h-5 text-amber-500" aria-hidden="true" />
-            <CardTitle className="text-lg">Calculated Historical & Telemetry Insights</CardTitle>
+            <CardTitle as="h2" className="text-lg">Calculated Historical & Telemetry Insights</CardTitle>
           </div>
           <CardDescription className="text-xs mt-0.5">
             Empirical observations calculated directly from sampled telemetry for {cityName} ({timeRangeLabel})

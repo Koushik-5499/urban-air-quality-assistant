@@ -1,3 +1,4 @@
+import { ChartDataTable } from '../common/ChartDataTable';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -126,9 +127,9 @@ export function ForecastChart({
       <div className="rounded-xl border border-amber-300 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/40 p-3.5 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
         <div className="space-y-0.5">
-          <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+          <h3 className="text-xs font-bold text-amber-900 dark:text-amber-200">
             Simulated Demonstration Projection
-          </h4>
+          </h3>
           <p className="text-xs text-amber-800 dark:text-amber-300">
             Forecasts are simulated for demonstration purposes and are not real-world AQI predictions.
           </p>
@@ -139,7 +140,7 @@ export function ForecastChart({
         <div>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-            <CardTitle className="text-lg">Predictive Air Quality Forecast Model</CardTitle>
+            <CardTitle as="h2" className="text-lg">Predictive Air Quality Forecast Model</CardTitle>
             <Badge variant={getBadgeVariant(forecast.overallCategory)} size="sm">
               Exp: {forecast.overallCategory}
             </Badge>
@@ -313,6 +314,16 @@ export function ForecastChart({
                 />
               </AreaChart>
             </ResponsiveContainer>
+            <ChartDataTable
+              caption="Predicted AQI forecast with uncertainty bounds"
+              columns={[
+                { key: 'time', label: 'Horizon Time' },
+                { key: 'predictedAQI', label: 'Predicted AQI' },
+                { key: 'confidenceLower', label: 'Lower Bound' },
+                { key: 'confidenceUpper', label: 'Upper Bound' },
+              ]}
+              rows={forecast.dataPoints}
+            />
           </div>
         </div>
 
@@ -331,9 +342,9 @@ export function ForecastChart({
         <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <HeartPulse className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Anticipated Health Precautions & Protective Measures
-            </h4>
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

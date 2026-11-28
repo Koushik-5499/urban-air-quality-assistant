@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChartDataTable } from '../common/ChartDataTable';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -103,7 +104,7 @@ export function AQITrendChart({
         <div>
           <div className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-            <CardTitle className="text-lg">Air Quality Index Trajectory</CardTitle>
+            <CardTitle as="h2" className="text-lg">Air Quality Index Trajectory</CardTitle>
             <Badge
               variant={isImproving ? 'success' : isWorsening ? 'danger' : 'neutral'}
               size="sm"
@@ -247,6 +248,14 @@ export function AQITrendChart({
               />
             </AreaChart>
           </ResponsiveContainer>
+          <ChartDataTable
+            caption="Historical AQI trend over selected period"
+            columns={[
+              { key: 'time', label: 'Time' },
+              { key: 'aqi', label: 'AQI' },
+            ]}
+            rows={data}
+          />
         </div>
 
         {/* Threshold Category Legend / Footer */}

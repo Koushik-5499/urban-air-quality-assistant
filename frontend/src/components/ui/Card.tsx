@@ -43,9 +43,18 @@ export function CardHeader({ className, children, ...props }: CardProps) {
   );
 }
 
-export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  as?: 'h2' | 'h3' | 'h4';
+}
+
+export function CardTitle({
+  as: Heading = 'h3',
+  className,
+  children,
+  ...props
+}: CardTitleProps) {
   return (
-    <h3
+    <Heading
       className={cn(
         'text-lg font-semibold tracking-tight text-slate-900 dark:text-white',
         className
@@ -53,7 +62,7 @@ export function CardTitle({ className, children, ...props }: React.HTMLAttribute
       {...props}
     >
       {children}
-    </h3>
+    </Heading>
   );
 }
 
@@ -61,7 +70,7 @@ export function CardDescription({ className, children, ...props }: React.HTMLAtt
   return (
     <p
       className={cn(
-        'text-sm text-slate-500 dark:text-slate-400',
+        'text-sm text-slate-600 dark:text-slate-300',
         className
       )}
       {...props}

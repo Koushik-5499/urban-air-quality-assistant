@@ -72,9 +72,9 @@ export function AlertCard({
                   title="Unread notification"
                 />
               )}
-              <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                 {title}
-              </h4>
+              </h2>
             </div>
 
             <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">

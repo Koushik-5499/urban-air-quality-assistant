@@ -257,10 +257,10 @@ export function MapPage() {
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-emerald-600" />
                 <span>Geographical Station Directory & Telemetry</span>
-              </h3>
+              </h2>
               <p className="text-xs text-slate-500">
                 Accessible tabular alternative to the graphical map for screen readers and keyboard users.
               </p>
@@ -294,7 +294,7 @@ export function MapPage() {
                   >
                     <td className="py-3 px-3">
                       <div className="font-bold text-slate-900 dark:text-white">{city.city}</div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-slate-600 dark:text-slate-300">
                         {city.state} • {city.station}
                       </div>
                     </td>

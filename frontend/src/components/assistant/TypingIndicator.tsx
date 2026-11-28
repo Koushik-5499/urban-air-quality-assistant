@@ -8,7 +8,7 @@ export function TypingIndicator() {
       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
-      <span className="text-xs text-slate-400 font-medium ml-1.5">Analyzing atmospheric data...</span>
+      <span className="text-xs text-slate-600 dark:text-slate-300 font-medium ml-1.5">Analyzing atmospheric data...</span>
     </div>
   );
 }

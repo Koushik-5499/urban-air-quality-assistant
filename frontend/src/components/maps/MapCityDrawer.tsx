@@ -51,9 +51,9 @@ export function MapCityDrawer({
               <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
                 <MapPin className="w-4 h-4" />
               </span>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
                 {city.city}
-              </h3>
+              </h2>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 pl-8">
               {city.state}, {city.country}
@@ -67,7 +67,7 @@ export function MapCityDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               aria-label="Close details drawer"
             >
               <X className="w-4 h-4" />
@@ -80,7 +80,7 @@ export function MapCityDrawer({
           <p className="text-slate-700 dark:text-slate-300 font-semibold truncate">
             Station: {city.station}
           </p>
-          <p className="text-[11px] text-slate-400 font-mono">
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 font-mono">
             Coordinates: {city.lat != null ? city.lat.toFixed(4) : '—'}° N, {city.lng != null ? city.lng.toFixed(4) : '—'}° E
           </p>
         </div>
@@ -88,7 +88,7 @@ export function MapCityDrawer({
         {/* Main AQI Score & Dominant Pollutant */}
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850/60 border border-slate-200/60 dark:border-slate-800 text-center space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+            <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-300 block tracking-wider">
               AQI Score
             </span>
             <div className="text-3xl font-black text-slate-900 dark:text-white">

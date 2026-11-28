@@ -70,9 +70,9 @@ export function LocationCard({
           <div className="space-y-0.5">
             <div className="flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
                 {location.city}
-              </h3>
+              </h2>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 pl-5.5">
               {location.state}, {location.country}
@@ -92,7 +92,7 @@ export function LocationCard({
         </div>
 
         {/* Station Subtext */}
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2 line-clamp-1">
+        <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-2 line-clamp-1">
           Node: {location.station}
         </p>
 

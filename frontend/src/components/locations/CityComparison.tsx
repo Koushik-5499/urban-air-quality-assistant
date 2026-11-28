@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { ChartDataTable } from '../common/ChartDataTable';
 import {
   ResponsiveContainer,
   BarChart,
@@ -320,6 +321,16 @@ export function CityComparison({
                 <Bar dataKey="PM10" fill="#0F766E" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            <ChartDataTable
+              caption="Monitored cities AQI, PM2.5, and PM10 comparison"
+              columns={[
+                { key: 'name', label: 'City' },
+                { key: 'AQI', label: 'AQI' },
+                { key: 'PM2.5', label: 'PM2.5 (µg/m³)' },
+                { key: 'PM10', label: 'PM10 (µg/m³)' },
+              ]}
+              rows={chartData}
+            />
           </div>
         </div>
       </CardContent>
