@@ -11,7 +11,7 @@
 **Live Demo:**
 - 🌐 Frontend: [https://urban-air-quality-frontend.vercel.app](https://urban-air-quality-frontend.vercel.app)
 - 🔌 Backend API: [https://urban-air-quality-backend.vercel.app](https://urban-air-quality-backend.vercel.app)
-- 📖 API Docs: [https://urban-air-quality-backend.vercel.app/docs](https://urban-air-quality-backend.vercel.app/docs)
+- 💚 API Health: [https://urban-air-quality-backend.vercel.app/health](https://urban-air-quality-backend.vercel.app/health) *(OpenAPI `/docs` enabled in local development)*
 - 🎥 Demo Video: [Watch Demonstration](https://drive.google.com/file/d/1jKEbVoW4qkYGIK4p4_eGKnr3YdI7OhDX/view?usp=sharing)
 
 ---

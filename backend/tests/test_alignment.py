@@ -12,11 +12,48 @@ Each test covers one pillar of the problem statement:
   8. Explainability (priority, reason, source on recommendations)
 """
 
-from fastapi.testclient import TestClient
+from datetime import UTC, datetime
 
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
 from app.main import app
+from app.models.aqi_reading import AQIReading
+from app.models.city import City
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _use_isolated_test_db(db_session: Session):
+    """Bind alignment endpoints to the isolated test DB with seeded Delhi telemetry."""
+    city = db_session.execute(select(City).where(City.name == "Delhi")).scalar_one_or_none()
+    if not city:
+        city = City(name="Delhi", state="Delhi", country="India", latitude=28.61, longitude=77.21)
+        db_session.add(city)
+        db_session.flush()
+        db_session.add(
+            AQIReading(
+                city_id=city.id,
+                aqi_value=310,
+                aqi_category="Very Poor",
+                dominant_pollutant="PM2.5",
+                measured_at=datetime.now(UTC),
+                source="CPCB",
+                is_simulated=True,
+            )
+        )
+        db_session.commit()
+
+    def _override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    yield
+    app.dependency_overrides.clear()
 
 
 # ---------------------------------------------------------------------------
