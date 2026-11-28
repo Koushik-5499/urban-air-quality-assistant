@@ -48,6 +48,13 @@ describe('UI Components Render & Accessibility Verification', () => {
     expect(screen.getByText(/Atmospheric Weather/i)).toBeTruthy();
     expect(screen.getByText(/Health Guidance & Precautions/i)).toBeTruthy();
     expect(screen.getByText(/Winter Smog & Family Inversion Protocol/i)).toBeTruthy();
+
+    // Exercise household profile controls (children/asthma/outdoor worker checkboxes + commute/heating selects)
+    fireEvent.click(screen.getByLabelText(/Asthma/i));
+    fireEvent.click(screen.getByLabelText(/Outdoor Worker/i));
+    fireEvent.change(screen.getByLabelText(/Commute/i), { target: { value: 'public_transit' } });
+    fireEvent.change(screen.getByLabelText(/Heating/i), { target: { value: 'biomass' } });
+    expect(screen.getByText(/3\.6 kg CO₂\/evening avoided/i)).toBeTruthy();
   });
 
   it('renders Assistant components (ContextPanel, Header, Bubbles, Input, SuggestedQuestions, ClearModal, Typing)', () => {

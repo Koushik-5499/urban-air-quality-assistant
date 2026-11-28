@@ -4,8 +4,11 @@ import {
   getHealthRecommendationsForCity,
 } from '../services/assistant/ruleEngine';
 import { getHealthRecommendations } from '../utils/healthRecommendations';
+import { PARTICULATE_DETAILS } from '../data/pollutantParticulates';
+import { GASEOUS_DETAILS } from '../data/pollutantGases';
+import { INITIAL_SAMPLE_ALERTS } from '../services/alertSeedData';
 import { DASHBOARD_DATA } from '../data/dashboardData';
-import type { AQICategory, CityDashboardData } from '../types/dashboard';
+import type { AQICategory, CityDashboardData, HouseholdProfile } from '../types/dashboard';
 
 function makeCityWithAqi(aqi: number, category: AQICategory): CityDashboardData {
   const base = DASHBOARD_DATA['delhi'];
@@ -115,6 +118,37 @@ describe('HealthRecommendations utility covers all 6 NAQI categories', () => {
       expect(advice.impactExplanation?.length).toBeGreaterThan(10);
       expect(advice.disclaimer).toContain('Not intended as clinical');
     });
+  });
+
+  it('tailors quantified impact plans for household profiles and heating/commute modes', () => {
+    const biomassAsthma: HouseholdProfile = {
+      children: true,
+      elderly: true,
+      asthma: true,
+      outdoorWorker: true,
+      commuteMode: 'two_wheeler',
+      heatingType: 'biomass',
+    };
+    const res1 = getHealthRecommendations('Hazardous', 360, biomassAsthma, 'Delhi');
+    expect(res1.sensitiveGroups).toContain('Delhi');
+    expect(res1.routineItems?.some((i) => i.co2SavedKg.includes('1.4 kg'))).toBe(true);
+    expect(res1.alternativeItems?.some((i) => i.co2SavedKg.includes('3.6 kg'))).toBe(true);
+    expect(res1.routineItems?.every((i) => i.whyAdvice.length > 10)).toBe(true);
+
+    const metroGas: HouseholdProfile = {
+      children: false,
+      elderly: false,
+      asthma: false,
+      outdoorWorker: false,
+      commuteMode: 'public_transit',
+      heatingType: 'gas',
+    };
+    const res2 = getHealthRecommendations('Moderate', 85, metroGas, 'Mumbai');
+    expect(res2.routineItems?.length).toBeGreaterThanOrEqual(2);
+    expect(res2.alternativeItems?.some((i) => i.co2SavedKg.includes('1.9 kg'))).toBe(true);
+    expect(PARTICULATE_DETAILS.pm25.name).toBeTruthy();
+    expect(GASEOUS_DETAILS.no2.name).toBeTruthy();
+    expect(INITIAL_SAMPLE_ALERTS.length).toBeGreaterThan(0);
   });
 });
 
