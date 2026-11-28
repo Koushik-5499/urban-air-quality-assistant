@@ -45,10 +45,10 @@ class ForecastRun(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    city: Mapped["City"] = relationship("City", backref="forecast_runs")  # noqa: F821
+    city: Mapped["City"] = relationship("City", backref="forecast_runs")
     station: Mapped[Optional["MonitoringStation"]] = relationship(
         "MonitoringStation", backref="forecast_runs"
-    )  # noqa: F821
+    )
     forecasts: Mapped[list["AQIForecast"]] = relationship(
         "AQIForecast", back_populates="run", cascade="all, delete-orphan"
     )
@@ -97,8 +97,8 @@ class AQIForecast(Base):
 
     # Relationships
     run: Mapped["ForecastRun"] = relationship("ForecastRun", back_populates="forecasts")
-    city: Mapped["City"] = relationship("City")  # noqa: F821
-    station: Mapped[Optional["MonitoringStation"]] = relationship("MonitoringStation")  # noqa: F821
+    city: Mapped["City"] = relationship("City")
+    station: Mapped[Optional["MonitoringStation"]] = relationship("MonitoringStation")
 
     __table_args__ = (
         UniqueConstraint(

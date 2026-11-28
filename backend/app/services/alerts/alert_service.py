@@ -2,13 +2,11 @@
 
 import asyncio
 import logging
-import math
 from datetime import UTC, datetime
 
-from fastapi import HTTPException, status
-from sqlalchemy import desc, func, select, update
+from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.models.alert import Alert
@@ -16,7 +14,6 @@ from app.models.alert_preference import AlertPreference
 from app.models.aqi_reading import AQIReading
 from app.models.city import City
 from app.models.monitoring_station import MonitoringStation
-from app.models.push_subscription import PushSubscription
 from app.schemas.alert import (
     AlertPaginatedResponse,
     AlertPreferenceCreate,
@@ -29,12 +26,12 @@ from app.schemas.alert import (
     AlertUnreadCountResponse,
     PushSubscriptionCreate,
 )
+from app.services.alerts import alert_preference_service, alert_query_service
 from app.services.alerts.alert_generator import AlertGenerator
 from app.services.alerts.deduplication import AlertDeduplicator
 from app.services.alerts.delivery_tracker import DeliveryTracker
 from app.services.alerts.notification_service import NotificationService
 from app.services.alerts.threshold_engine import AlertCondition, ThresholdEngine
-from app.services.history.validators import HistoryValidator
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +53,6 @@ class AlertService:
             settings=self.settings
         )
 
-    # -----------------------------------------------------------------------
-    # In-App Alerts Listing & Management
-    # -----------------------------------------------------------------------
-
     @classmethod
     def _build_alert_filters(
         cls,
@@ -72,50 +65,14 @@ class AlertService:
         end_utc: datetime | None,
     ) -> list:
         """Build SQLAlchemy filter expressions for alert queries."""
-        filters = []
-        if city_entity:
-            filters.append(Alert.city_id == city_entity.id)
-        if station_entity:
-            filters.append(Alert.station_id == station_entity.id)
-        if severity:
-            filters.append(Alert.severity.ilike(severity.strip()))
-        if is_read is not None:
-            filters.append(Alert.is_read.is_(is_read))
-        if is_simulated is not None:
-            filters.append(Alert.is_simulated.is_(is_simulated))
-        if start_utc:
-            filters.append(Alert.created_at >= start_utc)
-        if end_utc:
-            filters.append(Alert.created_at <= end_utc)
-        return filters
+        return alert_query_service.build_alert_filters(
+            city_entity, station_entity, severity, is_read, is_simulated, start_utc, end_utc
+        )
 
     @staticmethod
     def _map_alert_to_response(a: Alert) -> AlertResponse:
         """Map a single Alert ORM entity to its API response schema."""
-        return AlertResponse(
-            id=a.id,
-            city_id=a.city_id,
-            city_name=a.city.name if a.city else None,
-            station_id=a.station_id,
-            station_name=a.station.station_name if a.station else None,
-            aqi_reading_id=a.aqi_reading_id,
-            title=a.title,
-            description=a.description,
-            severity=a.severity,
-            alert_type=a.alert_type,
-            current_aqi=a.current_aqi,
-            previous_aqi=a.previous_aqi,
-            threshold_value=a.threshold_value,
-            aqi_category=a.aqi_category,
-            dominant_pollutant=a.dominant_pollutant,
-            source=a.source,
-            dedup_key=a.dedup_key,
-            delivery_status=a.delivery_status,
-            is_read=a.is_read,
-            is_simulated=a.is_simulated,
-            created_at=a.created_at,
-            expires_at=a.expires_at,
-        )
+        return alert_query_service.map_alert_to_response(a)
 
     @classmethod
     def list_alerts(
@@ -133,52 +90,18 @@ class AlertService:
         user_id: str | None = None,
     ) -> AlertPaginatedResponse:
         """Query paginated alerts with flexible filtering."""
-        page, page_size = HistoryValidator.validate_pagination(page, page_size)
-        start_utc, end_utc = HistoryValidator.validate_date_range(
-            start_date, end_date, is_aggregated=True
-        )
-
-        city_entity = HistoryValidator.resolve_city(db, city) if city else None
-        station_entity = HistoryValidator.resolve_station(db, station_id) if station_id else None
-
-        filters = cls._build_alert_filters(
-            city_entity, station_entity, severity, is_read, is_simulated, start_utc, end_utc
-        )
-
-        # Count total matching alerts
-        count_stmt = select(func.count(Alert.id))
-        if filters:
-            count_stmt = count_stmt.where(*filters)
-        total_records = db.execute(count_stmt).scalar() or 0
-        total_pages = math.ceil(total_records / page_size) if total_records > 0 else 0
-
-        # Count unread alerts in this query scope
-        unread_filters = list(filters)
-        if is_read is None:
-            unread_filters.append(Alert.is_read.is_(False))
-        unread_stmt = select(func.count(Alert.id)).where(*unread_filters)
-        unread_count = db.execute(unread_stmt).scalar() or 0
-
-        # Query paginated rows
-        data_stmt = select(Alert).options(joinedload(Alert.city), joinedload(Alert.station))
-        if filters:
-            data_stmt = data_stmt.where(*filters)
-        data_stmt = (
-            data_stmt.order_by(desc(Alert.created_at))
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        )
-
-        alert_entities = list(db.execute(data_stmt).scalars().all())
-        alert_responses = [cls._map_alert_to_response(a) for a in alert_entities]
-
-        return AlertPaginatedResponse(
+        del user_id  # Platform alerts are public across all monitoring locations
+        return alert_query_service.list_alerts(
+            db=db,
+            city=city,
+            station_id=station_id,
+            severity=severity,
+            is_read=is_read,
+            start_date=start_date,
+            end_date=end_date,
+            is_simulated=is_simulated,
             page=page,
             page_size=page_size,
-            total_records=total_records,
-            total_pages=total_pages,
-            unread_count=unread_count,
-            alerts=alert_responses,
         )
 
     @classmethod
@@ -186,165 +109,34 @@ class AlertService:
         cls, db: Session, user_id: str = "default_user"
     ) -> AlertUnreadCountResponse:
         """Count all unread active alerts in database."""
-        stmt = select(func.count(Alert.id)).where(Alert.is_read.is_(False))
-        count = db.execute(stmt).scalar() or 0
-        return AlertUnreadCountResponse(unread_count=count)
+        del user_id
+        return alert_query_service.get_unread_count(db)
 
     @classmethod
     def mark_alert_read(cls, db: Session, alert_id: int) -> AlertResponse:
         """Mark a specific alert as read."""
-        stmt = (
-            select(Alert)
-            .options(joinedload(Alert.city), joinedload(Alert.station))
-            .where(Alert.id == alert_id)
-        )
-        alert = db.execute(stmt).scalar_one_or_none()
-        if not alert:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Alert with ID {alert_id} not found.",
-            )
-        alert.is_read = True
-        db.commit()
-        db.refresh(alert)
-
-        return AlertResponse(
-            id=alert.id,
-            city_id=alert.city_id,
-            city_name=alert.city.name if alert.city else None,
-            station_id=alert.station_id,
-            station_name=alert.station.station_name if alert.station else None,
-            aqi_reading_id=alert.aqi_reading_id,
-            title=alert.title,
-            description=alert.description,
-            severity=alert.severity,
-            alert_type=alert.alert_type,
-            current_aqi=alert.current_aqi,
-            previous_aqi=alert.previous_aqi,
-            threshold_value=alert.threshold_value,
-            aqi_category=alert.aqi_category,
-            dominant_pollutant=alert.dominant_pollutant,
-            source=alert.source,
-            dedup_key=alert.dedup_key,
-            delivery_status=alert.delivery_status,
-            is_read=alert.is_read,
-            is_simulated=alert.is_simulated,
-            created_at=alert.created_at,
-            expires_at=alert.expires_at,
-        )
+        return alert_query_service.mark_alert_read(db, alert_id)
 
     @classmethod
     def mark_all_read(cls, db: Session, user_id: str = "default_user") -> AlertUnreadCountResponse:
         """Mark all unread alerts as read."""
-        stmt = update(Alert).where(Alert.is_read.is_(False)).values(is_read=True)
-        db.execute(stmt)
-        db.commit()
-        return AlertUnreadCountResponse(unread_count=0)
-
-    # -----------------------------------------------------------------------
-    # User Preferences
-    # -----------------------------------------------------------------------
+        del user_id
+        return alert_query_service.mark_all_read(db)
 
     @classmethod
     def get_preferences(cls, db: Session, user_id: str = "default_user") -> AlertPreferenceResponse:
         """Fetch alert preferences for user or return default preferences."""
-        stmt = (
-            select(AlertPreference)
-            .options(joinedload(AlertPreference.city), joinedload(AlertPreference.station))
-            .where(AlertPreference.user_id == user_id)
-            .limit(1)
-        )
-        pref = db.execute(stmt).scalar_one_or_none()
-
-        if not pref:
-            # Create default preferences for Delhi
-            delhi = db.execute(select(City).where(City.name == "Delhi")).scalar_one_or_none()
-            if not delhi:
-                delhi = db.execute(select(City)).scalars().first()
-
-            city_id = delhi.id if delhi else 1
-            city_name = delhi.name if delhi else "Delhi"
-
-            pref = AlertPreference(
-                user_id=user_id,
-                city_id=city_id,
-                station_id=None,
-                min_aqi_threshold=100,
-                min_severity="Moderate",
-                is_enabled=True,
-                channels="in_app",
-                quiet_hours_start="22:00",
-                quiet_hours_end="07:00",
-                timezone="Asia/Kolkata",
-            )
-            db.add(pref)
-            db.commit()
-            db.refresh(pref)
-            return AlertPreferenceResponse(
-                id=pref.id,
-                user_id=pref.user_id,
-                city_id=pref.city_id,
-                city_name=city_name,
-                station_id=pref.station_id,
-                station_name=None,
-                min_aqi_threshold=pref.min_aqi_threshold,
-                min_severity=pref.min_severity,
-                is_enabled=pref.is_enabled,
-                channels=["in_app"],
-                quiet_hours_start=pref.quiet_hours_start,
-                quiet_hours_end=pref.quiet_hours_end,
-                timezone=pref.timezone,
-                created_at=pref.created_at,
-                updated_at=pref.updated_at,
-            )
-
-        channel_list = [c.strip() for c in pref.channels.split(",") if c.strip()]
-
-        return AlertPreferenceResponse(
-            id=pref.id,
-            user_id=pref.user_id,
-            city_id=pref.city_id,
-            city_name=pref.city.name if pref.city else "Delhi",
-            station_id=pref.station_id,
-            station_name=pref.station.station_name if pref.station else None,
-            min_aqi_threshold=pref.min_aqi_threshold,
-            min_severity=pref.min_severity,
-            is_enabled=pref.is_enabled,
-            channels=channel_list,
-            quiet_hours_start=pref.quiet_hours_start,
-            quiet_hours_end=pref.quiet_hours_end,
-            timezone=pref.timezone,
-            created_at=pref.created_at,
-            updated_at=pref.updated_at,
-        )
+        return alert_preference_service.get_preferences(db, user_id=user_id)
 
     @staticmethod
     def _validate_quiet_hours(start: str | None, end: str | None) -> None:
         """Raise HTTPException if quiet hours format is invalid."""
-        if not start or not end:
-            return
-        for val in [start, end]:
-            parts = val.split(":")
-            try:
-                h, m = int(parts[0]), int(parts[1])
-            except (ValueError, IndexError):
-                h, m = -1, -1
-            if len(parts) != 2 or not (0 <= h <= 23 and 0 <= m <= 59):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Quiet hours must be in valid HH:MM format (00:00 to 23:59).",
-                )
+        alert_preference_service.validate_quiet_hours(start, end)
 
     @staticmethod
     def _validate_channels(channels: list[str]) -> None:
         """Raise HTTPException if any channel name is unsupported."""
-        valid_channels = {"in_app", "push"}
-        for ch in channels:
-            if ch not in valid_channels:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid channel '{ch}'. Supported: {sorted(list(valid_channels))}.",
-                )
+        alert_preference_service.validate_channels(channels)
 
     @classmethod
     def upsert_preferences(
@@ -354,76 +146,7 @@ class AlertService:
         user_id: str = "default_user",
     ) -> AlertPreferenceResponse:
         """Create or update user's alert configuration."""
-        city_entity = HistoryValidator.resolve_city(db, pref_in.city)
-        if not city_entity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"City '{pref_in.city}' not found.",
-            )
-
-        station_entity = (
-            HistoryValidator.resolve_station(db, pref_in.station_id) if pref_in.station_id else None
-        )
-
-        cls._validate_quiet_hours(pref_in.quiet_hours_start, pref_in.quiet_hours_end)
-        cls._validate_channels(pref_in.channels)
-
-        channels_str = ",".join(pref_in.channels)
-
-        stmt = select(AlertPreference).where(
-            AlertPreference.user_id == user_id, AlertPreference.city_id == city_entity.id
-        )
-        existing = db.execute(stmt).scalar_one_or_none()
-
-        if existing:
-            existing.station_id = station_entity.id if station_entity else None
-            existing.min_aqi_threshold = pref_in.min_aqi_threshold
-            existing.min_severity = pref_in.min_severity
-            existing.is_enabled = pref_in.is_enabled
-            existing.channels = channels_str
-            existing.quiet_hours_start = pref_in.quiet_hours_start
-            existing.quiet_hours_end = pref_in.quiet_hours_end
-            existing.timezone = pref_in.timezone
-            pref = existing
-        else:
-            pref = AlertPreference(
-                user_id=user_id,
-                city_id=city_entity.id,
-                station_id=station_entity.id if station_entity else None,
-                min_aqi_threshold=pref_in.min_aqi_threshold,
-                min_severity=pref_in.min_severity,
-                is_enabled=pref_in.is_enabled,
-                channels=channels_str,
-                quiet_hours_start=pref_in.quiet_hours_start,
-                quiet_hours_end=pref_in.quiet_hours_end,
-                timezone=pref_in.timezone,
-            )
-            db.add(pref)
-
-        db.commit()
-        db.refresh(pref)
-
-        return AlertPreferenceResponse(
-            id=pref.id,
-            user_id=pref.user_id,
-            city_id=pref.city_id,
-            city_name=city_entity.name,
-            station_id=pref.station_id,
-            station_name=station_entity.station_name if station_entity else None,
-            min_aqi_threshold=pref.min_aqi_threshold,
-            min_severity=pref.min_severity,
-            is_enabled=pref.is_enabled,
-            channels=pref_in.channels,
-            quiet_hours_start=pref.quiet_hours_start,
-            quiet_hours_end=pref.quiet_hours_end,
-            timezone=pref.timezone,
-            created_at=pref.created_at,
-            updated_at=pref.updated_at,
-        )
-
-    # -----------------------------------------------------------------------
-    # Alert Evaluation & Processing
-    # -----------------------------------------------------------------------
+        return alert_preference_service.upsert_preferences(db, pref_in, user_id=user_id)
 
     async def _process_condition(
         self,
@@ -509,7 +232,6 @@ class AlertService:
             )
             if alert:
                 generated_alerts.append(alert)
-            # In public-only architecture, personal email/push dispatches are disabled.
 
         return generated_alerts
 
@@ -538,7 +260,6 @@ class AlertService:
             for city in cities:
                 locations_evaluated += 1
                 try:
-                    # Retrieve user preference if configured for this city
                     pref_stmt = (
                         select(AlertPreference).where(AlertPreference.city_id == city.id).limit(1)
                     )
@@ -553,14 +274,9 @@ class AlertService:
                     notifications_dispatched += sum(
                         1 for a in alerts if "delivered" in a.delivery_status
                     )
-                except (SQLAlchemyError, ValueError) as exc:
+                except (SQLAlchemyError, ValueError, RuntimeError, TypeError) as exc:
                     err_msg = f"Error processing alerts for {city.name}: {exc}"
                     logger.error(err_msg)
-                    errors.append(err_msg)
-                except Exception as exc:
-                    # Alert evaluation boundary preventing one failure from halting all cities
-                    err_msg = f"Unexpected error processing alerts for {city.name}: {exc}"
-                    logger.exception(err_msg)
                     errors.append(err_msg)
 
             AlertService._last_processed_at = now_utc
@@ -614,7 +330,6 @@ class AlertService:
             )
             success = success_count > 0
             msg = f"Dispatched push notification to {success_count} subscriptions."
-
         else:
             success = True
             msg = f"In-app notification test validated for {request.city}."
@@ -635,19 +350,4 @@ class AlertService:
         user_id: str = "default_user",
     ) -> bool:
         """Register or update a browser Web Push subscription."""
-        stmt = select(PushSubscription).where(PushSubscription.endpoint == sub_in.endpoint)
-        existing = db.execute(stmt).scalar_one_or_none()
-        if existing:
-            existing.user_id = user_id
-            existing.p256dh = sub_in.p256dh
-            existing.auth = sub_in.auth
-        else:
-            sub = PushSubscription(
-                user_id=user_id,
-                endpoint=sub_in.endpoint,
-                p256dh=sub_in.p256dh,
-                auth=sub_in.auth,
-            )
-            db.add(sub)
-        db.commit()
-        return True
+        return alert_preference_service.register_push_subscription(db, sub_in, user_id=user_id)

@@ -32,8 +32,7 @@ def check_database_health(db: Session | None = None) -> dict[str, Any]:
             "status": "disconnected",
             "healthy": False,
         }
-    except Exception as e:
-        # Top-level boundary fallback for unexpected connection errors
+    except (OSError, RuntimeError, ValueError) as e:
         logger.exception("Unexpected error during database health check: %s", str(e))
         return {
             "status": "disconnected",

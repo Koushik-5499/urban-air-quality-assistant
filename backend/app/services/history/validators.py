@@ -28,6 +28,8 @@ VALID_INTERVALS: set[str] = {
     "monthly",
 }
 
+SECONDS_PER_DAY = 86400.0
+
 MAX_RAW_QUERY_DAYS = 366
 MAX_AGGREGATED_QUERY_DAYS = 1825  # 5 years
 
@@ -66,7 +68,7 @@ class HistoryValidator:
                 )
 
             max_days = MAX_AGGREGATED_QUERY_DAYS if is_aggregated else MAX_RAW_QUERY_DAYS
-            span_days = (end_utc - start_utc).total_seconds() / 86400.0
+            span_days = (end_utc - start_utc).total_seconds() / SECONDS_PER_DAY
             if span_days > max_days:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,

@@ -137,8 +137,7 @@ def main() -> None:
     except SQLAlchemyError as exc:
         logger.error("Database error seeding cities: %s", exc)
         sys.exit(1)
-    except Exception as exc:
-        # Top-level CLI boundary catch for unexpected runtime crashes
+    except (OSError, RuntimeError, ValueError) as exc:
         logger.exception("Unexpected error seeding cities: %s", exc)
         sys.exit(1)
     finally:

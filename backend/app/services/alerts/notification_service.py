@@ -44,6 +44,7 @@ class WebPushNotificationChannel(BaseNotificationChannel):
 
     @property
     def channel_name(self) -> str:
+        """Identify the Web Push delivery channel."""
         return "web_push"
 
     async def dispatch(
@@ -101,8 +102,7 @@ class WebPushNotificationChannel(BaseNotificationChannel):
                     db.delete(sub)
                 else:
                     logger.warning("Web Push delivery failed: %s", exc)
-            except Exception as exc:
-                # Channel boundary preventing individual push failure from halting queue
+            except (OSError, ValueError, TypeError, RuntimeError) as exc:
                 logger.exception("Unexpected error during web push: %s", exc)
 
         db.commit()
@@ -114,6 +114,7 @@ class InAppNotificationChannel(BaseNotificationChannel):
 
     @property
     def channel_name(self) -> str:
+        """Identify the in-app delivery channel."""
         return "in_app"
 
     async def dispatch(

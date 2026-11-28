@@ -15,10 +15,12 @@ class MovingAverageModel(BaseForecastModel):
 
     @property
     def name(self) -> str:
+        """Return parameterized moving-average model name."""
         return f"MovingAverageBaseline(window={self.window_size})"
 
     @property
     def version(self) -> str:
+        """Return baseline model version."""
         return "1.0.0"
 
     def fit(self, series: list[float], timestamps: list[datetime]) -> None:

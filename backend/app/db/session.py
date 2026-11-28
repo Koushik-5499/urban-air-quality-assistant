@@ -2,6 +2,7 @@
 
 import sqlite3
 from collections.abc import Generator
+from typing import Any
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
@@ -25,7 +26,7 @@ engine = create_engine(
 
 
 @event.listens_for(Engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
+def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
     """Enable SQLite foreign key support on connection."""
     if isinstance(dbapi_connection, sqlite3.Connection):
         cursor = dbapi_connection.cursor()

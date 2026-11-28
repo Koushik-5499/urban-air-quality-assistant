@@ -11,6 +11,11 @@ from app.models.aqi_reading import AQIReading
 
 logger = logging.getLogger(__name__)
 
+SECONDS_PER_HOUR = 3600.0
+MIN_AQI_VALUE = 0.0
+MAX_AQI_VALUE = 500.0
+MISSING_INTERVAL_GAP_HOURS = 3.0
+
 
 @dataclass
 class PreparedDataset:
@@ -108,13 +113,13 @@ class DataPreparationService:
             if t.tzinfo is None:
                 t = t.replace(tzinfo=UTC)
             if prev_time is not None:
-                gap_hours = (t - prev_time).total_seconds() / 3600.0
-                if gap_hours > 3.0:
+                gap_hours = (t - prev_time).total_seconds() / SECONDS_PER_HOUR
+                if gap_hours > MISSING_INTERVAL_GAP_HOURS:
                     missing_intervals += 1
             prev_time = t
 
             val = float(r.aqi_value)
-            if 0.0 <= val <= 500.0:
+            if MIN_AQI_VALUE <= val <= MAX_AQI_VALUE:
                 timestamps.append(t)
                 aqi_values.append(val)
                 dominant_pollutants.append(r.dominant_pollutant or "PM2.5")
@@ -159,7 +164,7 @@ class DataPreparationService:
 
         start_t = timestamps[0]
         end_t = timestamps[-1]
-        coverage_hours = (end_t - start_t).total_seconds() / 3600.0
+        coverage_hours = (end_t - start_t).total_seconds() / SECONDS_PER_HOUR
 
         return PreparedDataset(
             timestamps=timestamps,

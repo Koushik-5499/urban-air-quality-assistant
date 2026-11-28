@@ -66,6 +66,19 @@ class WeatherClient:
 
         return await self._fetch_live_weather(latitude, longitude, cache_key, now_utc)
 
+    @staticmethod
+    def _parse_optional_float(data: dict[str, object], key: str) -> float | None:
+        """Safely coerce an optional JSON field to float without suppressing type errors."""
+        value = data.get(key)
+        if value is None or isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float, str)):
+            try:
+                return float(value)
+            except ValueError:
+                return None
+        return None
+
     def _build_observation(
         self,
         current_data: dict[str, object],
@@ -83,12 +96,14 @@ class WeatherClient:
         return WeatherObservation(
             latitude=latitude,
             longitude=longitude,
-            temperature_celsius=current_data.get("temperature_2m"),  # type: ignore[arg-type]
-            relative_humidity_percent=current_data.get("relative_humidity_2m"),  # type: ignore[arg-type]
-            wind_speed_kmh=current_data.get("wind_speed_10m"),  # type: ignore[arg-type]
-            wind_direction_degrees=current_data.get("wind_direction_10m"),  # type: ignore[arg-type]
-            precipitation_mm=current_data.get("precipitation"),  # type: ignore[arg-type]
-            surface_pressure_hpa=current_data.get("surface_pressure"),  # type: ignore[arg-type]
+            temperature_celsius=self._parse_optional_float(current_data, "temperature_2m"),
+            relative_humidity_percent=self._parse_optional_float(
+                current_data, "relative_humidity_2m"
+            ),
+            wind_speed_kmh=self._parse_optional_float(current_data, "wind_speed_10m"),
+            wind_direction_degrees=self._parse_optional_float(current_data, "wind_direction_10m"),
+            precipitation_mm=self._parse_optional_float(current_data, "precipitation"),
+            surface_pressure_hpa=self._parse_optional_float(current_data, "surface_pressure"),
             observed_at=obs_time,
             provider=self.settings.WEATHER_PROVIDER,
             is_cached=False,

@@ -179,8 +179,7 @@ class HealthAdvisorService:
                     type(exc).__name__,
                     exc,
                 )
-            except Exception as exc:
-                # Top-level AI advisor boundary ensuring deterministic fallback on error
+            except (RuntimeError, ValueError, TypeError, OSError) as exc:
                 logger.exception("Unexpected error during AI health advisor call: %s", exc)
 
         # 5. Deterministic Knowledge-Base Fallback (when AI is disabled, unconfigured, or failing)

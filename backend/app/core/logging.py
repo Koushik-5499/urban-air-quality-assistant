@@ -31,6 +31,7 @@ class SecretRedactionFilter(logging.Filter):
     """Logging filter that scrubs sensitive credentials from log records."""
 
     def filter(self, record: logging.LogRecord) -> bool:
+        """Redact sensitive credential patterns from formatted message and args."""
         if isinstance(record.msg, str):
             record.msg = redact_secrets(record.msg)
         if record.args:

@@ -31,6 +31,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         self.is_production = is_production
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Attach hardening security headers and X-Request-ID to every HTTP response."""
         response = await call_next(request)
 
         # 1. Prevent MIME-type sniffing
@@ -95,6 +96,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         self.max_bytes = max_bytes
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Enforce Content-Length and streaming request body byte limits."""
         # 1. Fast path: reject on Content-Length header when present
         content_length = request.headers.get("content-length")
         if content_length:
@@ -244,6 +246,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.settings = settings or get_settings()
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Apply sliding-window per-IP rate limiting and attach rate headers."""
         client_ip = get_client_ip(request, self.settings)
         is_test = self.settings.APP_ENV == "test"
 

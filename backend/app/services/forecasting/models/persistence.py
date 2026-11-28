@@ -14,10 +14,12 @@ class PersistenceModel(BaseForecastModel):
 
     @property
     def name(self) -> str:
+        """Return persistence model identifier."""
         return "PersistenceBaseline"
 
     @property
     def version(self) -> str:
+        """Return baseline model version."""
         return "1.0.0"
 
     def fit(self, series: list[float], timestamps: list[datetime]) -> None:

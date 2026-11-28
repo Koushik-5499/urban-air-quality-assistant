@@ -35,10 +35,12 @@ class ExponentialSmoothingModel(BaseForecastModel):
 
     @property
     def name(self) -> str:
+        """Return model algorithm identifier."""
         return "ExponentialSmoothingForecaster"
 
     @property
     def version(self) -> str:
+        """Return semantic version of the forecaster."""
         return "1.2.0"
 
     def _init_seasonal_factors(self, series: list[float], m: int) -> list[float]:

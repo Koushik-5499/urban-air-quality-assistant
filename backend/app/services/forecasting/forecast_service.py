@@ -2,17 +2,18 @@
 
 import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 from fastapi import HTTPException, status
-from sqlalchemy import desc, func, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.integrations.weather.client import WeatherClient
 from app.models.city import City
-from app.models.forecast import AQIForecast, ForecastEvaluation, ForecastRun
+from app.models.forecast import AQIForecast, ForecastRun
 from app.models.monitoring_station import MonitoringStation
 from app.schemas.forecast import (
     AQIForecastItem,
@@ -24,14 +25,22 @@ from app.schemas.forecast import (
     ModelEvaluationMetric,
     ModelStatusResponse,
 )
-from app.services.forecasting import forecast_mapper
+from app.services.forecasting import (
+    forecast_mapper,
+    forecast_query_service,
+    forecast_run_helper,
+)
 from app.services.forecasting.confidence import UncertaintyEstimator
 from app.services.forecasting.data_preparation import DataPreparationService, PreparedDataset
 from app.services.forecasting.evaluation import ForecastEvaluator
 from app.services.forecasting.models.factory import ModelFactory
-from app.services.forecasting.validators import SUPPORTED_HORIZONS, ForecastValidator
+from app.services.forecasting.validators import ForecastValidator
 
 logger = logging.getLogger(__name__)
+
+MAX_HOURLY_FORECAST_HOURS = 72
+HOURS_PER_DAY = 24
+MAX_DAILY_FORECAST_DAYS = 7
 
 
 class ForecastService:
@@ -50,18 +59,7 @@ class ForecastService:
     @staticmethod
     def get_category_for_aqi(aqi: int) -> str:
         """Map numerical AQI to CPCB National Air Quality Index (NAQI) category."""
-        if aqi <= 50:
-            return "Good"
-        elif aqi <= 100:
-            return "Satisfactory"
-        elif aqi <= 200:
-            return "Moderate"
-        elif aqi <= 300:
-            return "Poor"
-        elif aqi <= 400:
-            return "Very Poor"
-        else:
-            return "Severe"
+        return forecast_mapper.get_category_for_aqi(aqi)
 
     @staticmethod
     def _check_recent_forecast_run(
@@ -72,41 +70,8 @@ class ForecastService:
         target_horizons: list[int],
     ) -> ForecastGenerateResponse | None:
         """Return cached response if a recent run exists within the last hour."""
-        recent_stmt = (
-            select(ForecastRun)
-            .where(
-                ForecastRun.city_id == city.id,
-                ForecastRun.station_id == (station.id if station else None),
-                ForecastRun.status == "completed",
-                ForecastRun.generated_at >= now_utc - timedelta(hours=1),
-            )
-            .order_by(desc(ForecastRun.generated_at))
-            .limit(1)
-        )
-        existing_run = db.execute(recent_stmt).scalar_one_or_none()
-        if not existing_run:
-            return None
-
-        forecast_count_stmt = select(func.count(AQIForecast.id)).where(
-            AQIForecast.forecast_run_id == existing_run.id
-        )
-        f_count = db.execute(forecast_count_stmt).scalar() or 0
-
-        return ForecastGenerateResponse(
-            success=True,
-            city=city.name,
-            station_id=station.id if station else None,
-            model_name=existing_run.model_name,
-            model_version=existing_run.model_version,
-            horizons_generated=[f"{h}h" for h in target_horizons],
-            generated_forecasts_count=f_count,
-            training_samples=existing_run.training_samples,
-            evaluation_mae=existing_run.evaluation_mae,
-            evaluation_rmse=existing_run.evaluation_rmse,
-            weather_integrated=False,
-            is_simulated=existing_run.is_simulated,
-            generated_at=existing_run.generated_at,
-            message="Reused recent valid forecast run from database cache.",
+        return forecast_run_helper.check_recent_forecast_run(
+            db, city, station, now_utc, target_horizons
         )
 
     @staticmethod
@@ -118,26 +83,7 @@ class ForecastService:
         now_utc: datetime,
     ) -> None:
         """Persist failed run record and raise HTTP 422 for insufficient training data."""
-        run_rec = ForecastRun(
-            city_id=city.id,
-            station_id=station.id if station else None,
-            model_name="ExponentialSmoothingForecaster",
-            model_version="1.2.0",
-            generated_at=now_utc,
-            training_data_start=dataset.start_time,
-            training_data_end=dataset.end_time,
-            training_samples=dataset.sample_count,
-            status="insufficient_data",
-            error_message=dataset.insufficiency_reason,
-            is_simulated=dataset.is_simulated,
-        )
-        db.add(run_rec)
-        db.commit()
-
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=dataset.insufficiency_reason or "Insufficient historical data for forecasting.",
-        )
+        forecast_run_helper.handle_insufficient_dataset(db, city, station, dataset, now_utc)
 
     async def _fetch_optional_weather(self, city: City) -> Any:
         """Fetch meteorological readings if weather service is enabled."""
@@ -148,8 +94,7 @@ class ForecastService:
                 latitude=city.latitude,
                 longitude=city.longitude,
             )
-        except Exception as exc:
-            # Auxiliary weather fetch failure should not block core forecast generation
+        except (httpx.HTTPError, OSError, ValueError, RuntimeError) as exc:
             logger.warning("Weather fetch failed for %s: %s", city.name, exc)
             return None
 
@@ -164,38 +109,9 @@ class ForecastService:
         now_utc: datetime,
     ) -> ForecastRun:
         """Save ForecastRun and associated horizon evaluation records."""
-        forecast_run = ForecastRun(
-            city_id=city.id,
-            station_id=station.id if station else None,
-            model_name=model.name,
-            model_version=model.version,
-            generated_at=now_utc,
-            training_data_start=dataset.start_time,
-            training_data_end=dataset.end_time,
-            training_samples=dataset.sample_count,
-            evaluation_mae=eval_report.overall_mae,
-            evaluation_rmse=eval_report.overall_rmse,
-            evaluation_mape=eval_report.overall_mape,
-            is_simulated=dataset.is_simulated,
-            status="completed",
-            error_message=None,
+        return forecast_run_helper.persist_forecast_run(
+            db, city, station, model, dataset, eval_report, now_utc
         )
-        db.add(forecast_run)
-        db.flush()
-
-        for h_eval in eval_report.horizon_metrics:
-            eval_entry = ForecastEvaluation(
-                forecast_run_id=forecast_run.id,
-                horizon_hours=h_eval.horizon_hours,
-                sample_count=h_eval.sample_count,
-                mae=h_eval.mae,
-                rmse=h_eval.rmse,
-                mape=h_eval.mape,
-                evaluated_at=now_utc,
-            )
-            db.add(eval_entry)
-
-        return forecast_run
 
     def _build_step_forecasts(
         self,
@@ -211,42 +127,10 @@ class ForecastService:
         now_utc: datetime,
     ) -> list[AQIForecast]:
         """Generate hourly step forecast models with uncertainty intervals."""
-        latest_time = dataset.timestamps[-1]
-        latest_dom = dataset.dominant_pollutants[-1] if dataset.dominant_pollutants else "PM2.5"
-
-        forecast_records: list[AQIForecast] = []
-        for step_h in range(1, max_horizon + 1):
-            pred_aqi = int(round(raw_predictions[step_h - 1]))
-            target_timestamp = latest_time + timedelta(hours=step_h)
-            pred_cat = self.get_category_for_aqi(pred_aqi)
-
-            uncertainty = UncertaintyEstimator.estimate_interval(
-                predicted_aqi=pred_aqi,
-                horizon_hours=step_h,
-                residual_std=residual_std,
-                sample_count=val_count,
-            )
-
-            f_point = AQIForecast(
-                forecast_run_id=forecast_run_id,
-                city_id=city.id,
-                station_id=station.id if station else None,
-                forecast_timestamp=target_timestamp,
-                horizon_hours=step_h,
-                predicted_aqi=pred_aqi,
-                predicted_category=pred_cat,
-                dominant_pollutant=latest_dom,
-                lower_bound=uncertainty.lower_bound,
-                upper_bound=uncertainty.upper_bound,
-                uncertainty_status=uncertainty.uncertainty_status,
-                model_name=model.name,
-                model_version=model.version,
-                is_simulated=dataset.is_simulated,
-                created_at=now_utc,
-            )
-            forecast_records.append(f_point)
-
-        return forecast_records
+        return forecast_run_helper.build_step_forecasts(
+            forecast_run_id, city, station, model, dataset,
+            raw_predictions, max_horizon, residual_std, val_count, now_utc,
+        )
 
     async def generate_forecast_run(
         self,
@@ -297,22 +181,12 @@ class ForecastService:
 
             max_horizon = max(target_horizons)
             raw_predictions = model.predict(max_horizon)
-
             forecast_run = self._persist_forecast_run(
                 db, city, station, model, dataset, eval_report, now_utc
             )
-
             forecast_records = self._build_step_forecasts(
-                forecast_run.id,
-                city,
-                station,
-                model,
-                dataset,
-                raw_predictions,
-                max_horizon,
-                residual_std,
-                len(val_actuals),
-                now_utc,
+                forecast_run.id, city, station, model, dataset,
+                raw_predictions, max_horizon, residual_std, len(val_actuals), now_utc,
             )
 
             db.add_all(forecast_records)
@@ -335,15 +209,9 @@ class ForecastService:
                 message=f"Forecast generation completed successfully using {model.name}.",
             )
 
-    def _apply_horizon_filter(
-        self,
-        query: Any,
-        parsed_horizon: int | None,
-    ) -> Any:
+    def _apply_horizon_filter(self, query: Any, parsed_horizon: int | None) -> Any:
         """Apply horizon filtering: specific or all standard horizons."""
-        if parsed_horizon is not None:
-            return query.where(AQIForecast.horizon_hours == parsed_horizon)
-        return query.where(AQIForecast.horizon_hours.in_(SUPPORTED_HORIZONS))
+        return forecast_query_service.apply_horizon_filter(query, parsed_horizon)
 
     async def _get_or_generate_run(
         self,
@@ -373,29 +241,13 @@ class ForecastService:
     ) -> AQIForecastItem:
         """Map a single AQIForecast DB row + run metadata to the response schema."""
         return forecast_mapper.build_forecast_item(
-            p=p,
-            run=run,
-            city_name=city_name,
-            station=station,
+            p=p, run=run, city_name=city_name, station=station,
             include_uncertainty=include_uncertainty,
         )
 
-    def _latest_completed_run_stmt(
-        self,
-        city_id: int,
-        station_id: int | None,
-    ) -> Any:
+    def _latest_completed_run_stmt(self, city_id: int, station_id: int | None) -> Any:
         """Build a SQLAlchemy select for the latest completed ForecastRun for a city/station."""
-        return (
-            select(ForecastRun)
-            .where(
-                ForecastRun.city_id == city_id,
-                ForecastRun.station_id == station_id,
-                ForecastRun.status == "completed",
-            )
-            .order_by(desc(ForecastRun.generated_at))
-            .limit(1)
-        )
+        return forecast_query_service.latest_completed_run_stmt(city_id, station_id)
 
     async def get_forecasts(
         self,
@@ -411,7 +263,6 @@ class ForecastService:
 
         run_stmt = self._latest_completed_run_stmt(city.id, station.id if station else None)
         run = await self._get_or_generate_run(db, city, station, run_stmt)
-
         if not run:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -423,7 +274,6 @@ class ForecastService:
             parsed_horizon,
         ).order_by(AQIForecast.horizon_hours.asc())
         points = list(db.execute(query).scalars().all())
-
         items = [
             self._build_forecast_item(p, run, city.name, station, include_uncertainty)
             for p in points
@@ -447,25 +297,14 @@ class ForecastService:
         db: Session,
         city_name: str,
         station_id: int | None = None,
-        hours: int = 24,
+        hours: int = HOURS_PER_DAY,
     ) -> HourlyForecastResponse:
         """Return step-by-step hourly forecasts up to `hours` (1 to 72)."""
-        hours = max(1, min(72, hours))
+        hours = max(1, min(MAX_HOURLY_FORECAST_HOURS, hours))
         city, station = ForecastValidator.resolve_city_and_station(db, city_name, station_id)
 
-        # Retrieve the latest completed run
-        run_stmt = (
-            select(ForecastRun)
-            .where(
-                ForecastRun.city_id == city.id,
-                ForecastRun.station_id == (station.id if station else None),
-                ForecastRun.status == "completed",
-            )
-            .order_by(desc(ForecastRun.generated_at))
-            .limit(1)
-        )
+        run_stmt = self._latest_completed_run_stmt(city.id, station.id if station else None)
         run = await self._get_or_generate_run(db, city, station, run_stmt)
-
         if not run:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -474,42 +313,11 @@ class ForecastService:
 
         query = (
             select(AQIForecast)
-            .where(
-                AQIForecast.forecast_run_id == run.id,
-                AQIForecast.horizon_hours <= hours,
-            )
+            .where(AQIForecast.forecast_run_id == run.id, AQIForecast.horizon_hours <= hours)
             .order_by(AQIForecast.horizon_hours.asc())
         )
         points = list(db.execute(query).scalars().all())
-
-        items = [
-            AQIForecastItem(
-                city=city.name,
-                station_id=p.station_id,
-                station_name=station.station_name if station else None,
-                forecast_timestamp=p.forecast_timestamp,
-                generated_at=run.generated_at,
-                predicted_aqi=p.predicted_aqi,
-                predicted_category=p.predicted_category,
-                dominant_pollutant=p.dominant_pollutant,
-                horizon_hours=p.horizon_hours,
-                horizon_label=f"{p.horizon_hours}h",
-                lower_bound=p.lower_bound,
-                upper_bound=p.upper_bound,
-                uncertainty_status=p.uncertainty_status,
-                model_name=p.model_name,
-                model_version=p.model_version,
-                training_data_start=run.training_data_start,
-                training_data_end=run.training_data_end,
-                training_samples=run.training_samples,
-                data_quality="simulated" if p.is_simulated else "verified_cpcb",
-                source="Simulated Engine" if p.is_simulated else "CPCB Historical Observations",
-                is_simulated=p.is_simulated,
-                is_forecast=True,
-                forecast_status="valid",
-            )
-            for p in points
-        ]
+        items = forecast_query_service.build_hourly_forecast_items(points, run, city, station)
 
         return HourlyForecastResponse(
             city=city.name,
@@ -528,18 +336,11 @@ class ForecastService:
         days: int = 3,
     ) -> DailyForecastResponse:
         """Return daily forecast summaries aggregating hourly predictions."""
-        days = max(1, min(7, days))
-        max_hours = days * 24
-
+        days = max(1, min(MAX_DAILY_FORECAST_DAYS, days))
         hourly_resp = await self.get_hourly_forecast(
-            db=db,
-            city_name=city_name,
-            station_id=station_id,
-            hours=max_hours,
+            db=db, city_name=city_name, station_id=station_id, hours=days * HOURS_PER_DAY
         )
-
         summaries = forecast_mapper.aggregate_daily_summaries(hourly_resp.forecasts, days)
-
         return DailyForecastResponse(
             city=hourly_resp.city,
             station_id=hourly_resp.station_id,
@@ -557,56 +358,11 @@ class ForecastService:
         limit: int = 10,
     ) -> ForecastHistoryResponse:
         """Query previous forecast execution runs and their performance evaluations."""
-        limit = max(1, min(100, limit))
-        city, station = ForecastValidator.resolve_city_and_station(db, city_name, station_id)
+        return forecast_query_service.get_forecast_history(db, city_name, station_id, limit)
 
-        filters = [ForecastRun.city_id == city.id]
-        if station is not None:
-            filters.append(ForecastRun.station_id == station.id)
-
-        stmt = (
-            select(ForecastRun)
-            .options(joinedload(ForecastRun.city), joinedload(ForecastRun.station))
-            .where(*filters)
-            .order_by(desc(ForecastRun.generated_at))
-            .limit(limit)
-        )
-        runs = list(db.execute(stmt).scalars().all())
-
-        summaries = []
-        for r in runs:
-            f_count_stmt = select(func.count(AQIForecast.id)).where(
-                AQIForecast.forecast_run_id == r.id
-            )
-            f_count = db.execute(f_count_stmt).scalar() or 0
-            summaries.append(forecast_mapper.build_forecast_run_summary(r, city.name, f_count))
-
-        return ForecastHistoryResponse(
-            city=city.name,
-            station_id=station.id if station else None,
-            total_runs=len(summaries),
-            runs=summaries,
-        )
-
-    def _query_eval_metrics(
-        self, db: Session, run: ForecastRun
-    ) -> list[ModelEvaluationMetric]:
+    def _query_eval_metrics(self, db: Session, run: ForecastRun) -> list[ModelEvaluationMetric]:
         """Query ForecastEvaluation rows for a completed run and map to response schema."""
-        evals_stmt = (
-            select(ForecastEvaluation)
-            .where(ForecastEvaluation.forecast_run_id == run.id)
-            .order_by(ForecastEvaluation.horizon_hours.asc())
-        )
-        return [
-            ModelEvaluationMetric(
-                horizon_hours=er.horizon_hours,
-                sample_count=er.sample_count,
-                mae=er.mae,
-                rmse=er.rmse,
-                mape=er.mape,
-            )
-            for er in db.execute(evals_stmt).scalars().all()
-        ]
+        return forecast_query_service.query_eval_metrics(db, run)
 
     def _coverage_hours(self, run: ForecastRun) -> float | None:
         """Return training data coverage in hours, or None if timestamps unavailable."""
@@ -618,26 +374,4 @@ class ForecastService:
         city_name: str | None = None,
     ) -> ModelStatusResponse:
         """Report operational status, versioning, evaluation metrics, and readiness."""
-        city_entity = None
-        if city_name:
-            city_stmt = select(City).where(City.name.ilike(city_name.strip()))
-            city_entity = db.execute(city_stmt).scalar_one_or_none()
-
-        filters = [ForecastRun.status == "completed"]
-        if city_entity:
-            filters.append(ForecastRun.city_id == city_entity.id)
-
-        latest_run_stmt = (
-            select(ForecastRun).where(*filters).order_by(desc(ForecastRun.generated_at)).limit(1)
-        )
-        latest_run = db.execute(latest_run_stmt).scalar_one_or_none()
-
-        eval_metrics = self._query_eval_metrics(db, latest_run) if latest_run else []
-        coverage = self._coverage_hours(latest_run) if latest_run else None
-
-        return forecast_mapper.build_model_status_response(
-            latest_run=latest_run,
-            eval_metrics=eval_metrics,
-            coverage=coverage,
-            settings=self.settings,
-        )
+        return forecast_query_service.get_model_status(db, self.settings, city_name)

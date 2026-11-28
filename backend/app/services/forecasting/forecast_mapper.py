@@ -14,18 +14,25 @@ from app.schemas.forecast import (
     ModelStatusResponse,
 )
 
+SECONDS_PER_HOUR = 3600.0
+AQI_GOOD_MAX = 50
+AQI_SATISFACTORY_MAX = 100
+AQI_MODERATE_MAX = 200
+AQI_POOR_MAX = 300
+AQI_VERY_POOR_MAX = 400
+
 
 def get_category_for_aqi(aqi: int) -> str:
     """Map numerical AQI to CPCB National Air Quality Index (NAQI) category."""
-    if aqi <= 50:
+    if aqi <= AQI_GOOD_MAX:
         return "Good"
-    if aqi <= 100:
+    if aqi <= AQI_SATISFACTORY_MAX:
         return "Satisfactory"
-    if aqi <= 200:
+    if aqi <= AQI_MODERATE_MAX:
         return "Moderate"
-    if aqi <= 300:
+    if aqi <= AQI_POOR_MAX:
         return "Poor"
-    if aqi <= 400:
+    if aqi <= AQI_VERY_POOR_MAX:
         return "Very Poor"
     return "Severe"
 
@@ -122,7 +129,7 @@ def compute_coverage_hours(run: ForecastRun) -> float | None:
     """Return training data coverage in hours, or None if timestamps unavailable."""
     if run.training_data_start and run.training_data_end:
         return round(
-            (run.training_data_end - run.training_data_start).total_seconds() / 3600.0,
+            (run.training_data_end - run.training_data_start).total_seconds() / SECONDS_PER_HOUR,
             1,
         )
     return None
