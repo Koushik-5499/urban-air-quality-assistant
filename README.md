@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![CI](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Koushik-5499/urban-air-quality-assistant/actions/workflows/ci.yml)
-[![Tests: 434 Passing](https://img.shields.io/badge/Tests-434%20Passing-brightgreen.svg)](./docs/TESTING.md)
+[![Tests: 454 Passing](https://img.shields.io/badge/Tests-454%20Passing-brightgreen.svg)](./docs/TESTING.md)
 [![WCAG 2.1 AA](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-blue.svg)](./docs/ACCESSIBILITY.md)
 [![SOLID Architecture](https://img.shields.io/badge/Architecture-SOLID%20Principles-purple.svg)](./ARCHITECTURE.md)
 
@@ -264,19 +264,19 @@ App available at: http://localhost:5173
 
 Comprehensive automated test suites validate all components across backend algorithms, AI integrations, and frontend interactions. See [docs/TESTING.md](./docs/TESTING.md) for full coverage metrics and breakdown.
 
-### Backend (346 Tests Passed, 0 Skipped, 92% Coverage)
+### Backend (356 Tests Passed, 0 Skipped, 93.7% Coverage)
 ```bash
 cd backend
-.venv/bin/pytest -q --cov=app
-# 346 passed in 34.58s (92% statement coverage across 4,692 statements)
+.venv/bin/pytest -q --cov=app --cov-fail-under=90
+# 356 passed in 37.85s (93.70% statement coverage across 4,827 statements)
 ```
 
-### Frontend (88 Tests Passed, 14 Test Suites, 86.4% Line Coverage)
+### Frontend (98 Tests Passed, 15 Test Suites, 86.9% Line Coverage)
 ```bash
 cd frontend
 npx vitest run --coverage
-# Test Files  14 passed (14)
-# Tests       88 passed (88) — Stmts 86.43% | Branches 78.77% | Funcs 62.42% | Lines 86.43%
+# Test Files  15 passed (15)
+# Tests       98 passed (98) — Stmts 86.88% | Branches 79.10% | Funcs 63.96% | Lines 86.88%
 
 npm run lint
 # (exit 0, 0 errors, 0 warnings)
@@ -287,7 +287,7 @@ npx tsc -b --noEmit
 npm run build
 # ✓ built in 6.99s
 ```
-**Total Verified Tests: 434 automated unit, integration, security, accessibility, alignment, and E2E tests (346 Backend + 88 Frontend).**
+**Total Verified Tests: 454 automated unit, integration, security, accessibility, alignment, and E2E tests (356 Backend + 98 Frontend).**
 
 The 15 new alignment acceptance tests in `backend/tests/test_alignment.py` cover all 8 Challenge 6 pillars:
 winter smog & thermal inversion, low-emission routines, indoor air hacks, sustainable alternatives,

@@ -3,7 +3,7 @@
 **Project:** Urban Air Quality Assistant  
 **Date:** November 28, 2026  
 **Assessment Phase:** Final Verification — Security Hardening, SOLID Refactoring & Coverage Gate  
-**Total Tests Passing:** 434 tests (346 Backend + 88 Frontend)  
+**Total Tests Passing:** 454 tests (356 Backend + 98 Frontend)  
 **Pass Rate:** 100%  
 
 ---
@@ -22,12 +22,12 @@ The Urban Air Quality Assistant uses a multi-layered testing strategy combining:
 
 | Test Layer | Test Runner | Files | Tests | Status | Execution Time |
 |---|---|---|---|---|---|
-| **Backend Suite** | `pytest` (Python 3.11+) | 15 | 346 | **346 Passed, 0 Skipped (92% Cov)** | ~34.6s |
-| **Frontend Suite** | `vitest 2.1.9` | 14 | 88 | **88 Passed (86.4% Lines)** | ~9.1s |
+| **Backend Suite** | `pytest` (Python 3.11+) | 17 | 356 | **356 Passed, 0 Skipped (93.7% Cov)** | ~37.9s |
+| **Frontend Suite** | `vitest 2.1.9` | 15 | 98 | **98 Passed (86.9% Lines)** | ~14.6s |
 | **Frontend Linting** | `eslint 9.x` | All source | N/A | **0 Errors, 0 Warnings** | ~0.8s |
 | **Frontend Build** | `vite build` | Production | N/A | **Clean Build (0 Errors)** | ~7.0s |
 | **Backend Quality & AST** | `ruff` / `mypy` / `bandit` / `radon` | `app/` | N/A | **0 Errors / 0 C-D Complexity** | ~2.0s |
-| **Total Test Suite** | Combined | 29 | 434 | **434 Passed (100%)** | **All Passed (100%)** |
+| **Total Test Suite** | Combined | 32 | 454 | **454 Passed (100%)** | **All Passed (100%)** |
 
 ---
 
@@ -79,16 +79,18 @@ The backend test suite is configured via `backend/pytest.ini` and uses `httpx.As
    - Trend analysis and confidence intervals.
    - Clearly separated forecast records from historical observations.
 
-9. **`test_security.py` (10 tests):**
+9. **`test_security.py` (19 tests):**
    - Standard security headers injection (`X-Content-Type-Options`, `X-Frame-Options`, `CSP`, `Permissions-Policy`).
    - Request size limit middleware (rejects >1MB payloads with HTTP 413).
    - User ID regex validation preventing header injection and path traversal (`^[a-zA-Z0-9_\-\.]{1,64}$`).
-   - Admin secret key enforcement in production mode (`verify_admin_access`).
+   - Scoped admin & AI secret enforcement (`require_admin_scope`, `require_ai_access`) using constant-time `hmac.compare_digest`.
    - Sensitive credential masking in logs (`SecretRedactionFilter`).
-   - In-memory sliding-window rate limiting (HTTP 429 response on threshold breaches).
+   - In-memory sliding-window rate limiting across `/health/ask` and all 5 admin/state-changing routes.
    - Date range validation in historical queries (rejects `start_date > end_date`).
-   - AI health question length validation (rejects empty/oversized prompts).
-   - CORS preflight and allowed origins.
+   - AI health question length validation and CORS preflight/allowed-header verification.
+
+10. **`test_step1_modules.py` (7 tests) & `test_alignment.py` / coverage suites:**
+   - Dedicated unit coverage for every refactored cohesive module (`knowledge_data_*`, `recommendation_tiers_*`, `threshold_rules`, `alert_{query,preference}_service`, `history_query_service`, `trend_helpers`, `forecast_{query_service,run_helper}`, `processor_queries`, `WeatherClient._parse_optional_float`) and explicit no-Gemini-key fallback household profile plans.
 
 ---
 
@@ -129,6 +131,9 @@ The frontend test suite is configured with `vitest` and operates in an isolated 
 
 8. **`e2eUserJourneys.test.ts` (8 tests):**
    - Comprehensive simulation of full multi-step user workflows (detailed below).
+
+9. **`componentAccessibility.test.tsx` (4 tests) & `pageAccessibility.test.tsx` (9 tests):**
+   - `vitest-axe` automated WCAG 2.1 AA audits on interactive cards, `RootLayout`, and every application page (`DashboardPage`, `LocationsPage`, `PollutantsPage`, `MapPage`, `AssistantPage`, `AlertsPage`, `AnalyticsPage`, `NotFoundPage`), plus screen-reader `<ChartDataTable>` caption checks and interactive `HouseholdProfileBar` flow tests.
 
 ---
 
@@ -216,8 +221,8 @@ npm audit
 
 Any Pull Request or commit to the main branch must pass the following quality gates:
 
-1. **Zero Pytest Failures:** 100% of the 153 backend tests must pass.
-2. **Zero Vitest Failures:** 100% of the 51 frontend tests must pass.
+1. **Zero Pytest Failures:** 100% of the 356 backend tests must pass with `>= 90%` statement coverage.
+2. **Zero Vitest Failures:** 100% of the 98 frontend tests must pass with configured coverage thresholds enforced.
 3. **Zero ESLint Warnings/Errors:** Code must strictly adhere to project linting rules.
 4. **Clean TypeScript Build:** `tsc -b` must compile with 0 type errors.
 5. **Clean Security AST Scan:** `bandit` must return 0 Medium or High severity issues.
