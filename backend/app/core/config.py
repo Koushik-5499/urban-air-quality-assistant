@@ -193,6 +193,12 @@ class Settings(BaseSettings):
             "Optional administrative secret key required for POST /api/v1/forecast/generate"
         ),
     )
+    AI_ACCESS_SECRET: str | None = Field(
+        default=None,
+        description=(
+            "Optional scoped secret key enforced on POST /api/v1/health/ask when configured"
+        ),
+    )
     FORECAST_DEFAULT_HORIZON_HOURS: int = Field(
         default=24,
         description="Default prediction horizon in hours",

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
+from app.core.security import require_ai_access
 from app.db.init_db import check_database_health
 from app.db.session import get_db
 from app.integrations.ai.schemas import (
@@ -62,6 +63,7 @@ async def get_v1_health(
 )
 async def ask_health_assistant(
     request: HealthAskRequest,
+    _ai_auth: None = Depends(require_ai_access),
     db: Session = Depends(get_db),
     advisor: HealthAdvisorService = Depends(get_health_advisor),
 ) -> HealthAskResponse:

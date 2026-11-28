@@ -372,3 +372,54 @@ async def test_rate_limit_429_includes_retry_after_and_security_headers():
         rate_limiter.route_limits.pop("/ping", None)
         rate_limiter.clear()
 
+
+@pytest.mark.asyncio
+async def test_ai_route_optional_scoped_secret_enforcement():
+    """Verify /api/v1/health/ask enforces AI_ACCESS_SECRET via hmac.compare_digest when set."""
+    from fastapi import HTTPException
+
+    from app.core.config import Settings
+    from app.core.security import require_ai_access
+
+    # Public access allowed when AI_ACCESS_SECRET is unset
+    require_ai_access(settings=Settings(APP_ENV="production", AI_ACCESS_SECRET=None))
+
+    secured = Settings(APP_ENV="production", AI_ACCESS_SECRET="ai_scoped_secret_789")
+    # Constant-time match succeeds with X-AI-Secret header
+    require_ai_access(x_ai_secret="ai_scoped_secret_789", settings=secured)
+
+    # Missing or wrong secret fails closed with 403
+    with pytest.raises(HTTPException) as exc_missing:
+        require_ai_access(settings=secured)
+    assert exc_missing.value.status_code == 403
+
+    with pytest.raises(HTTPException) as exc_wrong:
+        require_ai_access(x_ai_secret="wrong_secret", settings=secured)
+    assert exc_wrong.value.status_code == 403
+
+
+def test_sensitive_admin_routes_have_explicit_rate_limits():
+    """Every admin, state-changing, and AI endpoint has an explicit rate-limit rule."""
+    from app.core.security import rate_limiter
+
+    expected_routes = [
+        "/api/v1/health/ask",
+        "/api/v1/air-quality/sync",
+        "/api/v1/alerts/process",
+        "/api/v1/alerts/test-notification",
+        "/api/v1/forecast/generate",
+        "/api/v1/aqi/process",
+    ]
+    for route in expected_routes:
+        assert route in rate_limiter.route_limits
+
+
+def test_secret_redaction_covers_ai_and_api_keys():
+    """Verify redact_secrets masks ai_secret and api_key pairs alongside admin secrets."""
+    from app.core.logging import redact_secrets
+
+    masked = redact_secrets("ai_secret=topsecret123 api_key=abc987xyz")
+    assert "topsecret123" not in masked
+    assert "abc987xyz" not in masked
+    assert "[REDACTED_SECRET]" in masked
+

@@ -27,10 +27,12 @@ jobs:
         run: mypy app
       - name: Security scan (bandit)
         run: bandit -q -r app -ll
+      - name: Dependency audit (pip-audit)
+        run: pip-audit -r requirements.txt -r requirements-dev.txt
       - name: Complexity check (radon)
         run: test -z "$(radon cc app -nc -s)"
       - name: Run tests with coverage
-        run: pytest --cov=app --cov-report=term-missing -q
+        run: pytest --cov=app --cov-report=term-missing --cov-fail-under=90 -q
         env:
           APP_ENV: development
           DATABASE_URL: sqlite:////tmp/test_air_quality.db
@@ -58,4 +60,6 @@ jobs:
         run: npx vitest run --coverage
       - name: Build
         run: npm run build
+      - name: Dependency audit (npm audit)
+        run: npm audit --omit=dev --audit-level=high
 

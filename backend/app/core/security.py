@@ -175,6 +175,7 @@ class InMemoryRateLimiter(RateLimitStore):
             "/api/v1/health/ask": (20, 60),  # 20 AI queries / minute
             "/api/v1/air-quality/sync": (10, 60),  # 10 sync calls / minute
             "/api/v1/alerts/process": (10, 60),
+            "/api/v1/alerts/test-notification": (10, 60),
             "/api/v1/forecast/generate": (10, 60),
             "/api/v1/aqi/process": (10, 60),
         }
@@ -358,3 +359,19 @@ def verify_admin_access(
         settings.ALERT_ADMIN_SECRET or settings.SYNC_ADMIN_SECRET or settings.FORECAST_ADMIN_SECRET
     )
     _enforce_secret(secret, x_admin_secret, x_api_key, authorization, settings)
+
+
+def require_ai_access(
+    x_ai_secret: str | None = Header(None, alias="X-AI-Secret"),
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """Enforce constant-time AI_ACCESS_SECRET verification on /health/ask when configured."""
+    if not settings.AI_ACCESS_SECRET:
+        return
+    provided_secret = _extract_provided_secret(
+        x_ai_secret or x_admin_secret, x_api_key, authorization
+    )
+    _verify_secret_match(provided_secret, settings.AI_ACCESS_SECRET)

@@ -11,7 +11,10 @@ SENSITIVE_PATTERNS = [
     (re.compile(r"(?:AIzaSy|AQ\.)[a-zA-Z0-9_\-]{28,60}"), "[REDACTED_GEMINI_KEY]"),
     (re.compile(r"re_[a-zA-Z0-9]{20,}"), "[REDACTED_API_KEY]"),
     (re.compile(r"(?i)(bearer\s+)[a-zA-Z0-9_\-\.]{16,}"), r"\1[REDACTED_TOKEN]"),
-    (re.compile(r"(?i)(admin[_-]?secret\s*[:=]\s*)[^\s,]+"), r"\1[REDACTED_SECRET]"),
+    (
+        re.compile(r"(?i)((?:admin|ai|api)[_-]?(?:secret|key|token)\s*[:=]\s*)[^\s,]+"),
+        r"\1[REDACTED_SECRET]",
+    ),
     (re.compile(r"(?i)(password\s*[:=]\s*)[^\s,]+"), r"\1[REDACTED_PASSWORD]"),
     (re.compile(r"://([^:]+):([^@]+)@"), r"://\1:***@"),
 ]

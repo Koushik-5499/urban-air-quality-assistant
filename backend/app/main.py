@@ -97,6 +97,7 @@ def create_application() -> FastAPI:
         allow_headers=[
             "Content-Type",
             "Authorization",
+            "X-AI-Secret",
             "X-API-Key",
             "X-Admin-Secret",
             "X-User-Id",
