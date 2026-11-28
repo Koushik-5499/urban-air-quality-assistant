@@ -40,19 +40,25 @@ Urban Air Quality Assistant addresses this directly across **five foundational p
 5. **Direct Impact Analysis with Quantified Metrics:**
    Every recommendation quantifies citizen benefit and environmental return: e.g., *"Reduces fine particulate lung deposition by 45–70%"*, *"Prevents ~1.2 kg CO₂ and 4.8 g PM2.5 emissions per commute"*.
 
-### Challenge 6 Requirement Traceability Matrix
+### Challenge 6 Requirement Traceability Matrix (Files, Endpoints, Assumptions & Sources)
 
-| Challenge 6 Requirement | Implementation Feature | Frontend Source | Backend API Endpoint |
+| Challenge 6 Requirement | Implementation Detail | Frontend Source | Backend Source & Endpoint |
 |:---|:---|:---|:---|
-| **Winter Smog & Inversion Layers** | Thermal inversion protocol, diurnal peak trapping windows (05:00–08:30 IST) | `src/components/dashboard/HealthRecommendation.tsx`, `src/services/assistant/ruleEngine.ts` | `GET /api/v1/health/guidelines`, `POST /api/v1/health/ask` |
-| **Low-Emission Routines** | Off-peak transit rescheduling, micro-mobility, electric metro commute routing | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
-| **Practical Indoor Hacks** | Diurnal ventilation window (12:30–15:30), Corsi-Rosenthal DIY box filter, damp mopping | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
-| **Sustainable Alternatives** | Electric radiant heating over wood braziers, RWA leaf composting, community EVs | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
-| **Direct Quantified Impact** | Measurable emission and inhalation metrics (kg CO₂, g NOx, % PM deposition avoided) | `src/services/assistant/ruleEngine.ts`, `src/components/dashboard/HealthRecommendation.tsx` | `GET /api/v1/health/community-solutions` |
-| **Vulnerable Cohort Guidance** | Tailored precautions for children, seniors, asthmatics, COPD, and pregnant women | `src/services/assistant/queryParser.ts`, `src/components/assistant/AssistantContextPanel.tsx` | `POST /api/v1/health/ask`, `GET /api/v1/health/recommendations` |
-| **Data Honesty & Provenance** | Clear 'Live CPCB data' vs 'Demo data (live CPCB unavailable)' badges across all 6 views | `src/components/common/DataProvenanceBadge.tsx`, `src/context/LocationContext.tsx` | `GET /api/v1/air-quality/source-status` |
-| **Explainability ("Why this advice?")** | Collapsible accordion disclosing Priority, Target Group, Inversion Reason, CPCB/WHO sources | `src/components/dashboard/HealthRecommendation.tsx`, `src/components/assistant/ChatMessageBubble.tsx` | `POST /api/v1/health/ask`, `GET /api/v1/health/guidelines` |
-| **Smog Epicenter Default** | Delhi NCR set as default city across location state, telemetry, and showcase flows | `src/context/LocationContext.tsx`, `src/hooks/useLocation.ts` | `GET /api/v1/air-quality/cities/Delhi` |
+| **Severe Winter Smog Navigation** | Thermal inversion risk & peak morning trap alerts (`05:00–08:30 IST`) | `frontend/src/components/dashboard/HealthRecommendation.tsx`, `frontend/src/pages/AssistantPage.tsx` | `backend/app/services/health/knowledge_data_community.py` → `GET /api/v1/health/guidelines`, `POST /api/v1/health/ask` |
+| **City + Household Profile** | City selector + children, elderly, asthma, outdoor worker, commute mode & heating type controls | `frontend/src/components/dashboard/HouseholdProfileBar.tsx`, `frontend/src/components/assistant/HouseholdProfileSelector.tsx` | `backend/app/services/health/context_builder.py` → `POST /api/v1/health/ask` (`lifestyle`, `family_context`) |
+| **Low-Emission Daily Routines** | Off-peak transit windows, EV/metro mode shift, midday outdoor scheduling tailored to profile | `frontend/src/utils/healthRecommendations.ts` → `getHealthRecommendations()` | `backend/app/services/health/recommendation_engine.py` → `GET /api/v1/health/community-solutions`, `GET /api/v1/health/recommendations` |
+| **Indoor Air Hacks** | Diurnal ventilation timing (`12:30–15:30`), MERV-13 Corsi-Rosenthal DIY box fan, wet mopping | `frontend/src/utils/healthRecommendations.ts`, `frontend/src/components/dashboard/HealthRecommendation.tsx` | `backend/app/services/health/knowledge_data_community.py` → `GET /api/v1/health/community-solutions` |
+| **Sustainable Alternatives** | Electric radiant/heat-pump heating vs biomass burning, RWA leaf composting, shared EV charging | `frontend/src/utils/healthRecommendations.ts`, `frontend/src/components/dashboard/HealthRecommendation.tsx` | `backend/app/services/health/knowledge_data_community.py` → `GET /api/v1/health/community-solutions` |
+| **Quantified Impact per Action** | Explicit **PM2.5 avoided** (`µg/m³` / `% inhaled`) and **CO₂ saved** (`kg/day`) per recommendation | `frontend/src/components/dashboard/HealthRecommendation.tsx` (`ActionPlanSection`), `frontend/src/services/assistant/ruleEngine.ts` | `backend/app/services/health/knowledge_base.py` → `GET /api/v1/health/impact-metrics` |
+| **Why This Advice (Explainability)** | Inline action justification + expandable CPCB/WHO priority, cohort & epidemiological reason accordion | `frontend/src/components/dashboard/HealthRecommendation.tsx`, `frontend/src/components/assistant/ChatMessageBubble.tsx` | `backend/app/services/health/recommendation_tiers_*.py` → `POST /api/v1/health/ask` |
+| **Deterministic Fallback (No Gemini Key)** | Automatic zero-downtime CPCB/WHO fallback (`response_type: "knowledge_base_fallback"`) clearly badged in UI | `frontend/src/pages/AssistantPage.tsx`, `frontend/src/services/assistant/ruleEngine.ts` | `backend/app/services/health/health_advisor.py` → `_generate_knowledge_base_fallback()` |
+| **Data Honesty & Provenance** | Live CPCB vs Simulated Demo Data provenance badges across views | `frontend/src/components/common/DataProvenanceBadge.tsx` | `backend/app/api/v1/endpoints/air_quality.py` → `GET /api/v1/air-quality/source-status` |
+
+#### Key Assumptions & Impact Metric Sources (Top-Level Reference)
+- **Model & Fallback Assumption:** Uses Google Gemini (`gemini-2.5-flash` default in `backend/app/core/config.py`) when `GEMINI_API_KEY` is configured; without a key, every advisory route runs deterministically using CPCB/WHO rule tables clearly labelled as deterministic fallback.
+- **Telemetry Assumption:** Falls back seamlessly to simulated CPCB-calibrated city telemetry when `CPCB_API_KEY` is unset, badged transparently as simulated demo data. Not clinical medical advice.
+- **PM2.5 & NAQI Health Thresholds:** Central Pollution Control Board (CPCB) National Air Quality Index (NAQI, 2014); World Health Organization (WHO) Global Air Quality Guidelines (2021, PM2.5 24h target `15 µg/m³`); CPCB Inversion Research (2023).
+- **CO₂ & Intervention Savings:** Delhi Transport Corporation EV Life-Cycle Assessment (`~3.2 kg CO₂/day` metro vs petrol car); EPA Clean Air Guidance (`75–85%` indoor PM2.5 reduction via MERV-13 Corsi-Rosenthal filter); IIT Delhi Indoor Air Study (`~65%` PM10 resuspension reduction via wet mopping); CPCB Open Burning Survey & BEE Heating Advisory (`>800 µg/m³` peak & `~3.6 kg CO₂/evening` saved replacing biomass fires).
 
 ---
 

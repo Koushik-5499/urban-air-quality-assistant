@@ -165,3 +165,4 @@ def mark_all_read(db: Session) -> AlertUnreadCountResponse:
     db.execute(stmt)
     db.commit()
     return AlertUnreadCountResponse(unread_count=0)
+

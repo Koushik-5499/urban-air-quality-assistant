@@ -201,3 +201,4 @@ def register_push_subscription(
         db.add(sub)
     db.commit()
     return True
+

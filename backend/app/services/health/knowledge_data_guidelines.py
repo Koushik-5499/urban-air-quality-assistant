@@ -160,3 +160,4 @@ CATEGORY_GUIDELINES: dict[str, CategoryGuideline] = {
         ],
     ),
 }
+

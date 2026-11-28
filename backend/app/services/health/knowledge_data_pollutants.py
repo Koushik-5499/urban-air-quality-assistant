@@ -247,3 +247,4 @@ POLLUTANT_DETAILS: dict[str, PollutantExplanationResponse] = {
         disclaimer=MEDICAL_DISCLAIMER,
     ),
 }
+

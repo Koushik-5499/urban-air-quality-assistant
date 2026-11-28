@@ -115,13 +115,13 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
         {message.sender === 'assistant' && (
           <div className="mb-2 flex items-center gap-1.5 flex-wrap">
             {message.provenance === 'offline_rules' ? (
-              <Badge variant="neutral" size="sm" className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-                <BookOpen className="w-3 h-3 text-amber-500" aria-hidden="true" />
-                <span>Offline guidance (built-in rules)</span>
+              <Badge variant="neutral" size="sm" className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-200">
+                <BookOpen className="w-3 h-3 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <span>Offline guidance (built-in rules) — Deterministic Fallback</span>
               </Badge>
             ) : (
               <Badge variant="info" size="sm" className="flex items-center gap-1 font-medium">
-                <Cpu className="w-3 h-3 text-sky-500" aria-hidden="true" />
+                <Cpu className="w-3 h-3 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                 <span>Gemini AI (Google)</span>
               </Badge>
             )}

@@ -5,51 +5,50 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { DataProvenanceBadge } from '../components/common/DataProvenanceBadge';
 import { AssistantProfileHeader } from '../components/assistant/AssistantProfileHeader';
 import { ChatMessageBubble } from '../components/assistant/ChatMessageBubble';
-import { ChatInput } from '../components/assistant/ChatInput';
 import { ChatSuggestedQuestions } from '../components/assistant/ChatSuggestedQuestions';
+import { ChatInput } from '../components/assistant/ChatInput';
 import { TypingIndicator } from '../components/assistant/TypingIndicator';
 import { ClearChatModal } from '../components/assistant/ClearChatModal';
 import { AssistantContextPanel } from '../components/assistant/AssistantContextPanel';
-import {
-  generateAssistantResponse,
-  SUGGESTED_QUESTIONS,
-} from '../services/assistantEngine';
+import { HouseholdProfileSelector } from '../components/assistant/HouseholdProfileSelector';
+import { LIFESTYLE_PERSONAS } from '../constants/personas';
+import { DEFAULT_HOUSEHOLD_PROFILE } from '../utils/healthRecommendations';
+import { generateAssistantResponse, SUGGESTED_QUESTIONS } from '../services/assistantEngine';
 import { healthApi } from '../services/api/healthApi';
 import type { ChatMessage } from '../types/assistant';
+import type { HouseholdProfile } from '../types/dashboard';
 
 const STORAGE_KEY_CHAT = 'uaqa_assistant_messages';
 
-const LIFESTYLE_PERSONAS = [
-  { id: 'family_with_children', label: '👨‍👩‍👧 Family with Children', desc: 'School commute, pediatric lung health, indoor hacks' },
-  { id: 'daily_commuter', label: '🚴 Daily Commuter', desc: 'Off-peak transit shifts, N95 routing, traffic corridors' },
-  { id: 'elderly_caregiver', label: '🧓 Elderly & Vulnerable', desc: 'Cardiopulmonary care, indoor air sealing, medication safety' },
-  { id: 'outdoor_enthusiast', label: '🏃 Outdoor Athlete', desc: 'Diurnal workout windows (1-4 PM), PM2.5 tracking' },
-  { id: 'remote_worker', label: '🏡 Work from Home', desc: 'Diurnal ventilation, DIY Corsi-Rosenthal filtration' },
-  { id: 'community_leader', label: '🏘️ Community Action', desc: 'Neighborhood carpools, reporting waste burning, clean heating' },
-];
+function serializeHouseholdContext(personaDesc: string | undefined, profile: HouseholdProfile): string {
+  const tags: string[] = [];
+  if (profile.children) tags.push('children');
+  if (profile.elderly) tags.push('elderly');
+  if (profile.asthma) tags.push('asthma');
+  if (profile.outdoorWorker) tags.push('outdoor_worker');
+  const members = tags.length > 0 ? tags.join(',') : 'general';
+  return `${personaDesc ?? 'Household'}; members=${members}; commute=${profile.commuteMode}; heating=${profile.heatingType}`;
+}
 
 function Assistant() {
   useDocumentTitle('AI Health Assistant — Urban Air Quality Assistant');
 
   const { selectedCityData, selectedCityId } = useLocation();
   const [selectedLifestyle, setSelectedLifestyle] = useState<string>('family_with_children');
-
-  // Thermal inversion window: 05:00–08:30 IST = 23:30–03:00 UTC
-  const isInversionWindow = useMemo(() => {
-    const now = new Date();
-    const utcH = now.getUTCHours();
-    const utcM = now.getUTCMinutes();
-    const mins = utcH * 60 + utcM;
-    return mins >= 23 * 60 + 30 || mins <= 3 * 60; // 23:30–03:00 UTC
-  }, []);
+  const [householdProfile, setHouseholdProfile] = useState<HouseholdProfile>(DEFAULT_HOUSEHOLD_PROFILE);
   const [isTyping, setIsTyping] = useState(false);
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'health'>('chat');
 
+  const isInversionWindow = useMemo(() => {
+    const now = new Date();
+    const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
+    return mins >= 23 * 60 + 30 || mins <= 3 * 60;
+  }, []);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevCityIdRef = useRef<string>(selectedCityId);
 
-  // Helper to construct initial welcome message
   const createWelcomeMessage = useCallback(
     (): ChatMessage => ({
       id: 'welcome-msg',
@@ -57,7 +56,7 @@ function Assistant() {
       text:
         `Hello! I am your **Urban Air Quality Health Assistant**.\n\n` +
         `I am currently monitoring atmospheric criteria pollutants for **${selectedCityData.location.city}, ${selectedCityData.location.state}** (AQI **${selectedCityData.aqi} — ${selectedCityData.category}**).\n\n` +
-        `Ask me anything about today's air quality, outdoor exercise safety, particulate health risks, masks, or precautions for sensitive groups. You can also pick from the suggested questions below!`,
+        `Ask me anything about today's air quality, low-emission daily routines, indoor air hacks, sustainable alternatives, or household precautions. If no Gemini key is active, the deterministic CPCB/WHO fallback answers automatically.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       cityContext: {
         city: selectedCityData.location.city,
@@ -75,7 +74,6 @@ function Assistant() {
     [selectedCityData]
   );
 
-  // Messages state with localStorage persistence
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_CHAT);
@@ -89,7 +87,6 @@ function Assistant() {
     return [createWelcomeMessage()];
   });
 
-  // Persist messages
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_CHAT, JSON.stringify(messages));
@@ -98,7 +95,6 @@ function Assistant() {
     }
   }, [messages]);
 
-  // Notice when the active city changes elsewhere in the application
   useEffect(() => {
     if (prevCityIdRef.current !== selectedCityId) {
       prevCityIdRef.current = selectedCityId;
@@ -112,16 +108,10 @@ function Assistant() {
     }
   }, [selectedCityId, selectedCityData]);
 
-  // Scroll to bottom when messages update or typing starts
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Handle sending a message with Backend Gemini API integration + graceful fallback
   const handleSendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
@@ -138,7 +128,6 @@ function Assistant() {
       setIsTyping(true);
 
       try {
-        // Build conversation history for FastAPI Gemini endpoint
         const conversationHistory = messages
           .filter((m) => m.sender === 'user' || m.sender === 'assistant')
           .slice(-6)
@@ -148,15 +137,15 @@ function Assistant() {
           }));
 
         const currentPersona = LIFESTYLE_PERSONAS.find((p) => p.id === selectedLifestyle);
-
         const response = await healthApi.askAssistant({
           city: selectedCityData.location.city,
           question: trimmed,
           lifestyle: selectedLifestyle,
-          family_context: currentPersona?.desc,
+          family_context: serializeHouseholdContext(currentPersona?.desc, householdProfile),
           conversation_history: conversationHistory,
         });
 
+        const isFallback = response.response_type === 'knowledge_base_fallback';
         let responseText = response.answer;
         if (response.recommendations && response.recommendations.length > 0) {
           responseText +=
@@ -166,7 +155,7 @@ function Assistant() {
         if (response.direct_impact_metrics && response.direct_impact_metrics.length > 0) {
           responseText +=
             '\n\n**Quantified Direct Impacts:**\n' +
-            response.direct_impact_metrics.slice(0, 3).map((m) => `• 📊 ${m}`).join('\n');
+            response.direct_impact_metrics.slice(0, 3).map((m) => `• ${m}`).join('\n');
         }
         if (response.disclaimer) {
           responseText += `\n\n*${response.disclaimer}*`;
@@ -182,7 +171,7 @@ function Assistant() {
             aqi: selectedCityData.aqi,
             category: selectedCityData.category,
           },
-          provenance: 'gemini',
+          provenance: isFallback ? 'offline_rules' : 'gemini',
           explainability: {
             priority:
               selectedCityData.aqi > 200
@@ -191,16 +180,18 @@ function Assistant() {
                 ? 'Elevated Precaution'
                 : 'Standard Health Advisory',
             targetGroup:
-              'Families, pediatric cohorts, elderly, asthmatics, and active outdoor commuters',
-            reason:
-              'Assessed using generative AI grounded in CPCB NAQI guidelines and real-time station metrics.',
-            supportingSource: 'Google Gemini AI + CPCB National Standards + WHO Guidelines (2021)',
+              'Families, pediatric cohorts, elderly, asthmatics, outdoor workers, and daily commuters',
+            reason: isFallback
+              ? 'Deterministic CPCB/WHO knowledge-base fallback used (Gemini key unset or unavailable).'
+              : 'Assessed using generative AI grounded in CPCB NAQI guidelines and real-time station metrics.',
+            supportingSource: isFallback
+              ? 'Deterministic Fallback — CPCB NAQI Guidelines (2014) & WHO Guidelines (2021)'
+              : 'Google Gemini AI + CPCB National Standards + WHO Guidelines (2021)',
           },
         };
 
         setMessages((prev) => [...prev, assistantMsg]);
       } catch {
-        // Graceful fallback to built-in rule engine if backend is offline or errors
         const responseText = generateAssistantResponse(trimmed, selectedCityData);
         const assistantMsg: ChatMessage = {
           id: `asst-${Date.now()}`,
@@ -214,10 +205,8 @@ function Assistant() {
           },
           provenance: 'offline_rules',
           explainability: {
-            priority:
-              selectedCityData.aqi > 150 ? 'High Priority Alert' : 'Standard Precaution',
-            targetGroup:
-              'Local residents, sensitive individuals (asthma/COPD), and children',
+            priority: selectedCityData.aqi > 150 ? 'High Priority Alert' : 'Standard Precaution',
+            targetGroup: 'Local residents, sensitive individuals (asthma/COPD), and children',
             reason:
               'Generated via local deterministic rule engine using simulated and local atmospheric telemetry.',
             supportingSource: 'CPCB National Air Quality Index Breakpoints & WHO Ambient Standards',
@@ -229,13 +218,11 @@ function Assistant() {
         setIsTyping(false);
       }
     },
-    [isTyping, messages, selectedCityData, selectedLifestyle]
+    [isTyping, messages, selectedCityData, selectedLifestyle, householdProfile]
   );
 
-  // Clear conversation history
   const handleConfirmClear = () => {
-    const freshWelcome = createWelcomeMessage();
-    setMessages([freshWelcome]);
+    setMessages([createWelcomeMessage()]);
     try {
       localStorage.removeItem(STORAGE_KEY_CHAT);
     } catch {
@@ -245,7 +232,6 @@ function Assistant() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in duration-300">
-      {/* 1. Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -257,37 +243,39 @@ function Assistant() {
             </h1>
             <DataProvenanceBadge />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-3xl">
-            Context-aware environmental health consultation powered by Google Gemini and CPCB guidelines. Receive immediate guidance on outdoor exertion, particulate exposure thresholds, protective measures, and sensitive group precautions tailored to your active city.
+          <p className="text-sm text-slate-600 dark:text-slate-300 max-w-3xl">
+            Context-aware environmental health consultation powered by Google Gemini with automatic deterministic CPCB/WHO fallback when no API key is present.
           </p>
         </div>
 
-        {/* Thermal Inversion Peak Window Banner — 05:00–08:30 IST */}
-      {isInversionWindow && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-300 dark:bg-amber-950/40 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-sm"
-        >
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
-          <div>
-            <strong>Peak Thermal Inversion Window (05:00–08:30 IST)</strong>
-            <span className="ml-1">— Cold air traps pollutants near ground level during these hours. Avoid outdoor exertion; keep windows closed.</span>
+        {isInversionWindow && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-300 dark:bg-amber-950/40 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-sm"
+          >
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <strong>Peak Thermal Inversion Window (05:00–08:30 IST)</strong>
+              <span className="ml-1">— Cold air traps pollutants near ground level during these hours. Avoid outdoor exertion; keep windows closed.</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Mobile View Switcher (Chat vs Health Context) */}
-        <div role="tablist" aria-label="Assistant view switcher" className="inline-flex lg:hidden p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start">
+        <div
+          role="tablist"
+          aria-label="Assistant view switcher"
+          className="inline-flex lg:hidden p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start"
+        >
           <button
             type="button"
             role="tab"
             aria-selected={activeMobileTab === 'chat'}
             onClick={() => setActiveMobileTab('chat')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               activeMobileTab === 'chat'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
@@ -298,10 +286,10 @@ function Assistant() {
             role="tab"
             aria-selected={activeMobileTab === 'health'}
             onClick={() => setActiveMobileTab('health')}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               activeMobileTab === 'health'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
@@ -310,54 +298,21 @@ function Assistant() {
         </div>
       </div>
 
-      {/* 2. Main 2-Column Responsive Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Chat Conversation Window (8 cols) */}
-        <div
-          className={`lg:col-span-8 space-y-4 ${
-            activeMobileTab === 'health' ? 'hidden lg:block' : 'block'
-          }`}
-        >
-          {/* Assistant Profile Header */}
+        <div className={`lg:col-span-8 space-y-4 ${activeMobileTab === 'health' ? 'hidden lg:block' : 'block'}`}>
           <AssistantProfileHeader
             cityData={selectedCityData}
             messageCount={messages.length}
             onClearChat={() => setIsClearModalOpen(true)}
           />
 
-          {/* Lifestyle & Household Context Selector (Challenge 6 Pillar) */}
-          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <span>🎯 Tailor Advisory to Your Lifestyle & Household:</span>
-              </span>
-              <span className="text-2xs text-teal-600 dark:text-teal-400 font-medium">
-                Active: {LIFESTYLE_PERSONAS.find((p) => p.id === selectedLifestyle)?.label}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {LIFESTYLE_PERSONAS.map((persona) => {
-                const isActive = selectedLifestyle === persona.id;
-                return (
-                  <button
-                    key={persona.id}
-                    type="button"
-                    onClick={() => setSelectedLifestyle(persona.id)}
-                    aria-pressed={isActive}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
-                      isActive
-                        ? 'bg-teal-600 text-white shadow-xs dark:bg-teal-500'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <span>{persona.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <HouseholdProfileSelector
+            selectedLifestyle={selectedLifestyle}
+            onSelectLifestyle={setSelectedLifestyle}
+            householdProfile={householdProfile}
+            onChangeProfile={setHouseholdProfile}
+          />
 
-          {/* Chat Messages Container */}
           <div
             tabIndex={0}
             role="log"
@@ -369,33 +324,24 @@ function Assistant() {
             {messages.map((message) => (
               <ChatMessageBubble key={message.id} message={message} />
             ))}
-
             {isTyping && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggested Quick Questions */}
           <ChatSuggestedQuestions
             questions={SUGGESTED_QUESTIONS}
             onSelectQuestion={handleSendMessage}
             disabled={isTyping}
           />
 
-          {/* User Input Bar */}
           <ChatInput onSendMessage={handleSendMessage} disabled={isTyping} />
         </div>
 
-        {/* Right Column: Health Context Panel (4 cols) */}
-        <div
-          className={`lg:col-span-4 ${
-            activeMobileTab === 'chat' ? 'hidden lg:block' : 'block'
-          }`}
-        >
+        <div className={`lg:col-span-4 ${activeMobileTab === 'chat' ? 'hidden lg:block' : 'block'}`}>
           <AssistantContextPanel cityData={selectedCityData} />
         </div>
       </div>
 
-      {/* Clear Chat Confirmation Modal */}
       <ClearChatModal
         isOpen={isClearModalOpen}
         onClose={() => setIsClearModalOpen(false)}

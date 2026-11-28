@@ -244,3 +244,4 @@ export const INITIAL_SAMPLE_ALERTS: AirAlert[] = [
     isSimulated: true,
   },
 ];
+

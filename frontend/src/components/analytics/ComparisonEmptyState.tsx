@@ -41,3 +41,4 @@ export function ComparisonEmptyState({ availableCities, onAddCity }: ComparisonE
     </Card>
   );
 }
+

@@ -124,3 +124,4 @@ export const PARTICULATE_DETAILS: Record<'pm25' | 'pm10', PollutantDetailedInfo>
 };
 
 export type ParticulatePollutantId = Extract<PollutantId, 'pm25' | 'pm10'>;
+

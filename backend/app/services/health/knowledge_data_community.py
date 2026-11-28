@@ -306,3 +306,4 @@ def build_impact_metrics() -> ImpactMetricsResponse:
             "Individual outcomes may vary. Consult a medical professional for personal advice."
         ),
     )
+

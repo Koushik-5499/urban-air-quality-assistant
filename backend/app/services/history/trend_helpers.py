@@ -197,3 +197,4 @@ def build_insufficient_halves_response(
             f"later has {later_count} records (minimum required: {min_records_per_period})."
         ),
     )
+

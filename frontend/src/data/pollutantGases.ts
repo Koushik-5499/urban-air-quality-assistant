@@ -227,3 +227,4 @@ export const GASEOUS_DETAILS: Record<GaseousPollutantId, PollutantDetailedInfo> 
     accentColor: '#059669',
   },
 };
+

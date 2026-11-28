@@ -58,6 +58,25 @@ export interface TrendDataPoint {
   o3: number;
 }
 
+export type CommuteMode = 'car' | 'public_transit' | 'two_wheeler' | 'walk_cycle' | 'remote';
+export type HeatingType = 'electric' | 'gas' | 'biomass' | 'none';
+
+export interface HouseholdProfile {
+  children: boolean;
+  elderly: boolean;
+  asthma: boolean;
+  outdoorWorker: boolean;
+  commuteMode: CommuteMode;
+  heatingType: HeatingType;
+}
+
+export interface QuantifiedActionItem {
+  text: string;
+  pm25Avoided: string;
+  co2SavedKg: string;
+  whyAdvice: string;
+}
+
 export interface HealthAdvice {
   general: string;
   sensitiveGroups: string;
@@ -68,6 +87,9 @@ export interface HealthAdvice {
   lowEmissionRoutines?: string[];
   indoorAirHacks?: string[];
   sustainableAlternatives?: string[];
+  routineItems?: QuantifiedActionItem[];
+  indoorHackItems?: QuantifiedActionItem[];
+  alternativeItems?: QuantifiedActionItem[];
   impactExplanation?: string;
 }
 

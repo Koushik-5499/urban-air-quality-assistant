@@ -144,3 +144,4 @@ def build_moderate_recommendations(dominant: str) -> list[RecommendationItem]:
             supporting_source="WHO Air Quality Guidelines (2021)",
         ),
     ]
+

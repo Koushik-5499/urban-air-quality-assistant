@@ -186,6 +186,8 @@ class HealthAdvisorService:
         fallback_answer = self._generate_knowledge_base_fallback(
             question=clean_question,
             snapshot=snapshot,
+            lifestyle=lifestyle_persona,
+            family_context=request.family_context,
         )
 
         return HealthAskResponse(
@@ -284,7 +286,7 @@ class HealthAdvisorService:
     _SUSTAIN_WORDS = ("sustainab", "heat", "burn", "solar", "waste", "community")
 
     def _build_extra_sections(self, question: str) -> str:
-        """Return contextual sections based on keyword matching in the question."""
+        """Return contextual sections based on keyword matching or default 3-pillar plan."""
         q_lower = question.lower()
         sections: list[str] = []
         if any(w in q_lower for w in self._WINTER_WORDS):
@@ -295,12 +297,20 @@ class HealthAdvisorService:
             sections.append(self._build_indoor_section())
         if any(w in q_lower for w in self._SUSTAIN_WORDS):
             sections.append(self._build_sustainable_section())
-        return ("\n" + "\n\n".join(sections) + "\n") if sections else ""
+        if not sections:
+            sections = [
+                self._build_commute_section(),
+                self._build_indoor_section(),
+                self._build_sustainable_section(),
+            ]
+        return "\n" + "\n\n".join(sections) + "\n"
 
     def _generate_knowledge_base_fallback(
         self,
         question: str,
         snapshot: "AQIContextSnapshot",
+        lifestyle: str | None = None,
+        family_context: str | None = None,
     ) -> str:
         """Synthesize a safe fallback answer using structured knowledge base rules."""
         city = snapshot.city_name
@@ -310,6 +320,11 @@ class HealthAdvisorService:
         guideline = HealthKnowledgeBase.get_category_guideline(category)
 
         header = self._build_fallback_header(city, aqi, category, dominant, snapshot)
+        if lifestyle or family_context:
+            header += (
+                f"*Tailored Profile*: {lifestyle or 'household'} "
+                f"({family_context or 'general community context'}).\n\n"
+            )
 
         body = (
             f"**Official CPCB Impact**: {guideline.health_statement}\n\n"
@@ -323,8 +338,8 @@ class HealthAdvisorService:
         body += self._build_extra_sections(question)
 
         footer = (
-            "\n*(Notice: The AI generation service is currently operating in offline mode. "
-            "This guidance is provided directly from the verified CPCB and WHO "
+            "\n*(Deterministic Fallback Mode: Gemini API is not configured or offline. "
+            "This guidance is generated deterministically from the verified CPCB and WHO "
             "public health knowledge base.)*\n\n" + MEDICAL_DISCLAIMER
         )
 

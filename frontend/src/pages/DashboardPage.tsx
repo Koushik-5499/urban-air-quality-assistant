@@ -175,6 +175,7 @@ function Dashboard() {
               <HealthRecommendation
                 aqi={selectedCityData.aqi}
                 category={selectedCityData.category}
+                cityName={selectedCityData.location.city}
               />
             </div>
           </div>
